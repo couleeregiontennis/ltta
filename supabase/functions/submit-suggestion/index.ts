@@ -13,8 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    // Removed 'userId' from input to prevent ID spoofing.
-    // Ideally user identity should be derived from the Auth header.
     const { content, captchaToken } = await req.json()
 
     // Enhanced Input Validation
@@ -39,10 +37,32 @@ serve(async (req) => {
       )
     }
 
-    // 1. Verify CAPTCHA with Cloudflare Turnstile
+    // 1. Initialize Supabase Client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // 2. Authenticate User
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+        return new Response(
+            JSON.stringify({ error: 'Missing Authorization header.' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        )
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
+    
+    if (authError || !user) {
+        return new Response(
+            JSON.stringify({ error: 'Unauthorized.' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        )
+    }
+
+    // 3. Verify CAPTCHA (Optional but good practice)
     const TURNSTILE_SECRET_KEY = Deno.env.get('TURNSTILE_SECRET_KEY')
-    if (TURNSTILE_SECRET_KEY) {
-        // Only verify if the key is set (allows for dev testing without it if needed)
+    if (TURNSTILE_SECRET_KEY && captchaToken) {
         const ip = req.headers.get('cf-connecting-ip')
         
         const formData = new FormData();
@@ -65,32 +85,71 @@ serve(async (req) => {
         }
     }
 
-    // 2. Initialize Supabase Client
-    // We use the Service Role Key here so the function has full access to write to the DB
-    // regardless of the user's auth state (since we want anonymous writes).
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-    // 3. Insert Suggestion
-    const { data, error } = await supabase
+    // 4. Insert Suggestion (Initial Save)
+    const { data: suggestionData, error: dbError } = await supabase
       .from('suggestions')
       .insert([
         {
           content: content,
-          user_id: null, // Always null for now (Anonymous)
-          // You could hash the IP here if you wanted to store it
-          // ip_hash: await crypto.subtle.digest(...) 
+          user_id: user.id, // Authenticated User ID
+          status: 'pending'
         },
       ])
       .select()
+      .single()
 
-    if (error) {
-        throw error
+    if (dbError) throw dbError
+
+    // 5. Call Jules API
+    let julesResponseData = null;
+    const JULES_API_KEY = Deno.env.get('JULES_API_KEY') || Deno.env.get('VITE_JULES_API_KEY');
+    const JULES_PROJECT_ID = Deno.env.get('JULES_PROJECT_ID');
+    const JULES_LOCATION = Deno.env.get('JULES_LOCATION');
+
+    if (JULES_API_KEY && JULES_PROJECT_ID && JULES_LOCATION) {
+        try {
+            console.log("Calling Jules API...");
+            const julesUrl = `https://jules.googleapis.com/v1alpha/projects/${JULES_PROJECT_ID}/locations/${JULES_LOCATION}/sessions?key=${JULES_API_KEY}`;
+            const julesPayload = {
+                // Adjust this payload structure if the API requires something specific
+                // Assuming a standard session creation or prompt execution
+                source: "user-suggestion-feature", 
+                prompt: `User Suggestion: ${content}\n\nPlease evaluate this suggestion for the Tennis Association website.`
+            };
+
+            const julesRes = await fetch(julesUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(julesPayload)
+            });
+
+            if (julesRes.ok) {
+                julesResponseData = await julesRes.json();
+                
+                // Update the suggestion with Jules' response
+                await supabase
+                    .from('suggestions')
+                    .update({ jules_response: julesResponseData, status: 'processed' })
+                    .eq('id', suggestionData.id);
+            } else {
+                console.error("Jules API Error:", julesRes.status, await julesRes.text());
+                // Don't fail the request, just log it. The suggestion is saved.
+            }
+        } catch (julesError) {
+            console.error("Jules Integration Failed:", julesError);
+        }
+    } else {
+        console.warn("Jules API credentials missing. Skipping AI integration.");
     }
 
     return new Response(
-      JSON.stringify({ message: 'Suggestion submitted successfully!', data }),
+      JSON.stringify({ 
+          message: 'Suggestion submitted successfully!', 
+          data: suggestionData,
+          jules_response: julesResponseData 
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
 
