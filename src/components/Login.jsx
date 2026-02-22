@@ -9,7 +9,7 @@ const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'support@ltta.com';
 
 export const Login = () => {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { session, hasProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

@@ -40,23 +40,25 @@ test.describe('Player Management', () => {
       const method = route.request().method();
 
       // Check if it's a request for the current user's profile (role check)
-      // AuthProvider calls .eq('id', user.id).single()
-      if (method === 'GET' && url.includes(`id=eq.${adminUser.id}`)) {
+      // AuthProvider calls .eq('user_id', user.id).single()
+      if (method === 'GET' && url.includes(`user_id=eq.${adminUser.id}`)) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
             id: adminUser.id,
+            user_id: adminUser.id,
             is_captain: true,
-            is_admin: true
+            is_admin: true,
+            first_name: 'Admin'
           }),
         });
         return;
       }
 
       // Check if it's the request for all players (for the list)
-      // This is usually a simple GET without ID filter
-      if (method === 'GET' && !url.includes('id=eq.')) {
+      // This is usually a simple GET without user ID filter
+      if (method === 'GET' && !url.includes('user_id=eq.')) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -72,13 +74,13 @@ test.describe('Player Management', () => {
         const id = match ? match[1] : null;
 
         if (id) {
-            const original = players.find(p => p.id === id) || {};
-            await route.fulfill({
-                status: 200,
-                contentType: 'application/json',
-                body: JSON.stringify({ ...original, ...body }),
-            });
-            return;
+          const original = players.find(p => p.id === id) || {};
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ ...original, ...body }),
+          });
+          return;
         }
       }
 
