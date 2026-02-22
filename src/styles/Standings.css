@@ -392,3 +392,40 @@
     justify-content: center;
   }
 }
+/* Standings Legend */
+.standings-legend {
+  margin-top: var(--space-xl);
+  padding: var(--space-lg);
+  background: var(--standings-surface);
+  border: 1px solid var(--standings-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.standings-legend h3 {
+  margin-top: 0;
+  margin-bottom: var(--space-sm);
+  font-size: var(--font-size-lg);
+  color: var(--standings-heading);
+}
+
+.standings-legend p {
+  margin: 0 0 var(--space-md) 0;
+  font-size: var(--font-size-sm);
+  color: var(--standings-muted);
+}
+
+.standings-legend ol {
+  margin: 0;
+  padding-left: var(--space-xl);
+  font-size: var(--font-size-sm);
+  color: var(--standings-text);
+}
+
+.standings-legend li {
+  margin-bottom: var(--space-xs);
+}
+
+.standings-legend strong {
+  color: var(--standings-accent);
+}

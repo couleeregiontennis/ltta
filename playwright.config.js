@@ -32,28 +32,30 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
 
-  /* Configure projects for major browsers */
-  projects: [
+  /* Configure projects for major browsers. Run all in CI, but only Chromium locally for speed. */
+  projects: process.env.CI ? [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
     },
-
-    /* Test against mobile viewports. */
     {
       name: 'Mobile Chrome',
       use: { ...devices['Pixel 5'] },
+    },
+  ] : [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'pnpm run dev',
+    command: 'npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
   },

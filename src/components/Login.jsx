@@ -9,7 +9,7 @@ const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'support@ltta.com';
 
 export const Login = () => {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { session, hasProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -19,9 +19,13 @@ export const Login = () => {
 
   useEffect(() => {
     if (session) {
-      navigate('/player-profile');
+      if (hasProfile === false) {
+        navigate('/welcome');
+      } else {
+        navigate('/');
+      }
     }
-  }, [session, navigate]);
+  }, [session, hasProfile, navigate]);
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -35,16 +39,14 @@ export const Login = () => {
     }
     setLoading(false);
     if (result.error) setError(result.error.message);
-    else if (!isSignUp) {
-      navigate('/player-profile');
-    }
+    // Let the useEffect handle the navigation based on session and hasProfile
   };
 
   const handleOAuth = async (provider) => {
     setError('');
     setLoading(true);
     const redirectUrl = window.location.origin;
-    
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {

@@ -21,6 +21,10 @@ const formatTime = (timeString) => {
 };
 
 const getMatchStatus = (match) => {
+  if (match.is_rained_out) {
+    return 'canceled';
+  }
+
   const matchDate = new Date(match.date);
   const now = new Date();
 
@@ -37,7 +41,8 @@ const getStatusBadge = (status) => {
   const badges = {
     'upcoming': { text: 'Upcoming', class: 'status-upcoming' },
     'completed': { text: 'Completed', class: 'status-completed' },
-    'pending-result': { text: 'Pending Result', class: 'status-pending' }
+    'pending-result': { text: 'Pending Result', class: 'status-pending' },
+    'canceled': { text: 'Rained Out', class: 'status-canceled' }
   };
   return badges[status] || badges['upcoming'];
 };
@@ -88,6 +93,7 @@ export const MatchSchedule = () => {
           time, 
           status, 
           courts, 
+          is_rained_out,
           home_team:home_team_id (id, name, number), 
           away_team:away_team_id (id, name, number)
         `)
@@ -137,6 +143,22 @@ export const MatchSchedule = () => {
       }
     }
   }, [currentSeason, seasonLoading]);
+
+  const handleToggleRainout = async (matchId, currentStatus) => {
+    try {
+      const { error } = await supabase
+        .from('team_match')
+        .update({ is_rained_out: !currentStatus })
+        .eq('id', matchId);
+
+      if (error) throw error;
+
+      fetchAllData();
+    } catch (err) {
+      console.error('Error toggling rainout status:', err);
+      // Fallback display if needed, but logging for now
+    }
+  };
 
   // OPTIMIZATION: Memoize filtered matches to avoid recalculation on every render
   const filteredMatches = useMemo(() => {
@@ -248,6 +270,9 @@ export const MatchSchedule = () => {
       <div className="schedule-header">
         <h1>Match Schedule</h1>
         <p>Plan lineups, track results, and stay informed on weekly match activity.</p>
+        <div className="policy-banner" style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: 'var(--bg-card-hover)', borderLeft: '4px solid var(--error)', borderRadius: '4px', textAlign: 'left' }}>
+          <strong>Rainout Policy:</strong> The league has a strict "No Reschedule" policy for rained-out matches.
+        </div>
       </div>
 
       <div className="schedule-overview">
@@ -392,6 +417,21 @@ export const MatchSchedule = () => {
                                   Edit Result
                                 </button>
                               )}
+                            </div>
+                          )}
+
+                          {(userRole?.isAdmin || userRole?.isCaptain) && status !== 'completed' && (
+                            <div className="match-actions" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                              <button
+                                className="edit-result-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleRainout(match.id, match.is_rained_out);
+                                }}
+                                style={match.is_rained_out ? { backgroundColor: 'var(--text-secondary)' } : { backgroundColor: 'var(--error)' }}
+                              >
+                                {match.is_rained_out ? 'Undo Rainout' : 'Mark Rained Out'}
+                              </button>
                             </div>
                           )}
                         </article>

@@ -463,6 +463,16 @@ const Standings = () => {
             </table>
           </div>
 
+          <div className="standings-legend card card--interactive">
+            <h3>Tie-breaker Rules</h3>
+            <p>If teams have the same Win Percentage, standings are calculated in the following CRTA priority order:</p>
+            <ol>
+              <li><strong>Set Differential:</strong> The difference between total sets won and total sets lost.</li>
+              <li><strong>Game Differential:</strong> The difference between total games won and total games lost.</li>
+              <li><strong>Team Number:</strong> Ascending team number (e.g. Team 1 vs Team 2).</li>
+            </ol>
+          </div>
+
           {(leagueOverview.totalMatches > 0 || leagueOverview.totalTeams > 0) && (
             <section className="league-metrics">
               <div className="metrics-grid">
