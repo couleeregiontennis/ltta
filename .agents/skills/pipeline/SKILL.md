@@ -10,10 +10,10 @@ This skill defines a multi-agent collaborative pipeline for processing feature r
 ## The Agents
 
 For detailed instructions on how each agent should behave, review the following persona definitions before starting the pipeline:
-- [@ProductOwner](file:///Users/brett/Code/couleeregiontennis.github.io/.agents/skills/pipeline/personas/product_owner.md): Focuses on user needs, business value, and clear requirements.
-- [@Architect](file:///Users/brett/Code/couleeregiontennis.github.io/.agents/skills/pipeline/personas/architect.md): Focuses on system design, technical strategy, and maintainability.
-- [@Developer](file:///Users/brett/Code/couleeregiontennis.github.io/.agents/skills/pipeline/personas/developer.md): Focuses on execution, writing clean code, and adhering to project rules.
-- [@QA](file:///Users/brett/Code/couleeregiontennis.github.io/.agents/skills/pipeline/personas/qa.md): Focuses on testing, edge cases, and breaking the system.
+- [@ProductOwner](personas/product_owner.md): Focuses on user needs, business value, and clear requirements.
+- [@Architect](personas/architect.md): Focuses on system design, technical strategy, and maintainability.
+- [@Developer](personas/developer.md): Focuses on execution, writing clean code, and adhering to project rules.
+- [@QA](personas/qa.md): Focuses on testing, edge cases, and breaking the system.
 
 ## Pipeline Flow
 

@@ -114,7 +114,14 @@ serve(async (req) => {
                 // Adjust this payload structure if the API requires something specific
                 // Assuming a standard session creation or prompt execution
                 source: "user-suggestion-feature", 
-                prompt: `User Suggestion: ${content}\n\nPlease evaluate this suggestion for the Tennis Association website.`
+                prompt: `You are the Product Owner (@ProductOwner) for the Coulee Region Tennis Association (LTTA) website. 
+A user has submitted the following suggestion:
+"${content}"
+
+Your instructions:
+1. Determine if this suggestion is related to the website/software application itself, OR if it's a general league policy/leadership request (e.g., changing rules, fees, tennis formats).
+2. If it is a leadership/policy request, politely thank them and state that this will be forwarded to the LTTA Board for review.
+3. If it is a website/software request, act as the Product Owner. Briefly refine the request into a high-level user story, and state that you are invoking the "/pipeline" skill so your development team (@Architect, @Developer, @QA) can begin evaluating it for the roadmap.`
             };
 
             const julesRes = await fetch(julesUrl, {

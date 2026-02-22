@@ -1,28 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { disableNavigatorLocks } from '../utils/auth-mock';
+import { disableNavigatorLocks, mockSupabaseAuth } from '../utils/auth-mock';
 
 test.describe('Suggestion Box (Authenticated)', () => {
   test.beforeEach(async ({ page }) => {
     await disableNavigatorLocks(page);
 
-    // 1. Mock Login (Token)
-    await page.route('**/auth/v1/token?grant_type=password', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          access_token: 'fake-jwt-token',
-          token_type: 'bearer',
-          expires_in: 3600,
-          refresh_token: 'fake-refresh-token',
-          user: {
-            id: 'fake-user-id',
-            aud: 'authenticated',
-            role: 'authenticated',
-            email: 'test@example.com',
-          },
-        }),
-      });
+    // 1. Establish mocked auth session
+    await mockSupabaseAuth(page, {
+      id: 'fake-user-id',
+      email: 'test@example.com'
     });
 
     // 2. Mock User Details
@@ -52,18 +38,25 @@ test.describe('Suggestion Box (Authenticated)', () => {
       }
     });
 
-    // Login Flow
-    await page.goto('/login');
-    await page.getByLabel(/Email/i).fill('test@example.com');
-    await page.getByLabel('Password', { exact: true }).fill('password123');
-    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-    await expect(page.getByText('Logout')).toBeAttached();
+    // 4. Mock the player profile check so they aren't redirected to onboarding
+    await page.route('**/rest/v1/player?select=is_captain%2Cis_admin%2Cfirst_name%2Clast_name&user_id=eq.fake-user-id', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          is_captain: false,
+          is_admin: false,
+          first_name: 'Test',
+          last_name: 'User'
+        }),
+      });
+    });
   });
 
   test('should navigate to suggestion box page and render correctly', async ({ page }) => {
     await page.goto('/feedback');
     await expect(page.getByRole('heading', { name: 'Suggestion Box', exact: true })).toBeVisible();
-    await expect(page.getByText('Submit a suggestion and Jules')).toBeVisible();
+    await expect(page.getByText('Submit a suggestion below')).toBeVisible();
     await expect(page.getByLabel('Your Suggestion (10-1000 characters)')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Submit Suggestion' })).toBeVisible();
   });

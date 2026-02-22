@@ -68,7 +68,7 @@ export const SuggestionBox = () => {
       if (error) throw error;
 
       setStatus("success");
-      setMessage("Thank you for your feedback! Jules has received it.");
+      setMessage("Thank you for your feedback! It has been submitted for review.");
       setSuggestion("");
       setTurnstileToken("");
       fetchHistory(); // Refresh the list
@@ -94,7 +94,7 @@ export const SuggestionBox = () => {
     <div className="suggestion-box-page">
       <div className="suggestion-box-container">
         <h1>Suggestion Box</h1>
-        <p>We value your feedback. Submit a suggestion and Jules (our AI Agent) will review it!</p>
+        <p>We value your feedback. Submit a suggestion below for review.</p>
 
         {status === "success" && (
           <div className="success-message">
@@ -181,7 +181,7 @@ export const SuggestionBox = () => {
                   {item.jules_response && (
                     <div className="jules-response">
                       <div className="jules-header">
-                        <span className="jules-avatar">🤖</span> <strong>Jules replied:</strong>
+                        <span className="jules-avatar">🤖</span> <strong>AI Assistant replied:</strong>
                       </div>
                       <div className="jules-text">
                         <ReactMarkdown>{item.jules_response.answer || item.jules_response.text || "Processed"}</ReactMarkdown>
