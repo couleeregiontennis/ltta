@@ -94,6 +94,7 @@ export const MatchSchedule = () => {
           status, 
           courts, 
           is_rained_out,
+          is_disputed,
           home_team:home_team_id (id, name, number), 
           away_team:away_team_id (id, name, number)
         `)
@@ -157,6 +158,21 @@ export const MatchSchedule = () => {
     } catch (err) {
       console.error('Error toggling rainout status:', err);
       // Fallback display if needed, but logging for now
+    }
+  };
+
+  const handleFlagScore = async (matchId) => {
+    try {
+      const { error } = await supabase.rpc('flag_match_score', { match_id: matchId });
+      if (error) throw error;
+
+      // Optimistically update the local state without a full fetch
+      setMatches(prevMatches => prevMatches.map(m =>
+        m.id === matchId ? { ...m, is_disputed: true } : m
+      ));
+    } catch (err) {
+      console.error('Error flagging match score:', err);
+      alert('Failed to flag match score. Ensure you are logged in.');
     }
   };
 
@@ -404,7 +420,12 @@ export const MatchSchedule = () => {
 
                           {status === 'completed' && (
                             <div className="match-result">
-                              Final score submitted
+                              {match.is_disputed ? (
+                                <span style={{ color: 'var(--error)', fontWeight: 'bold' }}>Score Disputed ⚠️</span>
+                              ) : (
+                                <span>Final score submitted</span>
+                              )}
+
                               {userRole?.isAdmin && (
                                 <button
                                   className="edit-result-btn"
@@ -412,9 +433,23 @@ export const MatchSchedule = () => {
                                     e.stopPropagation();
                                     navigate(`/add-score?matchId=${match.id}&edit=true`);
                                   }}
-                                  aria-label="Edit Result"
+                                  aria-label={match.is_disputed ? "Resolve Dispute" : "Edit Result"}
+                                  style={match.is_disputed ? { backgroundColor: 'var(--error)' } : {}}
                                 >
-                                  Edit Result
+                                  {match.is_disputed ? "Resolve Dispute" : "Edit Result"}
+                                </button>
+                              )}
+                              {user && !userRole?.isAdmin && !match.is_disputed && (
+                                <button
+                                  className="edit-result-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleFlagScore(match.id);
+                                  }}
+                                  style={{ backgroundColor: 'transparent', color: 'var(--error)', border: '1px solid var(--error)' }}
+                                  aria-label="Flag Score"
+                                >
+                                  Flag Score
                                 </button>
                               )}
                             </div>

@@ -19,7 +19,7 @@ export const ProtectedRoute = ({ children, requireAdmin, requireCaptain, allowIn
     return <Navigate to="/" replace />;
   }
 
-  if (requireCaptain && !userRole?.isCaptain) {
+  if (requireCaptain && !userRole?.isCaptain && !userRole?.isAdmin) {
     return <Navigate to="/" replace />;
   }
 
