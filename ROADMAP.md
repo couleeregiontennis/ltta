@@ -4,22 +4,9 @@ This document outlines planned features and enhancements for the Coulee Region T
 
 ## Planned Features
 
-### 1. The "Sub Board" (Substitute Player Management)
-*   **Problem:** Captains struggle to find substitute players when team members are unavailable.
-*   **Solution:** A streamlined system for Captains to broadcast a need for a sub and for eligible registered players to claim the open spot.
-*   **Key Requirements:**
-    *   Ability to specify match details (date, time, location, required skill level).
-    *   Notification system (or view) for available players.
-    *   Mechanism for players to accept the request.
 
-### 2. Rainout & "No Reschedule" Handling
-*   **Problem:** The league has a strict "No Reschedule" policy for rainouts, which needs to be clearly communicated to prevent player confusion.
-*   **Solution:** Improve UI to handle and clearly communicate canceled matches.
-*   **Key Requirements:**
-    *   Admin/Captain ability to mark a match as "Rained Out" (Canceled).
-    *   Clear visual indicator on the `MatchSchedule` page for these matches.
-    *   Ensure rained-out matches do not negatively impact standings.
-    *   Prominent display of the "No Reschedule" policy throughout the app (e.g., on the `Rules` page or a schedule banner).
+
+
 
 ### 3. Score Flagging & Dispute Resolution
 *   **Problem:** Accidental incorrect score entries need a correction workflow to maintain Standings integrity.
@@ -31,6 +18,8 @@ This document outlines planned features and enhancements for the Coulee Region T
 
 ## Recently Completed / In Progress
 
+*   **Rainout & "No Reschedule" Handling:** Improved UI to handle and clearly communicate canceled matches with prominent badges and a schedule banner. Admins and Captains can mark existing matches as "Rained Out".
+*   **The "Sub Board" (Substitute Player Management):** System for Captains to broadcast a need for a sub and for eligible registered players to claim the open spot. Including match details and skill level requirements.
 *   **Player Skill Level Feedback System:** Add a restricted form for Captains/players to report rating inaccuracies. Integrate this data into the `PlayerManagement` admin screen as a "Rating Reviews" tab, allowing Admins to adjust self-ratings.
 *   **New Player Onboarding Flow:** Force a "Welcome" or "Complete Profile" check upon first login for incomplete user profiles, redirecting to `PlayerProfile` setup.
 
