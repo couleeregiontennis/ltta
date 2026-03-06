@@ -59,6 +59,36 @@ test.describe('Score Flagging Feature', () => {
             await page.route('**/rest/v1/team?*', async (route) => {
                 await route.fulfill({ status: 200, body: '[]' });
             });
+
+            // Mock standings requests
+            await page.route('**/rest/v1/standings_view*', async (route) => {
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([{
+                        team_id: 'team-1',
+                        team_number: 1,
+                        team_name: 'Home Team',
+                        wins: 1, losses: 0, ties: 0, matches_played: 1,
+                        sets_won: 3, sets_lost: 0, games_won: 18, games_lost: 0,
+                        win_percentage: 100, set_win_percentage: 100
+                    }])
+                });
+            });
+
+            await page.route('**/rest/v1/team_match*is_disputed=eq.true*', async (route) => {
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([{
+                        home_team_id: 'team-1'
+                    }])
+                });
+            });
+
+            await page.route('**/rest/v1/matches*', async (route) => {
+                await route.fulfill({ status: 200, body: '[]' });
+            });
         });
 
         test('should allow flagging a completed score, changing the button to a warning badge', async ({ page }) => {
@@ -78,6 +108,19 @@ test.describe('Score Flagging Feature', () => {
             // The button should disappear and a "Score Disputed ⚠️" badge should appear
             await expect(flagBtn).not.toBeVisible();
             await expect(page.getByText('Score Disputed ⚠️')).toBeVisible();
+        });
+
+        test('should show warning badge in Standings for team with disputed match', async ({ page }) => {
+            await page.goto('/standings');
+
+            // Find the team name in the table
+            const teamCell = page.locator('.standings-table td', { hasText: 'Home Team' }).first();
+            await expect(teamCell).toBeVisible();
+
+            // Check for the dispute badge
+            const badge = teamCell.locator('.dispute-badge');
+            await expect(badge).toBeVisible();
+            await expect(badge).toHaveText('⚠️');
         });
     });
 
