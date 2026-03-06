@@ -351,6 +351,14 @@
 .team-name {
   color: var(--standings-muted);
   font-size: var(--font-size-sm);
+  display: flex;
+  align-items: center;
+}
+
+.dispute-badge {
+  margin-left: 6px;
+  font-size: 1.1em;
+  cursor: help;
 }
 
 .empty-row td {
@@ -392,6 +400,7 @@
     justify-content: center;
   }
 }
+
 /* Standings Legend */
 .standings-legend {
   margin-top: var(--space-xl);

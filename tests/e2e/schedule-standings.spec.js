@@ -143,6 +143,15 @@ test.describe('Match Schedule Page', () => {
       });
     });
 
+    // Mock disputed matches for the Standings component
+    await page.route('**/rest/v1/team_match*is_disputed=eq.true*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([])
+      });
+    });
+
     await page.goto('/standings');
     await expect(page.getByRole('heading', { name: 'Team Standings' })).toBeVisible();
 

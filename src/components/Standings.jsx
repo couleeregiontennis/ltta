@@ -20,7 +20,12 @@ const StandingsRow = memo(({ team, index }) => {
       <td data-label="Team">
         <div className="team-cell">
           <span className="team-number">Team {team.number}</span>
-          <span className="team-name">{team.name}</span>
+          <span className="team-name">
+            {team.name}
+            {team.hasDisputes && (
+              <span className="dispute-badge" title="This team has one or more disputed match scores" aria-label="Disputed Match">⚠️</span>
+            )}
+          </span>
         </div>
       </td>
       <td data-label="Night">{team.playNight || '—'}</td>
@@ -87,16 +92,27 @@ const Standings = () => {
         { data: standingsData, error: standingsError },
         { count: playerCount, error: playerError },
         { data: recentMatchesData, error: recentMatchesError },
-        { data: allMatchDates, error: datesError }
+        { data: allMatchDates, error: datesError },
+        { data: disputedMatches, error: disputedMatchesError }
       ] = await Promise.all([
         supabase.from('standings_view').select('*'),
         supabase.from('player').select('*', { count: 'exact', head: true }),
         supabase.from('matches').select('id, date, time, status, home_team_name, away_team_name').order('date', { ascending: false }).limit(6),
-        supabase.from('matches').select('date')
+        supabase.from('matches').select('date'),
+        supabase.from('team_match').select('home_team_id, away_team_id').eq('is_disputed', true)
       ]);
 
       if (standingsError) throw standingsError;
       if (recentMatchesError) throw recentMatchesError;
+      if (disputedMatchesError) throw disputedMatchesError;
+
+      const disputedTeamIds = new Set();
+      if (disputedMatches) {
+        disputedMatches.forEach(match => {
+          if (match.home_team_id) disputedTeamIds.add(match.home_team_id);
+          if (match.away_team_id) disputedTeamIds.add(match.away_team_id);
+        });
+      }
 
       // Process Standings
       const formattedStandings = (standingsData || []).map((team) => ({
@@ -113,7 +129,8 @@ const Standings = () => {
         gamesWon: team.games_won,
         gamesLost: team.games_lost,
         winPercentage: team.win_percentage,
-        setWinPercentage: team.set_win_percentage
+        setWinPercentage: team.set_win_percentage,
+        hasDisputes: disputedTeamIds.has(team.team_id)
       }));
 
       // Sort Standings
