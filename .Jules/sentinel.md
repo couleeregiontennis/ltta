@@ -1,6 +1,4 @@
-## 2025-05-23 - Privilege Escalation via Profile Update
-**Vulnerability:** Users could self-promote to "Captain" (Admin) status by manipulating the `is_captain` field in their profile update request, or simply by checking a checkbox in the UI if it was enabled.
-**Learning:** Never trust client-side data for privileged roles. Authorization fields should be immutable by the user and strictly controlled by backend policies (RLS). UI controls for these fields must be read-only or removed for non-admins.
-**Prevention:**
-1. Exclude sensitive fields (like `is_captain`, `role`, `permissions`) from user-editable forms and update payloads.
-2. Ensure Row Level Security (RLS) policies explicitly forbid users from updating these columns on their own records.
+## 2024-05-22 - [Unbounded Input DoS Risk]
+**Vulnerability:** The `notes` field in `AddScore.jsx` was an unbounded text area, allowing potentially unlimited character input.
+**Learning:** Frontend input validation is a critical first line of defense against Denial of Service (DoS) and database exhaustion attacks. Without limits, a malicious user could submit massive payloads, degrading server performance or filling storage.
+**Prevention:** Always enforce `maxLength` on text inputs and textareas. Couple this with visual feedback (character counters) for usability and ensure backend validation mirrors these constraints.
