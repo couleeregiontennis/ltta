@@ -22,6 +22,7 @@ import { CourtsLocations } from './components/CourtsLocations';
 import { PlayerResources } from './components/PlayerResources';
 import { SuggestionBox } from './components/SuggestionBox';
 import { AskTheUmpire } from './components/AskTheUmpire';
+import { SubBoard } from './components/SubBoard';
 import { AuthProvider } from './context/AuthProvider';
 import './styles/colors.css';
 import './styles/Style.css';
@@ -75,10 +76,25 @@ function App() {
               <Route path="/welcome" element={<LandingPage />} />
               <Route path="/team/:day/:teamId" element={<Team />} />
               <Route path="/player-resources" element={<PlayerResources />} />
-              <Route path="/feedback" element={<SuggestionBox />} />
+              <Route
+                path="/feedback"
+                element={
+                  <ProtectedRoute>
+                    <SuggestionBox />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/rules" element={<Rules />} />
               <Route path="/standings" element={<Standings />} />
               <Route path="/player-rankings" element={<PlayerRankings />} />
+              <Route
+                path="/sub-board"
+                element={
+                  <ProtectedRoute>
+                    <SubBoard />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/courts-locations" element={<CourtsLocations />} />
               <Route path="/login" element={<Login />} />
 
@@ -133,7 +149,7 @@ function App() {
               <Route
                 path="/player-profile"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowIncompleteProfile={true}>
                     <PlayerProfile />
                   </ProtectedRoute>
                 }

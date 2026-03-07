@@ -14,7 +14,8 @@ test.describe('Admin Access Control', () => {
         last_name: 'Hook',
         is_captain: true,
         is_admin: false,
-        email: 'captain@example.com'
+        email: 'captain@example.com',
+        phone: '123-456-7890'
       }
     ]);
 
@@ -35,7 +36,8 @@ test.describe('Admin Access Control', () => {
         last_name: 'Hook',
         is_captain: true,
         is_admin: false,
-        email: 'captain@example.com'
+        email: 'captain@example.com',
+        phone: '123-456-7890'
       }
     ]);
 

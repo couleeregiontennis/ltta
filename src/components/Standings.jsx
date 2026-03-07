@@ -20,7 +20,12 @@ const StandingsRow = memo(({ team, index }) => {
       <td data-label="Team">
         <div className="team-cell">
           <span className="team-number">Team {team.number}</span>
-          <span className="team-name">{team.name}</span>
+          <span className="team-name">
+            {team.name}
+            {team.hasDisputes && (
+              <span className="dispute-badge" title="This team has one or more disputed match scores" aria-label="Disputed Match">⚠️</span>
+            )}
+          </span>
         </div>
       </td>
       <td data-label="Night">{team.playNight || '—'}</td>
@@ -95,17 +100,28 @@ const Standings = () => {
         { count: playerCount, error: playerError },
         { data: recentMatchesData, error: recentMatchesError },
         { data: allMatchDates, error: datesError },
-        { data: playoffData, error: playoffError }
+        { data: playoffData, error: playoffError },
+        { data: disputedMatches, error: disputedMatchesError }
       ] = await Promise.all([
         supabase.from('standings_view').select('*'),
         supabase.from('player').select('*', { count: 'exact', head: true }),
         supabase.from('matches').select('id, date, time, status, home_team_name, away_team_name').order('date', { ascending: false }).limit(6),
         supabase.from('matches').select('date'),
-        supabase.functions.invoke('playoff-scenarios')
+        supabase.functions.invoke('playoff-scenarios'),
+        supabase.from('team_match').select('home_team_id, away_team_id').eq('is_disputed', true)
       ]);
 
       if (standingsError) throw standingsError;
       if (recentMatchesError) throw recentMatchesError;
+      if (disputedMatchesError) throw disputedMatchesError;
+
+      const disputedTeamIds = new Set();
+      if (disputedMatches) {
+        disputedMatches.forEach(match => {
+          if (match.home_team_id) disputedTeamIds.add(match.home_team_id);
+          if (match.away_team_id) disputedTeamIds.add(match.away_team_id);
+        });
+      }
 
       // Process Standings
       const formattedStandings = (standingsData || []).map((team) => {
@@ -126,7 +142,8 @@ const Standings = () => {
           winPercentage: team.win_percentage,
           setWinPercentage: team.set_win_percentage,
           playoffStatus: scenarios?.status || '',
-          magicNumber: scenarios?.magicNumber || 0
+          magicNumber: scenarios?.magicNumber || 0,
+          hasDisputes: disputedTeamIds.has(team.team_id)
         };
       });
 
@@ -476,6 +493,16 @@ const Standings = () => {
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="standings-legend card card--interactive">
+            <h3>Tie-breaker Rules</h3>
+            <p>If teams have the same Win Percentage, standings are calculated in the following CRTA priority order:</p>
+            <ol>
+              <li><strong>Set Differential:</strong> The difference between total sets won and total sets lost.</li>
+              <li><strong>Game Differential:</strong> The difference between total games won and total games lost.</li>
+              <li><strong>Team Number:</strong> Ascending team number (e.g. Team 1 vs Team 2).</li>
+            </ol>
           </div>
 
           {(leagueOverview.totalMatches > 0 || leagueOverview.totalTeams > 0) && (

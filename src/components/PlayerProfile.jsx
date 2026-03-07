@@ -109,9 +109,15 @@ export const PlayerProfile = () => {
 
       const normalized = normalizeProfile(data, authUser || user);
       setProfile(normalized);
-      setHasExistingProfile(Boolean(data));
-      if (!data) {
+
+      const exists = Boolean(data);
+      setHasExistingProfile(exists);
+
+      // Force edit mode if no profile exists
+      if (!exists) {
         setIsEditing(true);
+      } else {
+        setIsEditing(false); // Reset just in case
       }
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -216,10 +222,16 @@ export const PlayerProfile = () => {
 
       setProfile(normalizeProfile(savedData, user));
       setSuccess('Profile saved successfully!');
-      setIsEditing(false);
 
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(null), 3000);
+      // If this was their very first time creating a profile, trigger a hard reload 
+      // or navigation so the AuthProvider picks up the new 'hasProfile' state
+      if (!hasExistingProfile) {
+        window.location.href = '/';
+      } else {
+        setIsEditing(false);
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(null), 3000);
+      }
 
     } catch (err) {
       console.error('Error saving profile:', err);
@@ -276,7 +288,7 @@ export const PlayerProfile = () => {
         <div className="profile-section card card--interactive">
           <div className="section-header">
             <h2>Basic Information</h2>
-            {!isEditing && (
+            {!isEditing && hasExistingProfile && (
               <button
                 className="edit-btn"
                 onClick={() => setIsEditing(true)}
@@ -445,13 +457,15 @@ export const PlayerProfile = () => {
             >
               {saving ? 'Saving...' : '💾 Save Profile'}
             </button>
-            <button
-              className="cancel-btn"
-              onClick={handleCancel}
-              disabled={saving}
-            >
-              ❌ Cancel
-            </button>
+            {hasExistingProfile && (
+              <button
+                className="cancel-btn"
+                onClick={handleCancel}
+                disabled={saving}
+              >
+                ❌ Cancel
+              </button>
+            )}
           </div>
         )}
 

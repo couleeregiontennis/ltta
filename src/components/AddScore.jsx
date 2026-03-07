@@ -696,7 +696,16 @@ export const AddScore = () => {
   const handleMatchSelect = async (matchId) => {
     const match = availableMatches.find(m => m.id === matchId);
     if (match) {
-      setSelectedMatch(match);
+      // Fetch is_disputed flag from team_match
+      const { data: teamMatchData, error } = await supabase
+        .from('team_match')
+        .select('is_disputed')
+        .eq('id', matchId)
+        .single();
+
+      const isDisputed = teamMatchData?.is_disputed || false;
+
+      setSelectedMatch({ ...match, is_disputed: isDisputed });
       setFormData(prev => ({
         ...prev,
         matchId: matchId,
@@ -843,7 +852,15 @@ export const AddScore = () => {
           .throwOnError();
       }
 
-      setSuccess(existingScore ? 'Scores updated successfully!' : 'Scores submitted successfully!');
+      // If match was disputed, resolve it
+      if (selectedMatch.is_disputed) {
+        await supabase
+          .from('team_match')
+          .update({ is_disputed: false })
+          .eq('id', selectedMatch.id);
+      }
+
+      setSuccess(existingScore ? 'Scores updated successfully! Any dispute has been resolved.' : 'Scores submitted successfully!');
 
       // Reload existing scores to reflect changes
       await loadExistingScores(selectedMatch.id);
@@ -921,6 +938,13 @@ export const AddScore = () => {
               <span className="team-meta">Signed in as {user.email}</span>
             )}
           </div>
+        </div>
+      )}
+
+      {selectedMatch?.is_disputed && (
+        <div style={{ backgroundColor: 'var(--bg-card-hover)', borderLeft: '4px solid var(--error)', padding: '1rem', marginBottom: '1.5rem', borderRadius: '4px' }}>
+          <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--error)' }}>⚠️ Score Disputed</h3>
+          <p style={{ margin: 0, fontSize: '0.9rem' }}>A player has flagged this match score for review. Submitting the corrected score will automatically resolve this dispute.</p>
         </div>
       )}
 
@@ -1274,10 +1298,10 @@ export const AddScore = () => {
         {success && <div className="success-message">{success}</div>}
         <button type="submit" disabled={loading} className="submit-button">
           {loading ? (
-             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <LoadingSpinner size="sm" />
-                Submitting...
-             </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <LoadingSpinner size="sm" />
+              Submitting...
+            </span>
           ) : 'Submit Scores'}
         </button>
       </form>

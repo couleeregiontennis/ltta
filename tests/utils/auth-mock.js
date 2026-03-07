@@ -13,9 +13,9 @@ export async function disableNavigatorLocks(page) {
 
     // Inject CSS to hide global floating elements that might overlap buttons in tests (especially mobile)
     window.addEventListener('DOMContentLoaded', () => {
-        const style = document.createElement('style');
-        style.innerHTML = '.umpire-trigger { display: none !important; }';
-        document.head.appendChild(style);
+      const style = document.createElement('style');
+      style.innerHTML = '.umpire-trigger { display: none !important; }';
+      document.head.appendChild(style);
     });
   });
 }
@@ -80,10 +80,26 @@ export async function mockSupabaseData(page, table, data) {
   await page.route(`**/rest/v1/${table}*`, async (route) => {
     const method = route.request().method();
     if (method === 'GET') {
+      const headers = route.request().headers();
+      const isSingle = headers['accept'] === 'application/vnd.pgrst.object+json' || headers['accept'] === 'application/vnd.pgrst.object+json, application/json';
+
+      let responseData = data;
+      if (isSingle && Array.isArray(data)) {
+        if (data.length === 0) {
+          await route.fulfill({
+            status: 406,
+            contentType: 'application/json',
+            body: JSON.stringify({ code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' }),
+          });
+          return;
+        }
+        responseData = data[0];
+      }
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(data),
+        body: JSON.stringify(responseData),
       });
     } else {
       await route.continue();

@@ -91,6 +91,7 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
                 <ul className={`dropdown-menu ${openDropdown === 'league' ? 'show' : ''}`} role="menu">
                   <li><Link to="/standings" onClick={closeMenu}>Standings</Link></li>
                   <li><Link to="/player-rankings" onClick={closeMenu}>Player Rankings</Link></li>
+                  <li><Link to="/sub-board" onClick={closeMenu}>Sub Board</Link></li>
                   <li>
                     <a
                       href="http://www.couleeregiontennis.com"

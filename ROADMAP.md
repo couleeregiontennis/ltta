@@ -1,6 +1,10 @@
-# Future Features & Roadmap
+# LTTA Feature Roadmap
 
-## Playoff Scenarios ("The Path to Victory")
+This document outlines planned features and enhancements for the Coulee Region Tennis Association application based on product planning discussions.
+
+## Planned Features
+
+### 1. Playoff Scenarios ("The Path to Victory")
 *   **Goal:** Tell teams exactly what needs to happen for them to win/clinch.
 *   **Logic:**
     *   Calculate "Magic Number" (wins needed to clinch).
@@ -11,22 +15,53 @@
     *   Ideally use a Supabase Edge Function for the math.
     *   Display on the Standings page.
 
-## Automated Notifications
+### 2. Automated Notifications
 *   **Goal:** Alert users immediately when there are disputes, score flags, or sub requests.
 *   **Implementation:**
     *   Use Supabase Webhooks or Edge Functions triggered by database inserts/updates.
     *   Integrate with an email provider (e.g., Resend) or SMS service.
 
-## Player Registration & Payment Integration
+### 3. Score Flagging & Dispute Resolution
+*   **Problem:** Accidental incorrect score entries need a correction workflow to maintain Standings integrity.
+*   **Solution:** Allow players to flag questionable scores for review.
+*   **Key Requirements:**
+    *   A "Flag Score" button on the `MatchSchedule` or `Standings` views.
+    *   Status tracking for matches (e.g., pending, verified, disputed).
+    *   Alert system for Admins and involved Captains to resolve the dispute via the `AddScore` component.
+
+### 4. Player Registration & Payment Integration
 *   **Goal:** Allow players to register for upcoming seasons and pay their dues directly through the platform.
 *   **Implementation:**
     *   Stripe integration for payment processing.
     *   New database tables for `registrations` and `payments`.
     *   Admin dashboard for tracking registration status.
 
-## Staging & Demo Environment
+### 5. Staging & Demo Environment
 *   **Goal:** Provide a safe, isolated clone of the application filled with fake data for stakeholders, QA, and potential users to test without altering real production data.
 *   **Implementation:**
     *   Create a secondary Supabase project ("LTTA - Staging").
     *   Develop a `seed.sql` script to generate realistic fake matches, teams, and players.
     *   Deploy a separate frontend instance (e.g., `demo.couleeregiontennis.org`) pointed to the staging database.
+
+### 6. Standings Calculation Transparency
+*   **Problem:** Players may not understand complex tennis tie-breaker rules (H2H, Sets, Games), leading to confusion over standings.
+*   **Solution:** Add explicit informational text/tooltips explaining the exact math.
+*   **Key Requirements:**
+    *   Ensure calculation logic perfectly matches CRTA official rules.
+    *   Add a UI tooltip or legend below the `Standings` table explaining the tie-breaker hierarchy.
+
+### 7. Mobile Optimization for Score Entry
+*   **Problem:** The `AddScore` component is heavily used on mobile devices court-side, making standard text inputs prone to "fat-finger" errors.
+*   **Solution:** Overhaul the `AddScore` form specifically for mobile viewports.
+*   **Key Requirements:**
+    *   Convert standard text inputs to large, tap-friendly number dials, specific `type="number"` inputs, or dropdowns.
+    *   Ensure the transition between sets and tiebreakers is intuitive on small screens.
+
+## Recently Completed / In Progress
+
+*   **Rainout & "No Reschedule" Handling:** Improved UI to handle and clearly communicate canceled matches with prominent badges and a schedule banner. Admins and Captains can mark existing matches as "Rained Out".
+*   **The "Sub Board" (Substitute Player Management):** System for Captains to broadcast a need for a sub and for eligible registered players to claim the open spot. Including match details and skill level requirements.
+*   **Player Skill Level Feedback System:** Add a restricted form for Captains/players to report rating inaccuracies. Integrate this data into the `PlayerManagement` admin screen as a "Rating Reviews" tab, allowing Admins to adjust self-ratings.
+*   **New Player Onboarding Flow:** Force a "Welcome" or "Complete Profile" check upon first login for incomplete user profiles, redirecting to `PlayerProfile` setup.
+
+*Note: The "Reliability Metric" was discussed but intentionally excluded from the roadmap per user request.*

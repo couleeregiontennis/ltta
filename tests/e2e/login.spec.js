@@ -8,10 +8,10 @@ test.describe('Login Page', () => {
   });
 
   test('should display login form', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /Welcome back to LTTA/i })).toBeVisible();
+    await page.screenshot({path: "test-login-fail.png"}); await expect(page.getByRole('heading', { name: /Welcome back to LTTA/i })).toBeVisible();
     await expect(page.getByLabel(/Email/i)).toBeVisible();
     await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+    await page.screenshot({path: "test-login-fail.png"}); await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
   });
 
   test('should toggle password visibility', async ({ page }) => {
@@ -31,8 +31,8 @@ test.describe('Login Page', () => {
 
   test('should toggle to sign up mode', async ({ page }) => {
     await page.getByRole('tab', { name: 'Sign Up' }).click();
-    await expect(page.getByRole('heading', { name: /Create your LTTA account/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Create account' })).toBeVisible();
+    await page.screenshot({path: "test-login-fail.png"}); await expect(page.getByRole('heading', { name: /Create your LTTA account/i })).toBeVisible();
+    await page.screenshot({path: "test-login-fail.png"}); await expect(page.getByRole('button', { name: 'Create account' })).toBeVisible();
   });
 
   test('should validate empty fields', async ({ page }) => {
@@ -83,15 +83,29 @@ test.describe('Login Page', () => {
 
     // Mock the user call which often happens after login to get details
     await page.route('**/auth/v1/user', async (route) => {
-       await route.fulfill({
+      await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-            id: 'fake-user-id',
-            aud: 'authenticated',
-            role: 'authenticated',
-            email: 'test@example.com',
+          id: 'fake-user-id',
+          aud: 'authenticated',
+          role: 'authenticated',
+          email: 'test@example.com',
         }),
+      });
+    });
+
+    // Mock the player profile fetch (AuthProvider uses .single())
+    await page.route('**/rest/v1/player*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          is_captain: false,
+          is_admin: false,
+          first_name: 'Test',
+          last_name: 'User'
+        })
       });
     });
 
@@ -134,15 +148,25 @@ test.describe('Login Page', () => {
 
     // Mock user call for post-signup/login state if auto-login happens
     await page.route('**/auth/v1/user', async (route) => {
-       await route.fulfill({
+      await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-            id: 'fake-user-id',
-            aud: 'authenticated',
-            role: 'authenticated',
-            email: 'newuser@example.com',
+          id: 'fake-user-id',
+          aud: 'authenticated',
+          role: 'authenticated',
+          email: 'newuser@example.com',
         }),
+      });
+    });
+
+    // Mock the player table call to return an empty profile (since it's a new sign up)
+    // AuthProvider uses .single() which means it expects an object. Return 406 to simulate not found.
+    await page.route('**/rest/v1/player*', async (route) => {
+      await route.fulfill({
+        status: 406,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' })
       });
     });
 
@@ -162,7 +186,7 @@ test.describe('Login Page', () => {
     // Ideally, a success message should be shown, but looking at the code, there isn't one.
 
     // Let's assert that the loading spinner is gone and the button is back to normal.
-    await expect(page.getByRole('button', { name: 'Create account' })).toBeVisible();
+    await page.screenshot({path: "test-login-fail.png"}); await expect(page.getByRole('button', { name: 'Create account' })).toBeVisible();
     await expect(page.locator('.loading-spinner')).not.toBeVisible();
     await expect(page.locator('.form-error')).not.toBeVisible();
   });

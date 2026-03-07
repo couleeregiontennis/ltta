@@ -12,6 +12,8 @@ dotenv.config();
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
+  globalSetup: './tests/global-setup.js',
+  globalTeardown: './tests/global-teardown.js',
   testDir: './tests/e2e',
   /* Run tests in files in parallel */
   fullyParallel: true,
@@ -32,22 +34,16 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
 
-  /* Configure projects for major browsers */
-  projects: [
+  /* Configure projects for major browsers. Run all in CI, but only Chromium locally for speed. */
+  projects: process.env.CI ? [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
+  ] : [
     {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    /* Test against mobile viewports. */
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
 

@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../scripts/supabaseClient';
 import { MatchSchedule } from './MatchSchedule';
+import { PlayerProfile } from './PlayerProfile';
+import { useAuth } from '../context/AuthProvider';
 import '../styles/LandingPage.css';
 
 export const LandingPage = () => {
+  const { session, hasProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [userTeamId, setUserTeamId] = useState(null);
@@ -77,8 +80,21 @@ export const LandingPage = () => {
     );
   }
 
+  // If user is authenticated but does not have a profile, force them to complete it
+  if (session && hasProfile === false) {
+    return (
+      <div className="landing-page onboarding-container">
+        <div className="onboarding-header" style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <h2>Welcome to LTTA!</h2>
+          <p>Please complete your player profile to continue to your dashboard.</p>
+        </div>
+        <PlayerProfile />
+      </div>
+    );
+  }
+
   // If user is authenticated and has a team assigned, show their team's schedule
-  if (user && userTeamId) {
+  if (user && userTeamId && hasProfile) {
     return <MatchSchedule />;
   }
 

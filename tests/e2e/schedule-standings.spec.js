@@ -12,15 +12,17 @@ test.describe('Match Schedule Page', () => {
 
     // Mock season data (required for MatchSchedule to load)
     await page.route('**/rest/v1/season*', async (route) => {
+      const url = route.request().url();
+      const seasonObj = {
+        id: 'd290f1ee-6c54-4b01-90e6-d701748f0001',
+        name: 'Fall 2023',
+        start_date: '2023-09-01',
+        end_date: '2023-12-31'
+      };
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          id: 'season-1',
-          name: 'Fall 2023',
-          start_date: '2023-09-01',
-          end_date: '2023-12-31'
-        })
+        body: JSON.stringify(url.includes('is_current=eq.true') || url.includes('id=eq') ? seasonObj : [seasonObj])
       });
     });
 
@@ -30,10 +32,10 @@ test.describe('Match Schedule Page', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { id: '1', name: 'Aces', number: 1 },
-          { id: '2', name: 'Faults', number: 2 },
-          { id: '3', name: 'Netters', number: 3 },
-          { id: '4', name: 'Lobbers', number: 4 }
+          { id: 'd290f1ee-6c54-4b01-90e6-d701748f0101', name: 'Aces', number: 1 },
+          { id: 'd290f1ee-6c54-4b01-90e6-d701748f0102', name: 'Faults', number: 2 },
+          { id: 'd290f1ee-6c54-4b01-90e6-d701748f0103', name: 'Netters', number: 3 },
+          { id: 'd290f1ee-6c54-4b01-90e6-d701748f0104', name: 'Lobbers', number: 4 }
         ])
       });
     });
@@ -45,28 +47,29 @@ test.describe('Match Schedule Page', () => {
         contentType: 'application/json',
         body: JSON.stringify([
           {
-            id: '1',
+            id: 'd290f1ee-6c54-4b01-90e6-d701748f0201',
             date: '2023-10-15',
             time: '18:00',
             status: 'upcoming',
             courts: '1-3',
-            home_team: { id: '1', name: 'Aces', number: 1 },
-            away_team: { id: '2', name: 'Faults', number: 2 }
+            home_team: { id: 'd290f1ee-6c54-4b01-90e6-d701748f0101', name: 'Aces', number: 1 },
+            away_team: { id: 'd290f1ee-6c54-4b01-90e6-d701748f0102', name: 'Faults', number: 2 }
           },
           {
-            id: '2',
+            id: 'd290f1ee-6c54-4b01-90e6-d701748f0202',
             date: '2023-10-16',
             time: '18:00',
             status: 'upcoming',
             courts: '4-6',
-            home_team: { id: '3', name: 'Netters', number: 3 },
-            away_team: { id: '4', name: 'Lobbers', number: 4 }
+            home_team: { id: 'd290f1ee-6c54-4b01-90e6-d701748f0103', name: 'Netters', number: 3 },
+            away_team: { id: 'd290f1ee-6c54-4b01-90e6-d701748f0104', name: 'Lobbers', number: 4 }
           }
         ]),
       });
     });
 
     await page.goto('/'); // Root is MatchSchedule
+    await page.getByRole('button', { name: 'Month', exact: true }).click();
     // Check for team names individually as they might stack on mobile or have different layout
     await expect(page.locator('.team-name').getByText('Aces', { exact: true })).toBeVisible();
     await expect(page.locator('.team-name').getByText('Faults', { exact: true })).toBeVisible();
@@ -133,6 +136,24 @@ test.describe('Match Schedule Page', () => {
 
     // Mock matches for recent matches in Overview
     await page.route('**/rest/v1/matches*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([])
+      });
+    });
+
+    // Mock playoff scenarios for the Standings component
+    await page.route('**/functions/v1/playoff-scenarios', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({})
+      });
+    });
+
+    // Mock disputed matches for the Standings component
+    await page.route('**/rest/v1/team_match*is_disputed=eq.true*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
