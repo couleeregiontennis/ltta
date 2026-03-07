@@ -24,6 +24,13 @@ const StandingsRow = memo(({ team, index }) => {
         </div>
       </td>
       <td data-label="Night">{team.playNight || '—'}</td>
+      <td data-label="Status">
+        {team.playoffStatus === 'Clinched' && <span className="status-badge clinched" title="Clinched 1st Place">🏆 Clinched</span>}
+        {team.playoffStatus === 'Eliminated' && <span className="status-badge eliminated">Eliminated</span>}
+        {team.playoffStatus === 'Control Destiny' && <span className="status-badge control">Control Destiny</span>}
+        {team.playoffStatus === 'On the Hunt' && <span className="status-badge hunt" title="Magic Number to Clinch">Magic #: {team.magicNumber}</span>}
+        {!team.playoffStatus && <span className="status-badge">—</span>}
+      </td>
       <td data-label="Matches">{team.matchesPlayed}</td>
       <td data-label="Record">{record}</td>
       <td data-label="Win %">
@@ -87,34 +94,41 @@ const Standings = () => {
         { data: standingsData, error: standingsError },
         { count: playerCount, error: playerError },
         { data: recentMatchesData, error: recentMatchesError },
-        { data: allMatchDates, error: datesError }
+        { data: allMatchDates, error: datesError },
+        { data: playoffData, error: playoffError }
       ] = await Promise.all([
         supabase.from('standings_view').select('*'),
         supabase.from('player').select('*', { count: 'exact', head: true }),
         supabase.from('matches').select('id, date, time, status, home_team_name, away_team_name').order('date', { ascending: false }).limit(6),
-        supabase.from('matches').select('date')
+        supabase.from('matches').select('date'),
+        supabase.functions.invoke('playoff-scenarios')
       ]);
 
       if (standingsError) throw standingsError;
       if (recentMatchesError) throw recentMatchesError;
 
       // Process Standings
-      const formattedStandings = (standingsData || []).map((team) => ({
-        id: team.team_id,
-        number: team.team_number,
-        name: team.team_name,
-        playNight: team.play_night,
-        wins: team.wins,
-        losses: team.losses,
-        ties: team.ties,
-        matchesPlayed: team.matches_played,
-        setsWon: team.sets_won,
-        setsLost: team.sets_lost,
-        gamesWon: team.games_won,
-        gamesLost: team.games_lost,
-        winPercentage: team.win_percentage,
-        setWinPercentage: team.set_win_percentage
-      }));
+      const formattedStandings = (standingsData || []).map((team) => {
+        const scenarios = playoffData ? playoffData[team.team_number] : null;
+        return {
+          id: team.team_id,
+          number: team.team_number,
+          name: team.team_name,
+          playNight: team.play_night,
+          wins: team.wins,
+          losses: team.losses,
+          ties: team.ties,
+          matchesPlayed: team.matches_played,
+          setsWon: team.sets_won,
+          setsLost: team.sets_lost,
+          gamesWon: team.games_won,
+          gamesLost: team.games_lost,
+          winPercentage: team.win_percentage,
+          setWinPercentage: team.set_win_percentage,
+          playoffStatus: scenarios?.status || '',
+          magicNumber: scenarios?.magicNumber || 0
+        };
+      });
 
       // Sort Standings
       const sortedStandings = [...formattedStandings].sort((a, b) => {
@@ -441,6 +455,7 @@ const Standings = () => {
                   <th>#</th>
                   <th>Team</th>
                   <th>Night</th>
+                  <th>Status</th>
                   <th>Matches</th>
                   <th>Record</th>
                   <th>Win %</th>

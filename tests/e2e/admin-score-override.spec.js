@@ -63,7 +63,7 @@ test.describe('Admin Match Result Override', () => {
         body: JSON.stringify([
           {
             id: 'match-1',
-            date: '2023-10-01',
+            date: '2023-10-15',
             time: '18:00',
             status: 'completed', // Important: status completed
             courts: '1-3',
@@ -92,35 +92,35 @@ test.describe('Admin Match Result Override', () => {
   });
 
   test('Non-Admin does NOT see Edit button', async ({ page }) => {
-      // Re-mock auth as non-admin for this test
-      const regularUser = { id: 'reg-user', email: 'reg@example.com' };
-      await mockSupabaseAuth(page, regularUser);
+    // Re-mock auth as non-admin for this test
+    const regularUser = { id: 'reg-user', email: 'reg@example.com' };
+    await mockSupabaseAuth(page, regularUser);
 
-      await page.route('**/rest/v1/player*', async (route) => {
-          // ... return non-admin
-           const url = route.request().url();
-          if (url.includes('id=eq.reg-user')) {
-            // AuthProvider uses .single() so we must return an object, not an array
-            await route.fulfill({
-              status: 200,
-              contentType: 'application/json',
-              body: JSON.stringify({
-                id: 'reg-user',
-                name: 'Reg User',
-                is_admin: false,
-                is_captain: false
-              }),
-            });
-          } else {
-             // For .select() queries that might expect arrays (though .single might fail if called incorrectly)
-             // But the else block here is generic. If AuthProvider calls it with .single(), this [] might fail it.
-             // But for reg-user we are safe.
-             await route.fulfill({ status: 200, body: '[]' });
-          }
-      });
+    await page.route('**/rest/v1/player*', async (route) => {
+      // ... return non-admin
+      const url = route.request().url();
+      if (url.includes('id=eq.reg-user')) {
+        // AuthProvider uses .single() so we must return an object, not an array
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 'reg-user',
+            name: 'Reg User',
+            is_admin: false,
+            is_captain: false
+          }),
+        });
+      } else {
+        // For .select() queries that might expect arrays (though .single might fail if called incorrectly)
+        // But the else block here is generic. If AuthProvider calls it with .single(), this [] might fail it.
+        // But for reg-user we are safe.
+        await route.fulfill({ status: 200, body: '[]' });
+      }
+    });
 
-      await page.goto('/schedule');
-      await expect(page.locator('.team-name').getByText('Home Team')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Edit Result' })).not.toBeVisible();
+    await page.goto('/schedule');
+    await expect(page.locator('.team-name').getByText('Home Team')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Edit Result' })).not.toBeVisible();
   });
 });

@@ -46,7 +46,7 @@ test.describe('Match Schedule Page', () => {
         body: JSON.stringify([
           {
             id: '1',
-            date: '2023-10-01',
+            date: '2023-10-15',
             time: '18:00',
             status: 'upcoming',
             courts: '1-3',
@@ -55,7 +55,7 @@ test.describe('Match Schedule Page', () => {
           },
           {
             id: '2',
-            date: '2023-10-02',
+            date: '2023-10-16',
             time: '18:00',
             status: 'upcoming',
             courts: '4-6',
@@ -77,67 +77,67 @@ test.describe('Match Schedule Page', () => {
   test('displays standings', async ({ page }) => {
     // Mock standings_view data (correct endpoint for Standings.jsx)
     await page.route('**/rest/v1/standings_view*', async (route) => {
-         await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify([
-                {
-                  team_id: '1',
-                  team_number: 1,
-                  team_name: 'Team A',
-                  play_night: 'Tuesday',
-                  wins: 10,
-                  losses: 2,
-                  ties: 0,
-                  matches_played: 12,
-                  sets_won: 20,
-                  sets_lost: 4,
-                  games_won: 120,
-                  games_lost: 50,
-                  win_percentage: 83.3,
-                  set_win_percentage: 83.3
-                },
-                {
-                  team_id: '2',
-                  team_number: 2,
-                  team_name: 'Team B',
-                  play_night: 'Wednesday',
-                  wins: 5,
-                  losses: 7,
-                  ties: 0,
-                  matches_played: 12,
-                  sets_won: 10,
-                  sets_lost: 14,
-                  games_won: 80,
-                  games_lost: 100,
-                  win_percentage: 41.7,
-                  set_win_percentage: 41.7
-                }
-            ])
-         });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            team_id: '1',
+            team_number: 1,
+            team_name: 'Team A',
+            play_night: 'Tuesday',
+            wins: 10,
+            losses: 2,
+            ties: 0,
+            matches_played: 12,
+            sets_won: 20,
+            sets_lost: 4,
+            games_won: 120,
+            games_lost: 50,
+            win_percentage: 83.3,
+            set_win_percentage: 83.3
+          },
+          {
+            team_id: '2',
+            team_number: 2,
+            team_name: 'Team B',
+            play_night: 'Wednesday',
+            wins: 5,
+            losses: 7,
+            ties: 0,
+            matches_played: 12,
+            sets_won: 10,
+            sets_lost: 14,
+            games_won: 80,
+            games_lost: 100,
+            win_percentage: 41.7,
+            set_win_percentage: 41.7
+          }
+        ])
+      });
     });
 
     // Mock player count (required for League Overview)
     await page.route('**/rest/v1/player*', async (route) => {
-       if (route.request().url().includes('count=exact')) {
-         await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            headers: { 'content-range': '0-0/100' }, // Mock total count
-            body: JSON.stringify([])
-         });
-       } else {
-         await route.continue();
-       }
+      if (route.request().url().includes('count=exact')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          headers: { 'content-range': '0-0/100' }, // Mock total count
+          body: JSON.stringify([])
+        });
+      } else {
+        await route.continue();
+      }
     });
 
     // Mock matches for recent matches in Overview
     await page.route('**/rest/v1/matches*', async (route) => {
-        await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify([])
-        });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([])
+      });
     });
 
     await page.goto('/standings');
