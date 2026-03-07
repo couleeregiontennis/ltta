@@ -367,6 +367,41 @@
   color: var(--standings-muted);
 }
 
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.status-badge.clinched {
+  background: rgba(var(--color-primary-rgb), 0.15);
+  color: var(--primary-green);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.3);
+}
+
+.status-badge.eliminated {
+  background: rgba(var(--color-error-rgb), 0.1);
+  color: var(--error);
+  border: 1px solid rgba(var(--color-error-rgb), 0.2);
+}
+
+.status-badge.control {
+  background: rgba(var(--color-secondary-rgb), 0.15);
+  color: var(--secondary-dark);
+  border: 1px solid rgba(var(--color-secondary-rgb), 0.3);
+}
+
+.status-badge.hunt {
+  background: rgba(var(--color-primary-rgb), 0.05);
+  color: var(--standings-text);
+  border: 1px solid var(--standings-border);
+}
+
 @media (max-width: 960px) {
   .standings-page {
     padding: var(--space-xl) var(--space-lg);
