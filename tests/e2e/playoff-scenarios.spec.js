@@ -13,7 +13,42 @@ test.describe('Playoff Scenarios UI', () => {
             await route.fulfill({ json });
         });
 
-        // We rely on standard standings_view data to exist.
+        await page.route('**/rest/v1/team_match*is_disputed=eq.true*', async (route) => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([])
+            });
+        });
+
+        // Mock standings view data
+        await page.route('**/rest/v1/standings_view*', async (route) => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([
+                    { team_id: 1, team_name: 'Team A', team_number: '1', wins: 10, losses: 2, play_night: 'Monday', matches_played: 12, sets_won: 20, sets_lost: 4, games_won: 120, games_lost: 40, win_percentage: 83.3, set_win_percentage: 83.3 },
+                    { team_id: 2, team_name: 'Team B', team_number: '2', wins: 5, losses: 7, play_night: 'Tuesday', matches_played: 12, sets_won: 10, sets_lost: 14, games_won: 60, games_lost: 70, win_percentage: 41.7, set_win_percentage: 41.7 },
+                    { team_id: 3, team_name: 'Team C', team_number: '3', wins: 5, losses: 7, play_night: 'Tuesday', matches_played: 12, sets_won: 10, sets_lost: 14, games_won: 60, games_lost: 70, win_percentage: 41.7, set_win_percentage: 41.7 },
+                    { team_id: 4, team_name: 'Team D', team_number: '4', wins: 5, losses: 7, play_night: 'Tuesday', matches_played: 12, sets_won: 10, sets_lost: 14, games_won: 60, games_lost: 70, win_percentage: 41.7, set_win_percentage: 41.7 }
+                ])
+            });
+        });
+
+        // Mock player count
+        await page.route('**/rest/v1/player*', async (route) => {
+            if (route.request().method() === 'HEAD') {
+                await route.fulfill({ status: 200, headers: { 'Content-Range': '0-10/10' } });
+            } else {
+                await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+            }
+        });
+
+        // Mock matches for recent matches
+        await page.route('**/rest/v1/matches*', async (route) => {
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+        });
+
         await page.goto('/standings');
     });
 
