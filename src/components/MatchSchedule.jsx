@@ -67,7 +67,7 @@ export const MatchSchedule = () => {
   const [matches, setMatches] = useState([]);
   const [teams, setTeams] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState('month');
+  const [viewMode, setViewMode] = useState('list');
   const [selectedTeam, setSelectedTeam] = useState('all');
 
   const { currentSeason, loading: seasonLoading } = useSeason();
@@ -96,7 +96,10 @@ export const MatchSchedule = () => {
           is_rained_out,
           is_disputed,
           home_team:home_team_id (id, name, number), 
-          away_team:away_team_id (id, name, number)
+          away_team:away_team_id (id, name, number),
+          line_results (
+            home_won
+          )
         `)
         .eq('season_id', currentSeason.id)
         .order('date', { ascending: true });
@@ -119,7 +122,9 @@ export const MatchSchedule = () => {
         home_team_name: m.home_team?.name || 'Unknown',
         home_team_number: m.home_team?.number || 0,
         away_team_name: m.away_team?.name || 'Unknown',
-        away_team_number: m.away_team?.number || 0
+        away_team_number: m.away_team?.number || 0,
+        home_points: m.line_results?.filter(lr => lr.home_won).length || 0,
+        away_points: m.line_results?.filter(lr => !lr.home_won && lr.home_won !== null).length || 0
       }));
 
       setMatches(flattenedMatches);
@@ -291,29 +296,6 @@ export const MatchSchedule = () => {
         </div>
       </div>
 
-      <div className="schedule-overview">
-        <div className="overview-card card card--interactive card--overlay">
-          <div className="card-label">Total Matches</div>
-          <div className="card-value">{filteredMatches.length}</div>
-          <div className="card-subtitle">Within selected filters</div>
-        </div>
-        <div className="overview-card card card--interactive card--overlay">
-          <div className="card-label">Upcoming</div>
-          <div className="card-value">{counts.upcoming}</div>
-          <div className="card-subtitle">Scheduled next</div>
-        </div>
-        <div className="overview-card card card--interactive card--overlay">
-          <div className="card-label">Pending Results</div>
-          <div className="card-value">{counts.pending}</div>
-          <div className="card-subtitle">Awaiting score entry</div>
-        </div>
-        <div className="overview-card card card--interactive card--overlay">
-          <div className="card-label">Completed</div>
-          <div className="card-value">{counts.completed}</div>
-          <div className="card-subtitle">With final scores</div>
-        </div>
-      </div>
-
       <div className="schedule-controls card card--interactive card--overlay">
         <div className="control-row">
           <div className="view-toggle" role="group" aria-label="View mode">
@@ -414,9 +396,21 @@ export const MatchSchedule = () => {
                           </div>
 
                           <div className="match-details">
-                            <span className="location">📍 {match.courts || 'TBD'}</span>
-                            <span className="match-id">Match #{match.id}</span>
+                            <span className="location"><strong>Courts: </strong> {match.courts || 'TBD'}</span>
+                            <span className="match-id"><strong>Match ID: </strong> #{match.id.substring(0, 8)}</span>
                           </div>
+
+                          {status === 'completed' && (
+                            <div className="match-score-summary" style={{ textAlign: 'center', margin: '1rem 0', padding: '0.75rem', backgroundColor: 'var(--bg-card)', borderRadius: '6px', fontWeight: 'bold' }}>
+                              <span style={{ color: match.home_points > match.away_points ? 'var(--success)' : 'inherit' }}>
+                                {match.home_team_name}: {match.home_points}
+                              </span>
+                              {' - '}
+                              <span style={{ color: match.away_points > match.home_points ? 'var(--success)' : 'inherit' }}>
+                                {match.away_team_name}: {match.away_points}
+                              </span>
+                            </div>
+                          )}
 
                           {status === 'completed' && (
                             <div className="match-result">
@@ -490,6 +484,29 @@ export const MatchSchedule = () => {
             </button>
           </div>
         )}
+      </div>
+
+      <div className="schedule-overview" style={{ marginTop: '2rem' }}>
+        <div className="overview-card card card--interactive card--overlay">
+          <div className="card-label">Total Matches</div>
+          <div className="card-value">{filteredMatches.length}</div>
+          <div className="card-subtitle">Within selected filters</div>
+        </div>
+        <div className="overview-card card card--interactive card--overlay">
+          <div className="card-label">Upcoming</div>
+          <div className="card-value">{counts.upcoming}</div>
+          <div className="card-subtitle">Scheduled next</div>
+        </div>
+        <div className="overview-card card card--interactive card--overlay">
+          <div className="card-label">Pending Results</div>
+          <div className="card-value">{counts.pending}</div>
+          <div className="card-subtitle">Awaiting score entry</div>
+        </div>
+        <div className="overview-card card card--interactive card--overlay">
+          <div className="card-label">Completed</div>
+          <div className="card-value">{counts.completed}</div>
+          <div className="card-subtitle">With final scores</div>
+        </div>
       </div>
 
       <div className="schedule-actions">
