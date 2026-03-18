@@ -16,6 +16,7 @@ import { LandingPage } from './components/LandingPage';
 import { ScheduleGenerator } from './components/admin/ScheduleGenerator';
 import { AuditLogViewer } from './components/admin/AuditLogViewer';
 import { PlayerManagement } from './components/admin/PlayerManagement';
+import { PaymentManagement } from './components/admin/PaymentManagement';
 import { PlayerRankings } from './components/PlayerRankings';
 import { MySchedule } from './components/MySchedule';
 import { CourtsLocations } from './components/CourtsLocations';
@@ -135,6 +136,14 @@ function App() {
                 element={
                   <ProtectedRoute requireAdmin>
                     <PlayerManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/payment-management"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <PaymentManagement />
                   </ProtectedRoute>
                 }
               />
