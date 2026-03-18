@@ -4,7 +4,12 @@ import fs from 'fs';
 const { Client } = pkg;
 
 // Use the IPv4 Supabase Connection Pooler to bypass local IPv6 Node.js restrictions
-const DB_URL = process.env.STAGING_DB_URL || 'postgresql://postgres.shlcqztfdhfwkhijwgue.pooler:UOBONmkm4SFLvDau@aws-0-us-east-2.pooler.supabase.com:6543/postgres';
+const DB_URL = process.env.STAGING_DB_URL;
+
+if (!DB_URL) {
+    console.error("Error: STAGING_DB_URL environment variable is not set.");
+    process.exit(1);
+}
 
 const client = new Client({
     connectionString: DB_URL
