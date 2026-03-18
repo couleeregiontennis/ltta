@@ -17,9 +17,14 @@ const client = new Client({
 
 async function run() {
     try {
-        console.log("Connecting to Staging Database (IPv4 Pooler)...");
+        console.log("Connecting to Staging Database (Direct Connection)...");
         await client.connect();
         console.log("Connected successfully!");
+
+        console.log("Wiping existing public schema...");
+        await client.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
+        await client.query('GRANT ALL ON SCHEMA public TO postgres; GRANT ALL ON SCHEMA public TO public;');
+        console.log("Public schema wiped and recreated.");
 
         console.log("Applying schema...");
         const schema = fs.readFileSync('supabase/staging/schema.sql', 'utf8');

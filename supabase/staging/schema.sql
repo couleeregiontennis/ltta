@@ -1567,3 +1567,42 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
+
+DROP TABLE IF EXISTS public.season_payments CASCADE;
+
+CREATE TABLE IF NOT EXISTS public.season_payments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    season_id uuid NOT NULL REFERENCES public.season(id),
+    player_id uuid REFERENCES public.player(id),
+    team_id uuid REFERENCES public.team(id),
+    amount_paid numeric(10,2) NOT NULL,
+    payment_method text DEFAULT 'zeffy'::text,
+    notes text,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+    CONSTRAINT season_payments_player_or_team_check CHECK (((player_id IS NOT NULL) OR (team_id IS NOT NULL)))
+);
+
+ALTER TABLE public.season_payments OWNER TO postgres;
+
+ALTER TABLE ONLY public.season_payments
+    ADD CONSTRAINT season_payments_pkey PRIMARY KEY (id);
+
+CREATE INDEX idx_season_payments_season_id ON public.season_payments USING btree (season_id);
+CREATE INDEX idx_season_payments_player_id ON public.season_payments USING btree (player_id);
+CREATE INDEX idx_season_payments_team_id ON public.season_payments USING btree (team_id);
+
+ALTER TABLE public.season_payments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow read access to all authenticated users" ON public.season_payments FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Allow full access to admins" ON public.season_payments FOR ALL TO authenticated USING (
+    EXISTS (
+        SELECT 1
+        FROM public.player
+        WHERE (player.user_id = auth.uid()) AND (player.is_admin = true)
+    )
+);
+
+GRANT ALL ON TABLE public.season_payments TO anon;
+GRANT ALL ON TABLE public.season_payments TO authenticated;
+GRANT ALL ON TABLE public.season_payments TO service_role;
