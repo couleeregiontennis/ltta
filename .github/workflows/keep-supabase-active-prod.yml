@@ -1,0 +1,40 @@
+name: Keep Supabase Active (Prod)
+
+on:
+  schedule:
+    # Run once a week, every Sunday at midnight (UTC)
+    - cron: "0 0 * * 0"
+  # Allow running manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  ping-supabase-prod:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    # We use environment variables to hold Supabase credentials if available as secrets
+    # Otherwise, it falls back to hardcoded public ANON key which is safe to expose
+    env:
+      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://mzheoplkuuzsegpetukq.supabase.co' }}
+      SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16aGVvcGxrdXV6c2VncGV0dWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA5NDc2MzksImV4cCI6MjA2NjUyMzYzOX0.5zh2Q9UqTbPxPEGDyNuZsLFMQ5KeIeOB3t2wPS-cGaE' }}
+
+    steps:
+      - name: Ping Production Supabase Database
+        run: |
+          echo "Pinging Production Supabase REST API to prevent pausing..."
+          
+          # Fetch a single row from a known table or the root OpenAPI spec
+          # Using the base REST endpoint provides the OpenAPI schema and counts as database activity
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL}/rest/v1/")
+            
+          echo "Production Supabase responded with status code: $STATUS_CODE"
+          
+          if [ "$STATUS_CODE" -eq 200 ] || [ "$STATUS_CODE" -eq 400 ] || [ "$STATUS_CODE" -eq 401 ] || [ "$STATUS_CODE" -eq 404 ]; then
+            echo "Successfully connected to Production Supabase."
+          else
+            echo "Failed to connect to Production Supabase, status: $STATUS_CODE"
+            exit 1
+          fi
