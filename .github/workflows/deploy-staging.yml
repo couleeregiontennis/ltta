@@ -7,6 +7,7 @@ on:
     paths:
       - 'supabase/staging/**'
       - 'scripts/reset-staging-db.js'
+  workflow_dispatch:
 
 jobs:
   reset-db:
