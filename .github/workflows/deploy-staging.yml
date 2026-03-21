@@ -11,6 +11,7 @@ on:
 jobs:
   reset-db:
     runs-on: ubuntu-latest
+    environment: staging
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,4 +28,4 @@ jobs:
       - name: Reset Staging Database
         run: npm run db:staging:reset
         env:
-          STAGING_DB_URL: ${{ secrets.STAGING_DB_URL }}
+          STAGING_DB_URL: ${{ secrets.DB_URL }}
