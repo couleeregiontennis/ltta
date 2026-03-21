@@ -4,10 +4,35 @@ import fs from 'fs';
 const { Client } = pkg;
 
 // Fetch the URL from the environment
-const DB_URL = process.env.STAGING_DB_URL;
+let DB_URL = process.env.STAGING_DB_URL;
 
 if (!DB_URL) {
     console.error("Error: STAGING_DB_URL environment variable is not set.");
+    process.exit(1);
+}
+
+// Supabase IPv4 Pooler REQUIRES the project reference to be passed in the connection options
+// or it will throw "Tenant or user not found".
+// GitHub Actions lacks IPv6, so we MUST use the pooler.
+const PROJECT_REF = 'shlcqztfdhfwkhijwgue';
+
+try {
+    const urlObj = new URL(DB_URL);
+    
+    // Ensure we are using the port 6543 for the pooler to avoid direct connection conflicts
+    if (urlObj.hostname.includes('pooler.supabase.com')) {
+        urlObj.port = '6543';
+        
+        // Append the options parameter. If it exists, append to it, otherwise create it.
+        const currentOptions = urlObj.searchParams.get('options');
+        if (!currentOptions || !currentOptions.includes('reference=')) {
+            const newOptions = currentOptions ? `${currentOptions}&reference=${PROJECT_REF}` : `reference=${PROJECT_REF}`;
+            urlObj.searchParams.set('options', newOptions);
+        }
+    }
+    DB_URL = urlObj.toString();
+} catch (e) {
+    console.error("Invalid database URL provided.");
     process.exit(1);
 }
 
@@ -18,7 +43,7 @@ const client = new Client({
 
 async function run() {
     try {
-        console.log("Connecting to Staging Database via psql client...");
+        console.log("Connecting to Staging Database (IPv4 Pooler)...");
         await client.connect();
         console.log("Connected successfully!");
 
