@@ -1,5 +1,9 @@
 import pkg from 'pg';
 import fs from 'fs';
+import dns from 'dns';
+
+// Force Node.js to use IPv4 for DNS resolution to bypass GitHub Actions IPv6 issues
+dns.setDefaultResultOrder('ipv4first');
 
 const { Client } = pkg;
 
