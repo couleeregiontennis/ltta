@@ -11,22 +11,14 @@ if (!DB_URL) {
     process.exit(1);
 }
 
-// Ensure the connection uses IPv4 by explicitly appending the query parameter
-// This is the most reliable way to force the pg client to use IPv4 with Supabase
-const urlObj = new URL(DB_URL);
-if (urlObj.hostname.includes('pooler.supabase.com')) {
-    urlObj.searchParams.set('options', 'reference=shlcqztfdhfwkhijwgue');
-}
-const finalUrl = urlObj.toString();
-
 const client = new Client({
-    connectionString: finalUrl,
-    keepAlive: false // Helps prevent hanging connections in CI
+    connectionString: DB_URL,
+    keepAlive: false
 });
 
 async function run() {
     try {
-        console.log("Connecting to Staging Database...");
+        console.log("Connecting to Staging Database via psql client...");
         await client.connect();
         console.log("Connected successfully!");
 

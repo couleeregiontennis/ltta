@@ -13,43 +13,27 @@ jobs:
   reset-db:
     runs-on: ubuntu-latest
     environment: staging
-    
-    env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.DB_URL }} # Temporary hack: We will extract the password from the DB_URL secret
-      SUPABASE_PROJECT_ID: "shlcqztfdhfwkhijwgue"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Extract Password from DB_URL
-        id: extract_password
-        run: |
-          # Extract the password from the DB_URL secret format: postgresql://postgres:PASSWORD@host:port/db
-          # This assumes the password does not contain an '@' symbol.
-          PASSWORD=$(echo "${{ secrets.DB_URL }}" | sed -e 's|^.*://.*:\(.*\)@.*$|\1|')
-          echo "::add-mask::$PASSWORD"
-          echo "extracted_password=$PASSWORD" >> $GITHUB_OUTPUT
-
       - name: Reset Staging Database
         env:
-          SUPABASE_DB_PASSWORD: ${{ steps.extract_password.outputs.extracted_password }}
+          # Use the DB_URL secret to connect directly via psql
+          PG_CONN_STR: ${{ secrets.DB_URL }}
         run: |
-          # We use db push, but since we want a reset, we first use the CLI to execute a raw query to wipe the public schema
+          echo "Connecting to Staging Database via psql..."
+          
+          # Wipe the public schema
           echo "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO postgres; GRANT ALL ON SCHEMA public TO public;" > wipe.sql
+          psql "$PG_CONN_STR" -f wipe.sql
           
-          # Use the CLI to execute the wipe script. The CLI handles IPv4/IPv6 routing properly.
-          supabase db execute --file wipe.sql --linked
+          echo "Applying schema..."
+          psql "$PG_CONN_STR" -f supabase/staging/schema.sql
           
-          # Now apply the staging schema
-          supabase db execute --file supabase/staging/schema.sql --linked
+          echo "Applying seed data..."
+          psql "$PG_CONN_STR" -f supabase/staging/seed.sql
           
-          # Now apply the staging seed data
-          supabase db execute --file supabase/staging/seed.sql --linked
+          echo "Staging DB reset complete!"
 
