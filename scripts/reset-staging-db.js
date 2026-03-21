@@ -4,42 +4,39 @@ import fs from 'fs';
 const { Client } = pkg;
 
 // Fetch the URL from the environment
-let DB_URL = process.env.STAGING_DB_URL;
+const DB_URL = process.env.STAGING_DB_URL;
 
 if (!DB_URL) {
     console.error("Error: STAGING_DB_URL environment variable is not set.");
     process.exit(1);
 }
 
-// Supabase IPv4 Pooler REQUIRES the project reference to be passed in the connection options
-// or it will throw "Tenant or user not found".
-// GitHub Actions lacks IPv6, so we MUST use the pooler.
 const PROJECT_REF = 'shlcqztfdhfwkhijwgue';
+let config = {};
 
 try {
     const urlObj = new URL(DB_URL);
     
-    // Ensure we are using the port 6543 for the pooler to avoid direct connection conflicts
+    config = {
+        user: decodeURIComponent(urlObj.username),
+        password: decodeURIComponent(urlObj.password),
+        host: urlObj.hostname,
+        port: parseInt(urlObj.port || '5432', 10),
+        database: urlObj.pathname.split('/')[1],
+        keepAlive: false,
+    };
+
+    // If using the pooler, we must explicitly pass the reference
     if (urlObj.hostname.includes('pooler.supabase.com')) {
-        urlObj.port = '6543';
-        
-        // Append the options parameter. If it exists, append to it, otherwise create it.
-        const currentOptions = urlObj.searchParams.get('options');
-        if (!currentOptions || !currentOptions.includes('reference=')) {
-            const newOptions = currentOptions ? `${currentOptions}&reference=${PROJECT_REF}` : `reference=${PROJECT_REF}`;
-            urlObj.searchParams.set('options', newOptions);
-        }
+        config.port = 6543; // Force pooler port
+        config.options = `project=${PROJECT_REF}`; // The correct option format for pg
     }
-    DB_URL = urlObj.toString();
 } catch (e) {
-    console.error("Invalid database URL provided.");
+    console.error("Invalid database URL provided.", e);
     process.exit(1);
 }
 
-const client = new Client({
-    connectionString: DB_URL,
-    keepAlive: false
-});
+const client = new Client(config);
 
 async function run() {
     try {
