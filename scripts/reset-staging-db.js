@@ -3,60 +3,21 @@ import fs from 'fs';
 
 const { Client } = pkg;
 
-let DB_URL = process.env.STAGING_DB_URL;
-let PROJECT_REF = 'shlcqztfdhfwkhijwgue';
-
-if (process.env.VITE_SUPABASE_URL) {
-    try {
-        const viteUrl = new URL(process.env.VITE_SUPABASE_URL);
-        const hostParts = viteUrl.hostname.split('.');
-        if (hostParts.length > 0) {
-            PROJECT_REF = hostParts[0];
-        }
-    } catch (e) {}
-}
+const DB_URL = process.env.STAGING_DB_URL;
 
 if (!DB_URL) {
     console.error("Error: STAGING_DB_URL environment variable is not set.");
     process.exit(1);
 }
 
-let config = {};
-
-try {
-    const urlObj = new URL(DB_URL);
-    
-    // We construct a specific config object for the pg client
-    config = {
-        user: decodeURIComponent(urlObj.username),
-        password: decodeURIComponent(urlObj.password),
-        host: urlObj.hostname,
-        port: parseInt(urlObj.port || '5432', 10),
-        database: urlObj.pathname.split('/')[1] || 'postgres',
-        ssl: { rejectUnauthorized: false }
-    };
-
-    // If using the Supabase pooler (Supavisor)
-    if (urlObj.hostname.includes('pooler.supabase.com')) {
-        config.port = 6543;
-        
-        // Supavisor accepts the tenant either via user.tenant or via the options param
-        // If the username already has a dot, we leave it alone.
-        if (!config.user.includes('.')) {
-            // Some pg versions fail to parse options from string, so we pass it explicitly
-            config.options = `reference=${PROJECT_REF}`;
-        }
-    }
-} catch (e) {
-    console.error("Invalid database URL format.", e);
-    process.exit(1);
-}
-
-const client = new Client(config);
+const client = new Client({
+    connectionString: DB_URL,
+    ssl: { rejectUnauthorized: false }
+});
 
 async function run() {
     try {
-        console.log("Connecting to Staging Database (IPv4 Pooler)...");
+        console.log("Connecting to Staging Database...");
         await client.connect();
         console.log("Connected successfully!");
 
