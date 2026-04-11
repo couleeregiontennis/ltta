@@ -31,4 +31,5 @@ jobs:
         run: npm run db:staging:reset
         env:
           STAGING_DB_URL: ${{ secrets.DB_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
 

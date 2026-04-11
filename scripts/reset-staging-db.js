@@ -5,7 +5,22 @@ const { Client } = pkg;
 
 // Fetch the URL from the environment
 let DB_URL = process.env.STAGING_DB_URL;
-const PROJECT_REF = 'shlcqztfdhfwkhijwgue';
+let PROJECT_REF = 'shlcqztfdhfwkhijwgue';
+
+// Attempt to extract the dynamic project ref from the frontend URL if provided
+if (process.env.VITE_SUPABASE_URL) {
+    try {
+        const viteUrl = new URL(process.env.VITE_SUPABASE_URL);
+        // host is usually [project_ref].supabase.co
+        const hostParts = viteUrl.hostname.split('.');
+        if (hostParts.length > 0) {
+            PROJECT_REF = hostParts[0];
+            console.log(`Extracted dynamic project ref: ${PROJECT_REF}`);
+        }
+    } catch (e) {
+        console.log("Failed to parse VITE_SUPABASE_URL for project ref, using fallback.");
+    }
+}
 
 if (!DB_URL) {
     console.error("Error: STAGING_DB_URL environment variable is not set.");
