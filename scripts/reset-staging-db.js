@@ -4,16 +4,32 @@ import fs from 'fs';
 const { Client } = pkg;
 
 // Fetch the URL from the environment
-const DB_URL = process.env.STAGING_DB_URL;
+let DB_URL = process.env.STAGING_DB_URL;
+const PROJECT_REF = 'shlcqztfdhfwkhijwgue';
 
 if (!DB_URL) {
     console.error("Error: STAGING_DB_URL environment variable is not set.");
     process.exit(1);
 }
 
-// Simply pass the connection string.
-// Note: If using the Supabase IPv4 pooler, ensure STAGING_DB_URL is formatted 
-// as postgres://postgres.project_ref:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+try {
+    const urlObj = new URL(DB_URL);
+    // If using the Supabase pooler, ensure the username has the project ref (Supavisor format)
+    if (urlObj.hostname.includes('pooler.supabase.com')) {
+        let user = decodeURIComponent(urlObj.username);
+        // Supavisor requires user.tenant format
+        if (!user.includes('.')) {
+            urlObj.username = encodeURIComponent(`${user}.${PROJECT_REF}`);
+        }
+        // It's safest to use the session/transaction pooler port
+        urlObj.port = '6543'; 
+        DB_URL = urlObj.toString();
+    }
+} catch (e) {
+    console.error("Invalid database URL format.", e);
+    process.exit(1);
+}
+
 const client = new Client({
     connectionString: DB_URL,
     // Add SSL to prevent connection rejections on managed databases
