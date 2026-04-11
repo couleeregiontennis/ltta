@@ -11,32 +11,16 @@ if (!DB_URL) {
     process.exit(1);
 }
 
-const PROJECT_REF = 'shlcqztfdhfwkhijwgue';
-let config = {};
-
-try {
-    const urlObj = new URL(DB_URL);
-    
-    config = {
-        user: decodeURIComponent(urlObj.username),
-        password: decodeURIComponent(urlObj.password),
-        host: urlObj.hostname,
-        port: parseInt(urlObj.port || '5432', 10),
-        database: urlObj.pathname.split('/')[1],
-        keepAlive: false,
-    };
-
-    // If using the pooler, we must explicitly pass the reference
-    if (urlObj.hostname.includes('pooler.supabase.com')) {
-        config.port = 6543; // Force pooler port
-        config.options = `project=${PROJECT_REF}`; // The correct option format for pg
+// Simply pass the connection string.
+// Note: If using the Supabase IPv4 pooler, ensure STAGING_DB_URL is formatted 
+// as postgres://postgres.project_ref:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+const client = new Client({
+    connectionString: DB_URL,
+    // Add SSL to prevent connection rejections on managed databases
+    ssl: {
+        rejectUnauthorized: false
     }
-} catch (e) {
-    console.error("Invalid database URL provided.", e);
-    process.exit(1);
-}
-
-const client = new Client(config);
+});
 
 async function run() {
     try {
