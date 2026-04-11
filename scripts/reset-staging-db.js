@@ -14,17 +14,20 @@ if (!DB_URL) {
 
 try {
     const urlObj = new URL(DB_URL);
-    // If using the Supabase pooler, ensure the username has the project ref (Supavisor format)
-    if (urlObj.hostname.includes('pooler.supabase.com')) {
-        let user = decodeURIComponent(urlObj.username);
-        // Supavisor requires user.tenant format
-        if (!user.includes('.')) {
-            urlObj.username = encodeURIComponent(`${user}.${PROJECT_REF}`);
-        }
-        // It's safest to use the session/transaction pooler port
-        urlObj.port = '6543'; 
-        DB_URL = urlObj.toString();
+    console.log(`Initial host: ${urlObj.hostname}, port: ${urlObj.port}, user: ${decodeURIComponent(urlObj.username)}`);
+
+    let user = decodeURIComponent(urlObj.username);
+    // Supavisor requires user.tenant format
+    if (!user.includes('.')) {
+        console.log("Appending PROJECT_REF to username...");
+        urlObj.username = encodeURIComponent(`${user}.${PROJECT_REF}`);
     }
+
+    // It's safest to use the session/transaction pooler port
+    urlObj.port = '6543'; 
+    DB_URL = urlObj.toString();
+    
+    console.log(`Final host: ${urlObj.hostname}, port: ${urlObj.port}, user: ${decodeURIComponent(urlObj.username)}`);
 } catch (e) {
     console.error("Invalid database URL format.", e);
     process.exit(1);
