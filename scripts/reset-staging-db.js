@@ -20,14 +20,14 @@ try {
     const stagingProjectId = 'shlcqztfdhfwkhijwgue';
     
     // For GitHub Actions, we MUST use the IPv4 Supavisor pooler because direct IPv6 fails.
-    // Ensure we are hitting the correct pooler region for this staging database.
+    // The pooler region is us-east-2, and this project's tenant identifier includes a '.pooler' suffix.
     dbUrlObj.hostname = 'aws-0-us-east-2.pooler.supabase.com';
     dbUrlObj.port = '6543'; // Transaction pooler
-    dbUrlObj.username = `postgres.${stagingProjectId}`;
+    dbUrlObj.username = `postgres.${stagingProjectId}.pooler`;
     dbUrlObj.searchParams.delete('options');
     
     clientConfig.connectionString = dbUrlObj.toString();
-    console.log(`Forced connection to Supavisor at ${dbUrlObj.hostname} with tenant ${stagingProjectId}.`);
+    console.log(`Forced connection to Supavisor at ${dbUrlObj.hostname} with exact username ${dbUrlObj.username}.`);
 } catch (e) {
     console.warn("Could not parse URLs:", e.message);
 }
