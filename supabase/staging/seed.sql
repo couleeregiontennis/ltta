@@ -28,12 +28,12 @@ INSERT INTO "public"."team_match" ("id", "date", "time", "courts", "home_team_id
 
 -- The legacy 'matches' table which is joined against 'match_scores' in 'standings_view'
 INSERT INTO "public"."matches" ("id", "week", "date", "time", "courts", "home_team_number", "home_team_name", "home_team_night", "away_team_number", "away_team_name", "away_team_night", "status") VALUES
-('77777777-7777-7777-7777-777777777771', 1, '2026-05-05', '18:00', '1, 2, 3', 1, 'Aces', 'tuesday', 2, 'Faults', 'tuesday', 'completed'),
-('77777777-7777-7777-7777-777777777772', 1, '2026-05-06', '18:00', '4, 5, 6', 3, 'Netters', 'wednesday', 4, 'Lobbers', 'wednesday', 'scheduled');
+('66666666-6666-6666-6666-666666666661', 1, '2026-05-05', '18:00', '1, 2, 3', 1, 'Aces', 'tuesday', 2, 'Faults', 'tuesday', 'completed'),
+('66666666-6666-6666-6666-666666666662', 1, '2026-05-06', '18:00', '4, 5, 6', 3, 'Netters', 'wednesday', 4, 'Lobbers', 'wednesday', 'scheduled');
 
 -- insert match scores
 INSERT INTO "public"."match_scores" ("id", "match_id", "home_lines_won", "away_lines_won", "home_total_games", "away_total_games", "home_won") VALUES
-(gen_random_uuid(), '77777777-7777-7777-7777-777777777771', 2, 1, 30, 25, true);
+(gen_random_uuid(), '66666666-6666-6666-6666-666666666661', 2, 1, 30, 25, true);
 
 -- line results
 INSERT INTO "public"."line_results" ("match_id", "line_number", "match_type", "home_set_1", "away_set_1", "home_set_2", "away_set_2", "home_set_3", "away_set_3", "home_won") VALUES
