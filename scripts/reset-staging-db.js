@@ -10,28 +10,33 @@ if (!DB_URL) {
     process.exit(1);
 }
 
-try {
-    const dbUrlObj = new URL(DB_URL);
-    
-    // Always enforce the staging project ID for LTTA
-    const stagingProjectId = 'shlcqztfdhfwkhijwgue';
-    
-    // If using Supavisor (pooler.supabase.com), enforce the correct username format
-    if (dbUrlObj.hostname.includes('pooler.supabase.com')) {
-        dbUrlObj.username = `postgres.${stagingProjectId}`;
-        // Clean up options=reference if it exists
-        dbUrlObj.searchParams.delete('options');
-        DB_URL = dbUrlObj.toString();
-        console.log(`Enforced staging project ID (${stagingProjectId}) for Supavisor connection.`);
-    }
-} catch (e) {
-    console.warn("Could not parse URLs to inject project ID:", e.message);
-}
-
-const client = new Client({
+let clientConfig = {
     connectionString: DB_URL,
     ssl: { rejectUnauthorized: false }
-});
+};
+
+try {
+    const dbUrlObj = new URL(DB_URL);
+    const stagingProjectId = 'shlcqztfdhfwkhijwgue';
+    
+    if (dbUrlObj.hostname.includes('pooler.supabase.com')) {
+        // Remove options from connection string to avoid parsing issues
+        dbUrlObj.searchParams.delete('options');
+        // If the username has the dot notation, revert it to just 'postgres'
+        if (dbUrlObj.username.includes('.')) {
+            dbUrlObj.username = dbUrlObj.username.split('.')[0];
+        }
+        
+        clientConfig.connectionString = dbUrlObj.toString();
+        // Pass the tenant reference explicitly in the config options
+        clientConfig.options = `reference=${stagingProjectId}`;
+        console.log(`Configured pg client with options=reference=${stagingProjectId} for Supavisor.`);
+    }
+} catch (e) {
+    console.warn("Could not parse URLs:", e.message);
+}
+
+const client = new Client(clientConfig);
 
 async function run() {
     try {
