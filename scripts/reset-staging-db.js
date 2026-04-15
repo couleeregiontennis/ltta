@@ -4,30 +4,44 @@ import fs from 'fs';
 const { Client } = pkg;
 
 let DB_URL = process.env.STAGING_DB_URL;
-const VITE_SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 
 if (!DB_URL) {
     console.error("Error: STAGING_DB_URL environment variable is not set.");
     process.exit(1);
 }
 
-// Supavisor requires the username to be in the format 'user.project'
-// We extract the project ID from VITE_SUPABASE_URL and inject it into DB_URL
-if (VITE_SUPABASE_URL) {
-    try {
-        const supabaseUrlObj = new URL(VITE_SUPABASE_URL);
-        const projectId = supabaseUrlObj.hostname.split('.')[0];
-        
-        const dbUrlObj = new URL(DB_URL);
-        // Only modify if it doesn't already have the project ID
-        if (dbUrlObj.username && !dbUrlObj.username.includes('.')) {
-            dbUrlObj.username = `${dbUrlObj.username}.${projectId}`;
-            DB_URL = dbUrlObj.toString();
-            console.log("Injected project ID into database username for Supavisor compatibility.");
-        }
-    } catch (e) {
-        console.warn("Could not parse URLs to inject project ID:", e.message);
+try {
+    const dbUrlObj = new URL(DB_URL);
+    
+    // Extract from VITE_SUPABASE_URL first
+    let projectId = null;
+    if (process.env.VITE_SUPABASE_URL) {
+        const supabaseUrlObj = new URL(process.env.VITE_SUPABASE_URL);
+        projectId = supabaseUrlObj.hostname.split('.')[0];
     }
+    
+    // If not found, try to extract from ?options=reference=... in DB_URL
+    if (!projectId && dbUrlObj.searchParams.has('options')) {
+        const options = dbUrlObj.searchParams.get('options');
+        if (options.includes('reference=')) {
+            projectId = options.split('reference=')[1];
+        }
+        // Also remove the options parameter as pg doesn't always support it properly in the connection string
+        dbUrlObj.searchParams.delete('options');
+    }
+    
+    // Fallback: If DB_URL host is db.[project-ref].supabase.co
+    if (!projectId && dbUrlObj.hostname.startsWith('db.') && dbUrlObj.hostname.includes('.supabase.co')) {
+        projectId = dbUrlObj.hostname.split('.')[1];
+    }
+
+    if (projectId && dbUrlObj.username && !dbUrlObj.username.includes('.')) {
+        dbUrlObj.username = `${dbUrlObj.username}.${projectId}`;
+        DB_URL = dbUrlObj.toString();
+        console.log("Injected project ID into database username for Supavisor compatibility.");
+    }
+} catch (e) {
+    console.warn("Could not parse URLs to inject project ID:", e.message);
 }
 
 const client = new Client({
