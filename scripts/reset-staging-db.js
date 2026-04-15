@@ -34,11 +34,16 @@ try {
     if (!projectId && dbUrlObj.hostname.startsWith('db.') && dbUrlObj.hostname.includes('.supabase.co')) {
         projectId = dbUrlObj.hostname.split('.')[1];
     }
+    
+    // Ultimate fallback for LTTA staging environment
+    if (!projectId) {
+        projectId = 'shlcqztfdhfwkhijwgue';
+    }
 
     if (projectId && dbUrlObj.username && !dbUrlObj.username.includes('.')) {
         dbUrlObj.username = `${dbUrlObj.username}.${projectId}`;
         DB_URL = dbUrlObj.toString();
-        console.log("Injected project ID into database username for Supavisor compatibility.");
+        console.log(`Injected project ID (${projectId}) into database username for Supavisor compatibility.`);
     }
 } catch (e) {
     console.warn("Could not parse URLs to inject project ID:", e.message);
