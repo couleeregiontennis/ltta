@@ -13,37 +13,16 @@ if (!DB_URL) {
 try {
     const dbUrlObj = new URL(DB_URL);
     
-    // Extract from VITE_SUPABASE_URL first
-    let projectId = null;
-    if (process.env.VITE_SUPABASE_URL) {
-        const supabaseUrlObj = new URL(process.env.VITE_SUPABASE_URL);
-        projectId = supabaseUrlObj.hostname.split('.')[0];
-    }
+    // Always enforce the staging project ID for LTTA
+    const stagingProjectId = 'shlcqztfdhfwkhijwgue';
     
-    // If not found, try to extract from ?options=reference=... in DB_URL
-    if (!projectId && dbUrlObj.searchParams.has('options')) {
-        const options = dbUrlObj.searchParams.get('options');
-        if (options.includes('reference=')) {
-            projectId = options.split('reference=')[1];
-        }
-        // Also remove the options parameter as pg doesn't always support it properly in the connection string
+    // If using Supavisor (pooler.supabase.com), enforce the correct username format
+    if (dbUrlObj.hostname.includes('pooler.supabase.com')) {
+        dbUrlObj.username = `postgres.${stagingProjectId}`;
+        // Clean up options=reference if it exists
         dbUrlObj.searchParams.delete('options');
-    }
-    
-    // Fallback: If DB_URL host is db.[project-ref].supabase.co
-    if (!projectId && dbUrlObj.hostname.startsWith('db.') && dbUrlObj.hostname.includes('.supabase.co')) {
-        projectId = dbUrlObj.hostname.split('.')[1];
-    }
-    
-    // Ultimate fallback for LTTA staging environment
-    if (!projectId) {
-        projectId = 'shlcqztfdhfwkhijwgue';
-    }
-
-    if (projectId && dbUrlObj.username && !dbUrlObj.username.includes('.')) {
-        dbUrlObj.username = `${dbUrlObj.username}.${projectId}`;
         DB_URL = dbUrlObj.toString();
-        console.log(`Injected project ID (${projectId}) into database username for Supavisor compatibility.`);
+        console.log(`Enforced staging project ID (${stagingProjectId}) for Supavisor connection.`);
     }
 } catch (e) {
     console.warn("Could not parse URLs to inject project ID:", e.message);
