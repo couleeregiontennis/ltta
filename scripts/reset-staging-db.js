@@ -19,19 +19,16 @@ try {
     const dbUrlObj = new URL(DB_URL);
     const stagingProjectId = 'shlcqztfdhfwkhijwgue';
     
-    if (dbUrlObj.hostname.includes('pooler.supabase.com')) {
-        // Remove options from connection string to avoid parsing issues
-        dbUrlObj.searchParams.delete('options');
-        // If the username has the dot notation, revert it to just 'postgres'
-        if (dbUrlObj.username.includes('.')) {
-            dbUrlObj.username = dbUrlObj.username.split('.')[0];
-        }
-        
-        clientConfig.connectionString = dbUrlObj.toString();
-        // Pass the tenant reference explicitly in the config options
-        clientConfig.options = `reference=${stagingProjectId}`;
-        console.log(`Configured pg client with options=reference=${stagingProjectId} for Supavisor.`);
-    }
+    // The pooler URL in the GitHub secret seems to be routing to the wrong region or is invalid
+    // We will forcefully bypass Supavisor and use the direct connection host.
+    // GitHub Actions runners support IPv4/IPv6 resolution for the direct db host.
+    dbUrlObj.hostname = `db.${stagingProjectId}.supabase.co`;
+    dbUrlObj.port = '5432';
+    dbUrlObj.username = 'postgres';
+    dbUrlObj.searchParams.delete('options');
+    
+    clientConfig.connectionString = dbUrlObj.toString();
+    console.log(`Forced direct connection to db.${stagingProjectId}.supabase.co to bypass Supavisor issues.`);
 } catch (e) {
     console.warn("Could not parse URLs:", e.message);
 }
