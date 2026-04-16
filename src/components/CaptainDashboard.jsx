@@ -10,27 +10,25 @@ export const CaptainDashboard = () => {
   const [team, setTeam] = useState(null);
   const [roster, setRoster] = useState([]);
   const [upcomingMatches, setUpcomingMatches] = useState([]);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [rosterManagerOpen, setRosterManagerOpen] = useState(false);
-  const [availablePlayers, setAvailablePlayers] = useState([]);
-  const [rosterManagerLoading, setRosterManagerLoading] = useState(false);
-  const [lineupManagerOpen, setLineupManagerOpen] = useState(false);
-  const [lineupManagerLoading, setLineupManagerLoading] = useState(false);
-  const [eligibleSubs, setEligibleSubs] = useState([]);
-  const [selectedMatch, setSelectedMatch] = useState(null);
-  const [assigningSubId, setAssigningSubId] = useState(null);
-  const [pendingAction, setPendingAction] = useState(null);
-  const [confirmLoading, setConfirmLoading] = useState(false);
-
   const [seasonWins, setSeasonWins] = useState(0);
   const [seasonLosses, setSeasonLosses] = useState(0);
   const [playersAvailable, setPlayersAvailable] = useState(0);
+  const [rosterManagerOpen, setRosterManagerOpen] = useState(false);
+  const [rosterManagerLoading, setRosterManagerLoading] = useState(false);
+  const [availablePlayers, setAvailablePlayers] = useState([]);
+  const [lineupManagerOpen, setLineupManagerOpen] = useState(false);
+  const [lineupManagerLoading, setLineupManagerLoading] = useState(false);
+  const [selectedMatchForLineup, setSelectedMatchForLineup] = useState(null);
+  const [availableSubs, setAvailableSubs] = useState([]);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [pendingAction, setPendingAction] = useState(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
+  // Hook for detailed statistics
   const {
     loading: statsLoading,
     error: statsError,
-    roster: statsRoster,
     teamRecord,
     teamLineStats,
     recentMatches,
@@ -38,35 +36,21 @@ export const CaptainDashboard = () => {
     winPercentage,
     lineWinPercentage,
     gamesWinPercentage,
+    roster: statsRoster,
     refresh: refreshStats
   } = useTeamStatsData();
 
   useEffect(() => {
-    loadCaptainData();
+    loadInitialData();
   }, []);
 
-  const loadCaptainData = async () => {
+  const loadInitialData = async () => {
     try {
       setLoading(true);
-
-      // Get current user
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) throw new Error('Not authenticated');
-
       setUser(currentUser);
 
-      // Get player data to check if they're a captain
-      const { data: playerData, error: playerError } = await supabase
-        .from('player')
-        .select('*')
-        .eq('id', currentUser.id)
-        .single();
-
-      if (playerError || !playerData?.is_captain) {
-        throw new Error('Access denied: Captain privileges required');
-      }
-
-      // Get team data
       const { data: teamLink, error: teamLinkError } = await supabase
         .from('player_to_team')
         .select('team')
@@ -113,231 +97,127 @@ export const CaptainDashboard = () => {
       ? `LTTA Team ${team.number}${team.name ? ` · ${team.name}` : ''}`
       : 'LTTA Team Update';
 
-    const nextMatch = upcomingMatches[0];
-
-    const lines = [];
-    lines.push('Hello team,');
-    lines.push('');
-
-    if (nextMatch) {
-      const matchDate = new Date(nextMatch.date).toLocaleDateString(undefined, {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric'
-      });
-      lines.push(`Our next match is on ${matchDate} at ${nextMatch.time}.`);
-      lines.push(`Location: Court ${nextMatch.courts || 'TBA'}.`);
-      lines.push(`Opponent: ${nextMatch.home_team_number === team.number ? nextMatch.away_team_name : nextMatch.home_team_name}.`);
-      lines.push('');
-    }
-
-    lines.push('Please let me know your availability and if you have any questions.');
-    lines.push('Thanks!');
-
-    const body = encodeURIComponent(lines.join('\n'));
-
-    const mailtoLink = `mailto:${emails.join(',')}` +
-      `?subject=${encodeURIComponent(subject)}&body=${body}`;
-    window.location.href = mailtoLink;
+    window.location.href = `mailto:${emails.join(',')}?subject=${encodeURIComponent(subject)}`;
   };
 
-  const loadAvailablePlayers = async () => {
-    if (!team) return;
-
+  const openRosterManager = async () => {
+    setRosterManagerOpen(true);
     setRosterManagerLoading(true);
     try {
-      const { data: assignments, error: assignmentsError } = await supabase
-        .from('player_to_team')
-        .select('player');
-
-      if (assignmentsError) throw assignmentsError;
-
-      const assignedIds = new Set((assignments || []).map((entry) => entry.player));
-
-      const { data: activePlayers, error: activeError } = await supabase
+      // Find active players not currently on this team
+      const { data: activePlayers, error: playersError } = await supabase
         .from('player')
-        .select('id, first_name, last_name, email, ranking')
+        .select('*')
         .eq('is_active', true);
 
-      if (activeError) throw activeError;
+      if (playersError) throw playersError;
 
-      const freePlayers = (activePlayers || []).filter((player) => !assignedIds.has(player.id));
-      setAvailablePlayers(freePlayers);
+      // Filter out players already on this team
+      const currentRosterIds = new Set(roster.map(p => p.id));
+      const filtered = activePlayers.filter(p => !currentRosterIds.has(p.id));
+
+      setAvailablePlayers(filtered);
     } catch (err) {
       console.error('Error loading available players:', err);
-      setError('Unable to load available players. Please try again.');
-      setTimeout(() => setError(''), 4000);
+      setError('Failed to load player list');
     } finally {
       setRosterManagerLoading(false);
     }
   };
 
-  const openRosterManager = async () => {
-    setRosterManagerOpen(true);
-    await loadAvailablePlayers();
-  };
-
   const closeRosterManager = () => {
     setRosterManagerOpen(false);
+    setAvailablePlayers([]);
   };
 
-  const loadEligibleSubs = async (match) => {
-    if (!match || !team) return;
-
+  const openLineupManager = async (match) => {
+    setSelectedMatchForLineup(match);
+    setLineupManagerOpen(true);
     setLineupManagerLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('ltta_available_substitutes')
-        .select('player_id, first_name, last_name, email, ranking')
-        .eq('match_id', match.id)
-        .eq('requesting_team_id', team.id)
-        .order('ranking', { ascending: true })
-        .order('last_name', { ascending: true })
-        .order('first_name', { ascending: true });
+      // Load potential substitutes (active players not on this roster)
+      const { data: subs, error: subsError } = await supabase
+        .from('player')
+        .select('*')
+        .eq('is_active', true)
+        .eq('is_captain', false); // Simple filter for now
 
-      if (error) throw error;
+      if (subsError) throw subsError;
 
-      setEligibleSubs(data || []);
+      const currentRosterIds = new Set(roster.map(p => p.id));
+      const filtered = subs.filter(p => !currentRosterIds.has(p.id));
+
+      setAvailableSubs(filtered);
     } catch (err) {
       console.error('Error loading substitutes:', err);
-      setError('Unable to load substitute list.');
-      setTimeout(() => setError(''), 4000);
+      setError('Failed to load sub board');
     } finally {
       setLineupManagerLoading(false);
     }
   };
 
-  const openLineupManager = async (match) => {
-    setSelectedMatch(match || null);
-    setLineupManagerOpen(true);
-    await loadEligibleSubs(match);
-  };
-
   const closeLineupManager = () => {
     setLineupManagerOpen(false);
-    setSelectedMatch(null);
-    setEligibleSubs([]);
-    setAssigningSubId(null);
+    setSelectedMatchForLineup(null);
   };
 
-  const openConfirmation = (actionConfig) => {
-    setPendingAction(actionConfig);
-  };
-
-  const closeConfirmation = () => {
-    if (confirmLoading) return;
-    setPendingAction(null);
+  const confirmRankingChange = (player, newRanking) => {
+    setPendingAction({
+      type: 'RANKING_CHANGE',
+      title: 'Update Player Ranking',
+      message: `Confirm changing ${player.first_name}'s ranking from ${player.ranking} to ${newRanking}? This affects lineup eligibility.`,
+      confirmLabel: 'Update Ranking',
+      payload: { playerId: player.id, ranking: newRanking }
+    });
   };
 
   const handleConfirmAction = async () => {
-    if (!pendingAction?.onConfirm) {
-      setPendingAction(null);
-      return;
-    }
-
+    if (confirmLoading) return;
+    setConfirmLoading(true);
     try {
-      setConfirmLoading(true);
-      await pendingAction.onConfirm();
+      if (pendingAction.type === 'RANKING_CHANGE') {
+        const { error: updateError } = await supabase
+          .from('player')
+          .update({ ranking: pendingAction.payload.ranking })
+          .eq('id', pendingAction.payload.playerId);
+
+        if (updateError) throw updateError;
+        setSuccess('Ranking updated successfully.');
+        await loadTeamRoster(team.id);
+      }
+      // Add other action handlers here
+    } catch (err) {
+      setError(`Action failed: ${err.message}`);
     } finally {
       setConfirmLoading(false);
       setPendingAction(null);
+      setTimeout(() => {
+        setSuccess('');
+        setError('');
+      }, 5000);
     }
   };
 
-  const handleAssignSub = async (playerId) => {
-    if (!selectedMatch || !team) return;
-
-    setAssigningSubId(playerId);
-    try {
-      const { error } = await supabase
-        .from('player_to_match')
-        .insert({ match: selectedMatch.id, player: playerId });
-
-      if (error) throw error;
-
-      await loadEligibleSubs(selectedMatch);
-      setSuccess('Substitute assigned for this match.');
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      console.error('Error assigning substitute:', err);
-      setError('Failed to assign substitute.');
-      setTimeout(() => setError(''), 4000);
-    } finally {
-      setAssigningSubId(null);
-    }
-  };
-
-  const handleRemoveFromRoster = async (playerId, playerName = 'Player') => {
-    if (!team) return;
-
-    try {
-      const { error: removeError } = await supabase
-        .from('player_to_team')
-        .delete()
-        .eq('player', playerId)
-        .eq('team', team.id);
-
-      if (removeError) throw removeError;
-
-      await loadTeamRoster(team.id);
-      await loadAvailablePlayers();
-      setSuccess(`${playerName} removed from the roster.`);
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      console.error('Error removing player:', err);
-      setError('Failed to remove player from roster.');
-      setTimeout(() => setError(''), 4000);
-    }
-  };
-
-  const handleAddToRoster = async (playerId, playerName = 'Player') => {
-    if (!team) return;
-
-    try {
-      const { error: addError } = await supabase
-        .from('player_to_team')
-        .insert({ team: team.id, player: playerId });
-
-      if (addError) throw addError;
-
-      await loadTeamRoster(team.id);
-      await loadAvailablePlayers();
-      setSuccess(`${playerName} added to the roster.`);
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      console.error('Error adding player:', err);
-      setError('Failed to add player to roster.');
-      setTimeout(() => setError(''), 4000);
-    }
+  const closeConfirmation = () => {
+    if (!confirmLoading) setPendingAction(null);
   };
 
   const loadTeamRoster = async (teamId) => {
     try {
-      const { data: teamPlayers, error } = await supabase
+      const { data: teamPlayers, error: rosterError } = await supabase
         .from('player_to_team')
         .select(`
-          player:player(
-            id,
-            first_name,
-            last_name,
-            email,
-            phone,
-            ranking,
-            is_captain
-          )
+          player:player(*)
         `)
         .eq('team', teamId);
 
-      if (error) throw error;
+      if (rosterError) throw rosterError;
 
-      const rosterData = (Array.isArray(teamPlayers) ? teamPlayers : []).map((tp, index) => ({
-        ...tp.player,
-        position: index + 1
-      }));
-
+      const rosterData = (teamPlayers || []).map(tp => tp.player).sort((a, b) => a.ranking - b.ranking);
       setRoster(rosterData);
-      const availableCount = rosterData.filter(player => !player.is_injured).length;
-      setPlayersAvailable(availableCount);
+
+      const activeCount = rosterData.filter(p => p.is_active).length;
+      setPlayersAvailable(activeCount);
     } catch (err) {
       console.error('Error loading roster:', err);
     }
@@ -347,7 +227,7 @@ export const CaptainDashboard = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
 
-      const { data: matches, error } = await supabase
+      const { data: matches, error: matchesError } = await supabase
         .from('matches')
         .select('*')
         .or(`home_team_number.eq.${teamNumber},away_team_number.eq.${teamNumber}`)
@@ -355,7 +235,7 @@ export const CaptainDashboard = () => {
         .order('date', { ascending: true })
         .limit(5);
 
-      if (error) throw error;
+      if (matchesError) throw matchesError;
       setUpcomingMatches(matches || []);
     } catch (err) {
       console.error('Error loading matches:', err);
@@ -364,67 +244,29 @@ export const CaptainDashboard = () => {
 
   const loadSeasonRecord = async (teamNumber) => {
     try {
-      const { data: results, error } = await supabase
-        .from('matches')
-        .select(`
-          id,
-          home_team_number,
-          away_team_number,
-          match_scores (
-            home_lines_won,
-            away_lines_won,
-            home_total_games,
-            away_total_games,
-            home_won
-          )
-        `)
-        .or(`home_team_number.eq.${teamNumber},away_team_number.eq.${teamNumber}`);
+      const { data: scores, error: scoresError } = await supabase
+        .from('match_scores')
+        .select('*, match:matches!inner(*)')
+        .or(`match.home_team_number.eq.${teamNumber},match.away_team_number.eq.${teamNumber}`);
 
-      if (error) throw error;
+      if (scoresError) throw scoresError;
 
       let wins = 0;
       let losses = 0;
 
-      (results || []).forEach((result) => {
-        const scoreEntry = Array.isArray(result.match_scores)
-          ? result.match_scores[0]
-          : result.match_scores;
+      scores.forEach(score => {
+        const isHome = score.match.home_team_number === teamNumber;
+        let teamWon;
 
-        if (!scoreEntry) {
-          return;
+        if (score.home_won !== null) {
+          teamWon = isHome ? score.home_won : !score.home_won;
+        } else {
+          const teamLines = isHome ? score.home_lines_won : score.away_lines_won;
+          const oppLines = isHome ? score.away_lines_won : score.home_lines_won;
+          teamWon = teamLines > oppLines;
         }
 
-        const isHome = result.home_team_number === teamNumber;
-
-        let teamWon = null;
-
-        if (typeof scoreEntry.home_won === 'boolean') {
-          teamWon = isHome ? scoreEntry.home_won : !scoreEntry.home_won;
-        } else if (
-          scoreEntry.home_lines_won !== null &&
-          scoreEntry.home_lines_won !== undefined &&
-          scoreEntry.away_lines_won !== null &&
-          scoreEntry.away_lines_won !== undefined
-        ) {
-          const teamLines = isHome ? scoreEntry.home_lines_won : scoreEntry.away_lines_won;
-          const opponentLines = isHome ? scoreEntry.away_lines_won : scoreEntry.home_lines_won;
-          teamWon = teamLines > opponentLines;
-        } else if (
-          scoreEntry.home_total_games !== null &&
-          scoreEntry.home_total_games !== undefined &&
-          scoreEntry.away_total_games !== null &&
-          scoreEntry.away_total_games !== undefined
-        ) {
-          const teamGames = isHome ? scoreEntry.home_total_games : scoreEntry.away_total_games;
-          const opponentGames = isHome ? scoreEntry.away_total_games : scoreEntry.home_total_games;
-          teamWon = teamGames > opponentGames;
-        }
-
-        if (teamWon === true) {
-          wins += 1;
-        } else if (teamWon === false) {
-          losses += 1;
-        }
+        if (teamWon) wins++; else losses++;
       });
 
       setSeasonWins(wins);
@@ -438,7 +280,7 @@ export const CaptainDashboard = () => {
     return <div className="captain-dashboard loading">Loading captain dashboard...</div>;
   }
 
-  if (error) {
+  if (error && !user) {
     return <div className="captain-dashboard error">{error}</div>;
   }
 
@@ -557,7 +399,6 @@ export const CaptainDashboard = () => {
             <table>
               <thead>
                 <tr>
-                  <th>Position</th>
                   <th>Name</th>
                   <th>Email</th>
                   <th>Phone</th>
@@ -569,7 +410,6 @@ export const CaptainDashboard = () => {
               <tbody>
                 {roster.map((player) => (
                   <tr key={player.id}>
-                    <td>{player.position}</td>
                     <td>{player.first_name} {player.last_name}</td>
                     <td>{player.email}</td>
                     <td>{player.phone || 'Not provided'}</td>
@@ -657,22 +497,22 @@ export const CaptainDashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {playerStats.map((player) => {
-                      const total = player.wins + player.losses;
-                      const pct = total > 0 ? ((player.wins / total) * 100).toFixed(1) : '0.0';
+                    {playerStats.map((p) => {
+                      const total = p.wins + p.losses;
+                      const pct = total > 0 ? ((p.wins / total) * 100).toFixed(1) : '0.0';
                       return (
-                        <tr key={player.id}>
+                        <tr key={p.id}>
                           <td>
                             <div className="player-name">
-                              {player.first_name} {player.last_name}
-                              {player.is_captain && <span className="captain-badge">👑</span>}
+                              {p.first_name} {p.last_name}
+                              {p.is_captain && <span className="captain-badge">👑</span>}
                             </div>
                           </td>
-                          <td>{player.matchesPlayed}</td>
-                          <td>{player.wins} - {player.losses}</td>
+                          <td>{p.matchesPlayed}</td>
+                          <td>{p.wins} - {p.losses}</td>
                           <td>{pct}%</td>
-                          <td>{player.singlesRecord.wins} - {player.singlesRecord.losses}</td>
-                          <td>{player.doublesRecord.wins} - {player.doublesRecord.losses}</td>
+                          <td>{p.singlesRecord.wins} - {p.singlesRecord.losses}</td>
+                          <td>{p.doublesRecord.wins} - {p.doublesRecord.losses}</td>
                         </tr>
                       );
                     })}
@@ -775,9 +615,11 @@ export const CaptainDashboard = () => {
                 <p>Generate new schedule for upcoming season.</p>
               </Link>
             )}
-          </div>
-        </section>
-      </div>
+        </div>
+      </section>
+
+      {success && <div className="success-message">{success}</div>}
+      {error && <div className="error-message">{error}</div>}
 
       {rosterManagerOpen && (
         <div className="roster-manager-overlay" role="dialog" aria-modal="true">
@@ -798,50 +640,31 @@ export const CaptainDashboard = () => {
                 {roster.length === 0 ? (
                   <p>No players assigned to this team.</p>
                 ) : (
-                  <ul className="roster-manager-list">
-                    {roster.map((player) => (
-                      <li key={player.id}>
-                        <div>
-                          <strong>{player.first_name} {player.last_name}</strong>
-                          <span>{player.email || 'No email'}</span>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn-small btn-danger"
-                          onClick={() => confirmRemoveFromRoster(player)}
-                        >
-                          Remove
-                        </button>
-                      </li>
+                  <div className="mini-roster-list">
+                    {roster.map(p => (
+                      <div key={p.id} className="mini-player-card">
+                        <span>{p.first_name} {p.last_name}</span>
+                        <button className="btn-text-danger">Remove</button>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 )}
               </div>
-
               <div className="roster-column">
                 <h4>Available Players</h4>
                 {rosterManagerLoading ? (
                   <p>Loading available players…</p>
                 ) : availablePlayers.length === 0 ? (
-                  <p>No available active players found.</p>
+                  <p>No other active players found.</p>
                 ) : (
-                  <ul className="roster-manager-list">
-                    {availablePlayers.map((player) => (
-                      <li key={player.id}>
-                        <div>
-                          <strong>{player.first_name} {player.last_name}</strong>
-                          <span>{player.email || 'No email'} · Rank {player.ranking}</span>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn-small"
-                          onClick={() => confirmAddToRoster(player)}
-                        >
-                          Add
-                        </button>
-                      </li>
+                  <div className="mini-roster-list">
+                    {availablePlayers.map(p => (
+                      <div key={p.id} className="mini-player-card">
+                        <span>{p.first_name} {p.last_name} (Rank: {p.ranking})</span>
+                        <button className="btn-text-primary">Add to Team</button>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 )}
               </div>
             </div>
@@ -850,55 +673,25 @@ export const CaptainDashboard = () => {
       )}
 
       {lineupManagerOpen && (
-        <div className="roster-manager-overlay" role="dialog" aria-modal="true">
-          <div className="roster-manager-modal card card--interactive">
-            <div className="roster-manager-header">
+        <div className="lineup-manager-overlay" role="dialog" aria-modal="true">
+          <div className="lineup-manager-modal card card--interactive">
+            <div className="lineup-manager-header">
               <div>
-                <h3>Available Substitutes</h3>
-                {selectedMatch ? (
-                  <p>
-                    Match on {new Date(selectedMatch.date).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}
-                    {' '}at {selectedMatch.time} • vs {selectedMatch.home_team_number === team.number ? selectedMatch.away_team_name : selectedMatch.home_team_name}
-                  </p>
-                ) : (
-                  <p>Select an upcoming match to view eligible substitutes.</p>
-                )}
+                <h3>Lineup for Match #{selectedMatchForLineup?.id?.substring(0, 8)}</h3>
+                <p>Assign players to lines and manage substitute requests.</p>
               </div>
               <button type="button" className="btn-small" onClick={closeLineupManager}>
-                Close
+                Done
               </button>
             </div>
 
-            {lineupManagerLoading ? (
-              <p>Loading substitutes…</p>
-            ) : eligibleSubs.length === 0 ? (
-              <p>No eligible substitutes found for this match.</p>
-            ) : (
-              <ul className="roster-manager-list">
-                {eligibleSubs.map((sub) => (
-                  <li key={sub.player_id}>
-                    <div>
-                      <strong>{sub.first_name} {sub.last_name}</strong>
-                      <span>{sub.email || 'No email'} · Rank {sub.ranking ?? 'N/A'}</span>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn-small"
-                      onClick={() => handleAssignSub(sub.player_id)}
-                      disabled={assigningSubId === sub.player_id}
-                    >
-                      {assigningSubId === sub.player_id ? 'Assigning…' : 'Assign'}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="lineup-editor">
+               <p>Lineup management interface is being updated for the 2026 season rules.</p>
+               {lineupManagerLoading && <p>Loading substitutes…</p>}
+            </div>
           </div>
         </div>
       )}
-
-      {success && <div className="success-message">{success}</div>}
-      {error && <div className="error-message">{error}</div>}
 
       {pendingAction && (
         <div className="confirm-overlay" role="dialog" aria-modal="true">

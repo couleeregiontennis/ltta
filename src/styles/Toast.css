@@ -78,7 +78,7 @@
 @media (max-width: 768px) {
   .toast-container {
     top: auto;
-    bottom: 20px;
+    bottom: 80px;
     right: 10px;
     left: 10px;
   }

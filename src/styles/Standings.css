@@ -426,9 +426,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
+  width: 40px;
   font-weight: 800;
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   border-right: 1px solid var(--standings-border);
 }
 
