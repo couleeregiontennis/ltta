@@ -1,11 +1,5 @@
 import pkg from 'pg';
 import fs from 'fs';
-import dns from 'node:dns';
-
-// Force IPv4 resolution to avoid ENETUNREACH issues with Supabase's IPv6 direct hosts in GitHub Actions
-if (dns.setDefaultResultOrder) {
-    dns.setDefaultResultOrder('ipv4first');
-}
 
 const { Client } = pkg;
 
@@ -16,27 +10,30 @@ if (!DB_URL) {
     process.exit(1);
 }
 
+let clientConfig = {
+    connectionString: DB_URL,
+    ssl: { rejectUnauthorized: false }
+};
+
 try {
     const dbUrlObj = new URL(DB_URL);
     const stagingProjectId = 'shlcqztfdhfwkhijwgue';
     
-    // Force the direct connection host (db.[ref].supabase.co)
-    // Combined with the IPv4 preference above, this is the most reliable way to connect in CI
-    dbUrlObj.hostname = `db.${stagingProjectId}.supabase.co`;
-    dbUrlObj.port = '5432';
-    dbUrlObj.username = 'postgres';
+    // Supavisor (IPv4) is required for GitHub Actions.
+    // We use the project-ref dot notation in the username.
+    // We try us-east-1 as it is a common default if us-east-2 failed.
+    dbUrlObj.hostname = 'aws-0-us-east-1.pooler.supabase.com';
+    dbUrlObj.port = '6543'; 
+    dbUrlObj.username = `postgres.${stagingProjectId}`;
     dbUrlObj.searchParams.delete('options');
     
-    DB_URL = dbUrlObj.toString();
-    console.log(`Attempting direct connection to ${dbUrlObj.hostname} (IPv4 preferred)...`);
+    clientConfig.connectionString = dbUrlObj.toString();
+    console.log(`Connecting to Supavisor (IPv4) at ${dbUrlObj.hostname}...`);
 } catch (e) {
-    console.warn("Could not parse DB_URL, using as provided:", e.message);
+    console.warn("Could not parse URLs:", e.message);
 }
 
-const client = new Client({
-    connectionString: DB_URL,
-    ssl: { rejectUnauthorized: false }
-});
+const client = new Client(clientConfig);
 
 async function run() {
     try {
