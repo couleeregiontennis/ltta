@@ -1,10 +1,52 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { supabase } from '../scripts/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
+import { EmptyState } from './EmptyState';
 import '../styles/Style.css';
 import '../styles/Standings.css';
 
 // OPTIMIZATION: Memoized component to prevent re-rendering all rows when parent state (like auth or spotlight) updates
+const StandingsCard = memo(({ team, index }) => {
+  const rank = index + 1;
+  const record =
+    team.ties > 0
+      ? `${team.wins}-${team.losses}-${team.ties}`
+      : `${team.wins}-${team.losses}`;
+
+  return (
+    <div className={`standings-mobile-card card card--interactive ${index === 0 ? 'leader' : ''}`}>
+      <div className="card-rank">#{rank}</div>
+      <div className="card-main">
+        <div className="card-team-info">
+          <span className="team-number">Team {team.number}</span>
+          <span className="team-name">{team.name}</span>
+        </div>
+        <div className="card-stats-grid">
+          <div className="stat-item">
+            <span className="stat-label">Record</span>
+            <span className="stat-value">{record}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Win %</span>
+            <span className="stat-value">{team.winPercentage.toFixed(1)}%</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Played</span>
+            <span className="stat-value">{team.matchesPlayed}</span>
+          </div>
+        </div>
+        {team.playoffStatus && (
+          <div className="card-status">
+            <span className={`status-badge ${team.playoffStatus.toLowerCase().includes('clinched') ? 'clinched' : ''}`}>
+              {team.playoffStatus}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
 const StandingsRow = memo(({ team, index }) => {
   const rank = index + 1;
   const record =
@@ -43,15 +85,15 @@ const StandingsRow = memo(({ team, index }) => {
           ? `${team.winPercentage.toFixed(1)}%`
           : '0.0%'}
       </td>
-      <td data-label="Sets (W-L)">
+      <td data-label="Sets (W-L)" className="hide-mobile">
         {team.setsWon} - {team.setsLost}
       </td>
-      <td data-label="Set %">
+      <td data-label="Set %" className="hide-mobile">
         {team.setsWon + team.setsLost > 0
           ? `${team.setWinPercentage.toFixed(1)}%`
           : '0.0%'}
       </td>
-      <td data-label="Games (W-L)">
+      <td data-label="Games (W-L)" className="hide-mobile">
         {team.gamesWon} - {team.gamesLost}
       </td>
     </tr>
@@ -466,7 +508,7 @@ const Standings = () => {
           </div>
 
           <div className="standings-table-card card card--interactive">
-            <table className="standings-table">
+            <table className="standings-table hide-mobile-flex">
               <thead>
                 <tr>
                   <th>#</th>
@@ -476,15 +518,15 @@ const Standings = () => {
                   <th>Matches</th>
                   <th>Record</th>
                   <th>Win %</th>
-                  <th>Sets (W-L)</th>
-                  <th>Set %</th>
-                  <th>Games (W-L)</th>
+                  <th className="hide-mobile">Sets (W-L)</th>
+                  <th className="hide-mobile">Set %</th>
+                  <th className="hide-mobile">Games (W-L)</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStandings.length === 0 ? (
                   <tr className="empty-row">
-                    <td colSpan={9}>No results yet for this league night.</td>
+                    <td colSpan={10}>No results yet for this league night.</td>
                   </tr>
                 ) : (
                   filteredStandings.map((team, index) => (
@@ -493,6 +535,20 @@ const Standings = () => {
                 )}
               </tbody>
             </table>
+
+            {/* Mobile Card View */}
+            <div className="standings-mobile-list show-mobile-only">
+              {filteredStandings.length === 0 ? (
+                <EmptyState 
+                  title="No results yet" 
+                  description="Standings will appear here once the season begins and match scores are submitted."
+                />
+              ) : (
+                filteredStandings.map((team, index) => (
+                  <StandingsCard key={team.id} team={team} index={index} />
+                ))
+              )}
+            </div>
           </div>
 
           <div className="standings-legend card card--interactive">

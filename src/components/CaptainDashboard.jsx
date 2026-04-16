@@ -483,6 +483,118 @@ export const CaptainDashboard = () => {
         </div>
       </div>
 
+      <div className="dashboard-sections">
+        <section className="captain-section card card--interactive">
+          <div className="section-header">
+            <div>
+              <h2>Upcoming Matches</h2>
+              <p>Plan lineups, assign captains, and prepare for match night.</p>
+            </div>
+            <button
+              type="button"
+              className="section-action"
+              onClick={() => openLineupManager(upcomingMatches[0] || null)}
+              disabled={upcomingMatches.length === 0}
+            >
+              Manage Lineups
+            </button>
+          </div>
+          <div className="matches-timeline">
+            {upcomingMatches.length === 0 ? (
+              <div className="empty-state card card--flat">
+                <h3>No upcoming matches scheduled</h3>
+                <p>Once new matches are scheduled they will appear here.</p>
+              </div>
+            ) : (
+              upcomingMatches.map((match) => (
+                <div key={match.id} className="match-card card card--interactive card--overlay">
+                  <div className="match-card-header">
+                    <div className="match-date">
+                      {new Date(match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </div>
+                    <span className="match-tag">{match.time} • Court {match.courts}</span>
+                  </div>
+                  <div className="match-teams">
+                    <span className="team-home">{match.home_team_name}</span>
+                    <span className="vs-label">vs</span>
+                    <span className="team-away">{match.away_team_name}</span>
+                  </div>
+                  <div className="match-meta">
+                    <span>Match ID: {match.id}</span>
+                    <span>{match.home_team_number === team.number ? 'Home Match' : 'Away Match'}</span>
+                  </div>
+                  <div className="match-actions">
+                    <button className="btn-small">Send Reminder</button>
+                    <button className="btn-small">View Details</button>
+                    <button
+                      type="button"
+                      className="btn-small"
+                      onClick={() => openLineupManager(match)}
+                    >
+                      Manage Lineup
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section className="captain-section card card--interactive">
+          <div className="section-header">
+            <div>
+              <h2>Team Roster Management</h2>
+              <p>Maintain player details, rankings, and contact information.</p>
+            </div>
+            <div className="section-actions">
+              <button type="button" className="section-action" onClick={openRosterManager}>
+                Manage Roster
+              </button>
+              <button type="button" className="section-action">Export Roster</button>
+            </div>
+          </div>
+          <div className="roster-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Position</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Ranking</th>
+                  <th>Captain</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {roster.map((player) => (
+                  <tr key={player.id}>
+                    <td>{player.position}</td>
+                    <td>{player.first_name} {player.last_name}</td>
+                    <td>{player.email}</td>
+                    <td>{player.phone || 'Not provided'}</td>
+                    <td>
+                      <select
+                        value={player.ranking}
+                        onChange={(e) => confirmRankingChange(player, parseInt(e.target.value, 10))}
+                      >
+                        {[1, 2, 3, 4, 5].map(rank => (
+                          <option key={rank} value={rank}>{rank}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>{player.is_captain ? '👑' : ''}</td>
+                    <td>
+                      <button className="btn-small">Edit</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
       <section className="captain-section card card--interactive">
         <div className="section-header">
           <div>
@@ -621,125 +733,14 @@ export const CaptainDashboard = () => {
         )}
       </section>
 
-      <div className="dashboard-sections">
-        <section className="captain-section card card--interactive">
-          <div className="section-header">
-            <div>
-              <h2>Team Roster Management</h2>
-              <p>Maintain player details, rankings, and contact information.</p>
-            </div>
-            <div className="section-actions">
-              <button type="button" className="section-action" onClick={openRosterManager}>
-                Manage Roster
-              </button>
-              <button type="button" className="section-action">Export Roster</button>
-            </div>
+      <section className="captain-section card card--interactive">
+        <div className="section-header">
+          <div>
+            <h2>Captain Tools</h2>
+            <p>Quick access to core actions that keep your team organized.</p>
           </div>
-          <div className="roster-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>Position</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Phone</th>
-                  <th>Ranking</th>
-                  <th>Captain</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {roster.map((player) => (
-                  <tr key={player.id}>
-                    <td>{player.position}</td>
-                    <td>{player.first_name} {player.last_name}</td>
-                    <td>{player.email}</td>
-                    <td>{player.phone || 'Not provided'}</td>
-                    <td>
-                      <select
-                        value={player.ranking}
-                        onChange={(e) => confirmRankingChange(player, parseInt(e.target.value, 10))}
-                      >
-                        {[1, 2, 3, 4, 5].map(rank => (
-                          <option key={rank} value={rank}>{rank}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>{player.is_captain ? '👑' : ''}</td>
-                    <td>
-                      <button className="btn-small">Edit</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="captain-section card card--interactive">
-          <div className="section-header">
-            <div>
-              <h2>Upcoming Matches</h2>
-              <p>Plan lineups, assign captains, and prepare for match night.</p>
-            </div>
-            <button
-              type="button"
-              className="section-action"
-              onClick={() => openLineupManager(upcomingMatches[0] || null)}
-              disabled={upcomingMatches.length === 0}
-            >
-              Manage Lineups
-            </button>
-          </div>
-          <div className="matches-timeline">
-            {upcomingMatches.length === 0 ? (
-              <div className="empty-state card card--flat">
-                <h3>No upcoming matches scheduled</h3>
-                <p>Once new matches are scheduled they will appear here.</p>
-              </div>
-            ) : (
-              upcomingMatches.map((match) => (
-                <div key={match.id} className="match-card card card--interactive card--overlay">
-                  <div className="match-card-header">
-                    <div className="match-date">
-                      {new Date(match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    </div>
-                    <span className="match-tag">{match.time} • Court {match.courts}</span>
-                  </div>
-                  <div className="match-teams">
-                    <span className="team-home">{match.home_team_name}</span>
-                    <span className="vs-label">vs</span>
-                    <span className="team-away">{match.away_team_name}</span>
-                  </div>
-                  <div className="match-meta">
-                    <span>Match ID: {match.id}</span>
-                    <span>{match.home_team_number === team.number ? 'Home Match' : 'Away Match'}</span>
-                  </div>
-                  <div className="match-actions">
-                    <button className="btn-small">Send Reminder</button>
-                    <button className="btn-small">View Details</button>
-                    <button
-                      type="button"
-                      className="btn-small"
-                      onClick={() => openLineupManager(match)}
-                    >
-                      Manage Lineup
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-
-        <section className="captain-section card card--interactive">
-          <div className="section-header">
-            <div>
-              <h2>Captain Tools</h2>
-              <p>Quick access to core actions that keep your team organized.</p>
-            </div>
-          </div>
-          <div className="tools-grid">
+        </div>
+        <div className="tools-grid">
             <button
               type="button"
               className="tool-card card card--interactive"

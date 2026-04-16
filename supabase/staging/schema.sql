@@ -1606,3 +1606,101 @@ CREATE POLICY "Allow full access to admins" ON public.season_payments FOR ALL TO
 GRANT ALL ON TABLE public.season_payments TO anon;
 GRANT ALL ON TABLE public.season_payments TO authenticated;
 GRANT ALL ON TABLE public.season_payments TO service_role;
+ALTER TABLE public.team_match ADD COLUMN is_rained_out BOOLEAN DEFAULT false;
+CREATE TABLE IF NOT EXISTS public.sub_request (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    captain_user_id uuid NOT NULL,
+    team_id uuid NOT NULL REFERENCES public.team(id) ON DELETE CASCADE,
+    match_date date NOT NULL,
+    match_time text,
+    location_id uuid REFERENCES public.location(id) ON DELETE SET NULL,
+    required_ranking integer DEFAULT 3,
+    status text DEFAULT 'open' CHECK (status IN ('open', 'filled', 'canceled')),
+    sub_user_id uuid,
+    notes text,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.sub_request ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Sub requests are viewable by all authenticated users"
+ON public.sub_request FOR SELECT
+TO authenticated
+USING (true);
+
+CREATE POLICY "Captains can insert their own sub requests"
+ON public.sub_request FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = captain_user_id);
+
+CREATE POLICY "Captains can update/cancel their own sub requests"
+ON public.sub_request FOR UPDATE
+TO authenticated
+USING (auth.uid() = captain_user_id);
+
+CREATE POLICY "Players can accept open sub requests"
+ON public.sub_request FOR UPDATE
+TO authenticated
+USING (status = 'open' AND auth.uid() IS NOT NULL AND auth.uid() != captain_user_id)
+WITH CHECK (sub_user_id = auth.uid() AND status = 'filled');
+
+CREATE POLICY "Captains can delete their own sub requests"
+ON public.sub_request FOR DELETE
+TO authenticated
+USING (auth.uid() = captain_user_id);
+
+-- Trigger to update updated_at
+CREATE OR REPLACE FUNCTION public.update_sub_request_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = timezone('utc'::text, now());
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_sub_request_updated_at_trigger
+    BEFORE UPDATE ON public.sub_request
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_sub_request_updated_at();
+-- 1. Add is_disputed column to team_match
+ALTER TABLE public.team_match ADD COLUMN is_disputed BOOLEAN DEFAULT false;
+
+-- 2. Create the SECURITY DEFINER function to allow any authenticated user to flag a match
+CREATE OR REPLACE FUNCTION public.flag_match_score(match_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Verify the user is authenticated
+  IF auth.role() != 'authenticated' THEN
+    RAISE EXCEPTION 'Must be logged in to flag a match score';
+  END IF;
+
+  -- Update the match to be disputed
+  UPDATE public.team_match
+  SET is_disputed = true
+  WHERE id = match_id;
+END;
+$$;
+
+-- Grant execution to authenticated users
+GRANT EXECUTE ON FUNCTION public.flag_match_score(uuid) TO authenticated;
+-- Add status column to track pending vs verified payments
+ALTER TABLE public.season_payments 
+ADD COLUMN status text DEFAULT 'verified' CHECK (status IN ('pending', 'verified'));
+
+-- Update existing policy or add a new one for users to self-report
+-- They can only insert payments where player_id matches their own player record
+CREATE POLICY "Allow users to insert their own payments" 
+ON public.season_payments 
+FOR INSERT TO authenticated 
+WITH CHECK (
+    player_id IN (
+        SELECT id 
+        FROM public.player 
+        WHERE user_id = auth.uid()
+    )
+);

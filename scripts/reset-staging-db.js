@@ -19,11 +19,12 @@ try {
     const dbUrlObj = new URL(DB_URL);
     const stagingProjectId = 'shlcqztfdhfwkhijwgue';
     
-    // Supavisor (IPv4) is required for GitHub Actions.
-    // We use the project-ref dot notation in the username.
-    // We try us-east-1 as it is a common default if us-east-2 failed.
-    dbUrlObj.hostname = 'aws-0-us-east-1.pooler.supabase.com';
-    dbUrlObj.port = '6543'; 
+    // Honor the hostname and port from the provided DB_URL if it's already a Supavisor URL
+    // Otherwise, fallback to the default Supavisor (IPv4) setup.
+    if (!dbUrlObj.hostname.includes('pooler.supabase.com')) {
+        dbUrlObj.hostname = 'aws-0-us-east-1.pooler.supabase.com';
+        dbUrlObj.port = '6543'; 
+    }
     dbUrlObj.username = `postgres.${stagingProjectId}`;
     dbUrlObj.searchParams.delete('options');
     

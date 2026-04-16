@@ -4,6 +4,7 @@ import { supabase } from '../scripts/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
 import { useSeason } from '../hooks/useSeason';
 import { LoadingSpinner } from './LoadingSpinner';
+import { EmptyState } from './EmptyState';
 import '../styles/MatchSchedule.css';
 
 // OPTIMIZATION: Move static helpers outside component to avoid recreation
@@ -379,8 +380,7 @@ export const MatchSchedule = () => {
                         <article
                           key={match.id}
                           className={`match-card card card--interactive card--overlay ${status}`}
-                        >
-                          <div className="match-meta">
+                        >                          <div className="match-meta">
                             <span className="match-time">{formatTime(match.time)}</span>
                             <span className={`status-badge ${statusBadge.class}`}>{statusBadge.text}</span>
                           </div>
@@ -471,18 +471,14 @@ export const MatchSchedule = () => {
               ))}
           </div>
         ) : (
-          <div className="no-matches card card--interactive card--overlay">
-            <p>No matches found for the selected period and filters.</p>
-            <button
-              onClick={() => {
-                setSelectedTeam('all');
-                setCurrentDate(new Date());
-              }}
-              className="reset-filters-btn"
-            >
-              Reset Filters
-            </button>
-          </div>
+          <EmptyState 
+            title="No matches found" 
+            description="There are no matches scheduled for the selected filters."
+            ctaText="Clear All Filters"
+            ctaAction={() => {
+              setSelectedTeam('all');
+            }}
+          />
         )}
       </div>
 

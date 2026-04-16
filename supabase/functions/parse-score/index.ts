@@ -1,54 +1,53 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.14.0';
 
-console.log('Hello from Functions! (Google SDK Version)');
+console.log('Hello from Functions! (Local Ollama Version)');
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*', 
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 405,
     });
   }
 
-  const { transcript } = await req.json();
+  try {
+    const { transcript } = await req.json();
 
-  if (!transcript) {
-    return new Response(JSON.stringify({ error: 'Missing transcript in request body' }), {
-      headers: { 'Content-Type': 'application/json' },
-      status: 400,
-    });
-  }
+    if (!transcript || typeof transcript !== 'string') {
+      return new Response(JSON.stringify({ error: 'Missing or invalid transcript in request body' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    }
 
-  const normalizedTranscript = typeof transcript === 'string' ? transcript.trim() : '';
-  if (!normalizedTranscript) {
-    return new Response(JSON.stringify({ error: 'Transcript must be a non-empty string' }), {
-      headers: { 'Content-Type': 'application/json' },
-      status: 400,
-    });
-  }
+    const normalizedTranscript = transcript.trim();
+    if (!normalizedTranscript || normalizedTranscript.length > 500) {
+      return new Response(JSON.stringify({ error: 'Transcript must be between 1 and 500 characters' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    }
 
-  if (normalizedTranscript.length > 500) {
-    return new Response(JSON.stringify({ error: 'Transcript too long (max 500 characters)' }), {
-      headers: { 'Content-Type': 'application/json' },
-      status: 400,
-    });
-  }
+    const OLLAMA_URL = Deno.env.get('LOCAL_OLLAMA_URL');
+    const SECRET = Deno.env.get('LOCAL_SERVER_SECRET');
 
-  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY_SCORE_PARSING');
+    if (!OLLAMA_URL || !SECRET) {
+      return new Response(JSON.stringify({ error: 'LOCAL_OLLAMA_URL or LOCAL_SERVER_SECRET not set' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
 
-  if (!GEMINI_API_KEY) {
-    return new Response(JSON.stringify({ error: 'GEMINI_API_KEY_SCORE_PARSING not set in environment variables' }), {
-      headers: { 'Content-Type': 'application/json' },
-      status: 500,
-    });
-  }
-
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  // Using gemini-2.5-flash-lite for maximum cost efficiency as requested
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-
-  const prompt = `You are a tennis score parsing assistant. Your task is to extract information from a user's spoken transcript of a tennis match score.
+    const prompt = `You are a tennis score parsing assistant. Your task is to extract information from a user's spoken transcript of a tennis match score.
   The output should be a JSON object with the following structure:
   {
     "lineNumber": number, // Optional, defaults to 1 if not specified, but try to infer from "line one", "line two" etc.
@@ -67,58 +66,50 @@ serve(async (req) => {
   If a set score is not clearly mentioned, return null for its home and away values.
   If player names are mentioned, you can ignore them as they will be handled separately.
 
-  Example transcripts and expected JSON output:
-  - "Line one doubles, home team won six four, six two"
-    { "lineNumber": 1, "matchType": "doubles", "homeSet1": 6, "awaySet1": 4, "homeSet2": 6, "awaySet2": 2, "homeSet3": null, "awaySet3": null, "notes": "" }
-  - "Singles, first set six zero home, second set seven five home"
-    { "lineNumber": 1, "matchType": "singles", "homeSet1": 6, "awaySet1": 0, "homeSet2": 7, "awaySet2": 5, "homeSet3": null, "awaySet3": null, "notes": "" }
-  - "Line three, home lost to away in three sets, five seven, six one, and a ten eight tiebreak"
-    { "lineNumber": 3, "matchType": "doubles", "homeSet1": 5, "awaySet1": 7, "homeSet2": 6, "awaySet2": 1, "homeSet3": 8, "awaySet3": 10, "notes": "" }
-  - "Home won six four, seven six, and a ten seven tie break"
-    { "lineNumber": 1, "matchType": "doubles", "homeSet1": 6, "awaySet1": 4, "homeSet2": 7, "awaySet2": 6, "homeSet3": 10, "awaySet3": 7, "notes": "" }
-  - "Home won the first set 6-3. Away won the second set 7-5. No third set."
-    { "lineNumber": 1, "matchType": "doubles", "homeSet1": 6, "awaySet1": 3, "homeSet2": 5, "awaySet2": 7, "homeSet3": null, "awaySet3": null, "notes": "No third set." }
-  - "Home won the match in two sets, score six two, six one. Players were John Doe and Jane Smith for home and Bob White and Alice Green for away."
-    { "lineNumber": 1, "matchType": "doubles", "homeSet1": 6, "awaySet1": 2, "homeSet2": 6, "awaySet2": 1, "homeSet3": null, "awaySet3": null, "notes": "Players were John Doe and Jane Smith for home and Bob White and Alice Green for away." }
-  - "Away team defaults for line two. Score not applicable."
-    { "lineNumber": 2, "matchType": "doubles", "homeSet1": null, "awaySet1": null, "homeSet2": null, "awaySet2": null, "homeSet3": null, "awaySet3": null, "notes": "Away team defaults for line two. Score not applicable." }
-  - "Home one, Line one, first set 6-3, second set 6-2."
-    { "lineNumber": 1, "matchType": "doubles", "homeSet1": 6, "awaySet1": 3, "homeSet2": 6, "awaySet2": 2, "homeSet3": null, "awaySet3": null, "notes": "" }
-  - "We won six four, six two"
-    { "lineNumber": 1, "matchType": "doubles", "homeSet1": 6, "awaySet1": 4, "homeSet2": 6, "awaySet2": 2, "homeSet3": null, "awaySet3": null, "notes": "" }
-  - "I lost the first set six two, then won the second six four"
-    { "lineNumber": 1, "matchType": "singles", "homeSet1": 2, "awaySet1": 6, "homeSet2": 6, "awaySet2": 4, "homeSet3": null, "awaySet3": null, "notes": "" }
-
   Always respond with ONLY the JSON object. Do not include any other text or explanation.
 
-  Transcript: "${transcript}"
-  `;
+  Transcript: "${normalizedTranscript}"`;
 
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-home-server-secret': SECRET,
+      },
+      body: JSON.stringify({
+        model: 'gemma4:4b',
+        prompt: prompt,
+        format: 'json',
+        stream: false,
+      }),
+    });
 
-    // Attempt to parse the text as JSON
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Ollama API failed: ${response.status} ${errText}`);
+    }
+
+    const data = await response.json();
+    
     let parsedResponse;
     try {
-      parsedResponse = JSON.parse(text);
+      parsedResponse = JSON.parse(data.response);
     } catch (parseError) {
-      console.error('Error parsing Gemini response as JSON:', parseError);
-      return new Response(JSON.stringify({ error: 'Invalid JSON response from AI', rawResponse: text }), {
-        headers: { 'Content-Type': 'application/json' },
+      console.error('Error parsing Ollama response as JSON:', parseError);
+      return new Response(JSON.stringify({ error: 'Invalid JSON response from AI', rawResponse: data.response }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       });
     }
 
     return new Response(JSON.stringify(parsedResponse), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
   } catch (error) {
-    console.error('Error calling Gemini API:', error);
-    return new Response(JSON.stringify({ error: 'Failed to process transcript with AI', details: error.message }), {
-      headers: { 'Content-Type': 'application/json' },
+    console.error('Error processing transcript:', error);
+    return new Response(JSON.stringify({ error: 'Failed to process transcript', details: error.message }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
   }

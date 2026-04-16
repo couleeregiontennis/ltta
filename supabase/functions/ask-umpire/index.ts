@@ -14,38 +14,33 @@ serve(async (req) => {
   try {
     const { query } = await req.json()
 
-    // Input Validation
-    if (!query || typeof query !== 'string') {
+    if (!query || typeof query !== 'string' || query.length > 500) {
       return new Response(
-        JSON.stringify({ error: 'Query is required and must be a string.' }),
+        JSON.stringify({ error: 'Query is required, must be a string, and under 500 characters.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       )
     }
 
-    if (query.length > 500) {
-      return new Response(
-        JSON.stringify({ error: 'Query is too long. Maximum 500 characters allowed.' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      )
+    const OLLAMA_URL = Deno.env.get('LOCAL_OLLAMA_URL');
+    const SECRET = Deno.env.get('LOCAL_SERVER_SECRET');
+    const QDRANT_URL = Deno.env.get('QDRANT_URL');
+    const QDRANT_API_KEY = Deno.env.get('QDRANT_API_KEY');
+
+    if (!OLLAMA_URL || !SECRET || !QDRANT_URL) {
+      throw new Error('Configuration missing: LOCAL_OLLAMA_URL, LOCAL_SERVER_SECRET, or QDRANT_URL')
     }
 
-    const UMPIRE_GEMINI_API_KEY = Deno.env.get('UMPIRE_GEMINI_API_KEY')
-    const QDRANT_URL = Deno.env.get('QDRANT_URL')
-    const QDRANT_API_KEY = Deno.env.get('QDRANT_API_KEY')
-
-    if (!UMPIRE_GEMINI_API_KEY || !QDRANT_URL) {
-      throw new Error('Configuration missing: UMPIRE_GEMINI_API_KEY or QDRANT_URL')
-    }
-
-    // 1. Generate Embedding (Using REST API v1beta)
-    console.log("Generating embedding (REST)...");
-    const embedUrl = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${UMPIRE_GEMINI_API_KEY}`;
-    const embedResponse = await fetch(embedUrl, {
+    // 1. Generate Embedding
+    console.log("Generating embedding (Ollama)...");
+    const embedResponse = await fetch(`${OLLAMA_URL}/api/embeddings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'x-home-server-secret': SECRET 
+        },
         body: JSON.stringify({
-            model: 'models/text-embedding-004',
-            content: { parts: [{ text: query }] }
+            model: 'nomic-embed-text',
+            prompt: query
         })
     });
 
@@ -55,7 +50,7 @@ serve(async (req) => {
     }
     
     const embedData = await embedResponse.json();
-    const vector = embedData.embedding.values;
+    const vector = embedData.embedding;
     
     // 2. Search Qdrant
     console.log("Searching Qdrant...");
@@ -69,10 +64,8 @@ serve(async (req) => {
 
     const context = searchResult.map(item => item.payload?.content).join('\n\n')
 
-    // 3. Generate Answer (Using REST API v1beta)
-    console.log("Generating answer with Gemini (REST)...");
-    const chatUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${UMPIRE_GEMINI_API_KEY}`;
-    
+    // 3. Generate Answer
+    console.log("Generating answer with Ollama...");
     const prompt = `
       You are the official Umpire for the Coulee Region Tennis Association (LTTA).
       Answer the player's question strictly based on the provided rules context below.
@@ -86,11 +79,16 @@ serve(async (req) => {
       Question: ${query}
     `;
 
-    const chatResponse = await fetch(chatUrl, {
+    const chatResponse = await fetch(`${OLLAMA_URL}/api/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'x-home-server-secret': SECRET 
+        },
         body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }]
+            model: 'gemma4:4b',
+            prompt: prompt,
+            stream: false
         })
     });
 
@@ -100,7 +98,7 @@ serve(async (req) => {
     }
 
     const chatData = await chatResponse.json();
-    const responseText = chatData.candidates[0].content.parts[0].text;
+    const responseText = chatData.response;
 
     return new Response(
       JSON.stringify({ answer: responseText }),

@@ -118,7 +118,7 @@
 .carousel-dots .dot {
   width: 10px;
   height: 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   border: none;
   background: var(--layout-border);
   cursor: pointer;

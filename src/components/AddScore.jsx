@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../scripts/supabaseClient';
 import { useVoiceScoreInput } from '../hooks/useVoiceScoreInput';
 import { LoadingSpinner } from './LoadingSpinner';
+import { useToast } from '../context/ToastContext';
 import '../styles/AddScore.css';
 
 const STANDARD_SET_MIN_WIN = 6;
@@ -166,9 +167,9 @@ const isPayloadUnchanged = (existing, payload) => {
 };
 
 export const AddScore = () => {
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [user, setUser] = useState(null);
   const [player, setPlayer] = useState(null);
   const [teams, setTeams] = useState([]);
@@ -256,7 +257,7 @@ export const AddScore = () => {
       notes: nextForm.notes
     }));
     setError('');
-    setSuccess('Transcript parsed successfully by AI!');
+    addToast('Transcript parsed successfully by AI!', 'success');
   });
 
   // Load user, player, and team data
@@ -860,7 +861,7 @@ export const AddScore = () => {
           .eq('id', selectedMatch.id);
       }
 
-      setSuccess(existingScore ? 'Scores updated successfully! Any dispute has been resolved.' : 'Scores submitted successfully!');
+      addToast(existingScore ? 'Scores updated successfully! Any dispute has been resolved.' : 'Scores submitted successfully!', 'success');
 
       // Reload existing scores to reflect changes
       await loadExistingScores(selectedMatch.id);
@@ -1295,7 +1296,6 @@ export const AddScore = () => {
           </div>
         </div>
         {error && <div className="error-message">{error}</div>}
-        {success && <div className="success-message">{success}</div>}
         <button type="submit" disabled={loading} className="submit-button">
           {loading ? (
             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
