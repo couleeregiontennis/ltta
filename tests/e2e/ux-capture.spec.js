@@ -1,0 +1,86 @@
+import { test } from '@playwright/test';
+import { mockSupabaseAuth, disableNavigatorLocks } from '../utils/auth-mock';
+
+const ROUTES = [
+  { name: 'match-schedule', path: '/?date=2023-09-30' }, // Specific date with seed data
+  { name: 'standings', path: '/standings' },
+  { name: 'player-profile', path: '/player-profile' },
+  { name: 'captain-dashboard', path: '/captain-dashboard', role: 'captain' },
+  { name: 'add-score', path: '/add-score', role: 'captain' },
+  { name: 'player-resources', path: '/player-resources' },
+];
+
+test.describe('UX Audit Capture', () => {
+  for (const route of ROUTES) {
+    test(`capture ${route.name}`, async ({ page }) => {
+      // Mock auth based on required role
+      const userDetails = route.role === 'captain' 
+        ? { id: 'captain-user-id', email: 'captain@ltta.com' } 
+        : { id: 'player-user-id', email: 'player@ltta.com' };
+      
+      await mockSupabaseAuth(page, userDetails);
+      
+      // Mock player and team data for role-based pages
+      if (route.role === 'captain') {
+        await page.route('**/rest/v1/player*', async (r) => {
+          if (r.request().method() === 'GET') {
+            await r.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify([{
+                id: 'captain-user-id',
+                user_id: 'captain-user-id',
+                is_captain: true,
+                is_admin: true,
+                first_name: 'Test',
+                last_name: 'Captain'
+              }]),
+            });
+          } else {
+            await r.continue();
+          }
+        });
+
+        await page.route('**/rest/v1/player_to_team*', async (r) => {
+           await r.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify([{ team: 'team-id-123' }]),
+          });
+        });
+
+        await page.route('**/rest/v1/team*', async (r) => {
+           await r.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify([{
+              id: 'team-id-123',
+              number: 1,
+              name: 'Aces',
+              play_night: 'Tuesday'
+            }]),
+          });
+        });
+      }
+
+      await page.goto(route.path);
+      
+      // Wait for content to load
+      await page.waitForTimeout(2000); // Wait for animations/transitions
+
+      // Take desktop screenshot
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.screenshot({ 
+        path: `verification/ux-audit/${route.name}-desktop.png`, 
+        fullPage: true 
+      });
+
+      // Take mobile screenshot
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.screenshot({ 
+        path: `verification/ux-audit/${route.name}-mobile.png`, 
+        fullPage: true 
+      });
+    });
+  }
+});
