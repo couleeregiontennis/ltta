@@ -1,5 +1,11 @@
 import pkg from 'pg';
 import fs from 'fs';
+import dns from 'node:dns';
+
+// Force IPv4 resolution to avoid ENETUNREACH issues with Supabase's IPv6 direct hosts in GitHub Actions
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
 
 const { Client } = pkg;
 
@@ -10,29 +16,27 @@ if (!DB_URL) {
     process.exit(1);
 }
 
-let clientConfig = {
-    connectionString: DB_URL,
-    ssl: { rejectUnauthorized: false }
-};
-
 try {
     const dbUrlObj = new URL(DB_URL);
     const stagingProjectId = 'shlcqztfdhfwkhijwgue';
     
-    // For GitHub Actions, we MUST use the IPv4 Supavisor pooler because direct IPv6 fails.
-    // The pooler region is us-east-2, and this project's tenant identifier includes a '.pooler' suffix.
-    dbUrlObj.hostname = 'aws-0-us-east-2.pooler.supabase.com';
-    dbUrlObj.port = '6543'; // Transaction pooler
-    dbUrlObj.username = `postgres.${stagingProjectId}.pooler`;
+    // Force the direct connection host (db.[ref].supabase.co)
+    // Combined with the IPv4 preference above, this is the most reliable way to connect in CI
+    dbUrlObj.hostname = `db.${stagingProjectId}.supabase.co`;
+    dbUrlObj.port = '5432';
+    dbUrlObj.username = 'postgres';
     dbUrlObj.searchParams.delete('options');
     
-    clientConfig.connectionString = dbUrlObj.toString();
-    console.log(`Forced connection to Supavisor at ${dbUrlObj.hostname} with exact username ${dbUrlObj.username}.`);
+    DB_URL = dbUrlObj.toString();
+    console.log(`Attempting direct connection to ${dbUrlObj.hostname} (IPv4 preferred)...`);
 } catch (e) {
-    console.warn("Could not parse URLs:", e.message);
+    console.warn("Could not parse DB_URL, using as provided:", e.message);
 }
 
-const client = new Client(clientConfig);
+const client = new Client({
+    connectionString: DB_URL,
+    ssl: { rejectUnauthorized: false }
+});
 
 async function run() {
     try {
