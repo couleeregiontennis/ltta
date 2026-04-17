@@ -23,10 +23,18 @@ export async function disableNavigatorLocks(page) {
 export async function mockSupabaseData(page, table, data) {
   await page.route(`**/rest/v1/${table}*`, async (route) => {
     if (route.request().method() === 'GET') {
+      const url = route.request().url();
+      const acceptHeader = route.request().headers()['accept'] || '';
+      const isSingle = acceptHeader.includes('vnd.pgrst.object') || url.includes('limit=1');
+      
+      if (isSingle) {
+        console.log(`MOCK: Returning SINGLE object (Accept: ${acceptHeader}, URL: ${url})`);
+      }
+      const responseData = (isSingle && Array.isArray(data)) ? data[0] : data;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(data)
+        body: JSON.stringify(responseData)
       });
     } else {
       await route.continue();
@@ -45,7 +53,7 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
     ...userDetails,
   };
 
-  const validJwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmYWtlLXVzZXItaWQiLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJleHAiOjE5OTk5OTk5OTksImlhdCI6MTYwMDAwMDAwMCwiYXVkIjoiYXV0aGVudGljYXRlZCIsInR5cCI6ImFub24ifQ.fake-signature';
+  const validJwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmYWtlLXVzZXItaWQiLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJleHAiOjE5OTk5OTk5OTksImlhdCI6MTYwMDAwMDAwMCwiYXVkIjoiYXV0aGVudGljYXV0aGVudGljYXRlZCJ9.fake-signature';
 
   const session = {
     access_token: validJwt,
@@ -74,9 +82,10 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
 
   // GLOBAL DATA MOCKS
   
-  // Mock current season - CRITICAL for MatchSchedule and Standings
-  await page.route('**/rest/v1/season*', async (route) => {
+  // Mock current season - use regex to avoid matching other tables
+  await page.route(/\/rest\/v1\/season($|\?)/, async (route) => {
     if (route.request().method() === 'GET') {
+      const url = route.request().url();
       const seasonData = {
         id: 's2026-uuid',
         number: 2026,
@@ -85,10 +94,7 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
         start_date: '2026-06-01',
         end_date: '2026-08-31'
       };
-      
-      // If the URL has limit=1 or is a single request, return object, else array
-      const isSingle = route.request().url().includes('limit=1') || route.request().url().includes('maybeSingle');
-      
+      const isSingle = route.request().headers()['accept']?.includes('vnd.pgrst.object') || url.includes('limit=1') || url.includes('maybeSingle');
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -99,71 +105,122 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
     }
   });
 
-  await page.route('**/rest/v1/player*', async (route) => {
+  // Robust player mock - use regex to avoid matching player_to_team
+  await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
     if (route.request().method() === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([{
+      const url = route.request().url();
+      const acceptHeader = route.request().headers()['accept'] || '';
+      const isSingle = acceptHeader.includes('vnd.pgrst.object') || url.includes('limit=1');
+      
+      const playerData = [
+        {
           id: defaultUser.id,
           user_id: defaultUser.id,
-          first_name: 'Test',
-          last_name: 'User',
+          first_name: userDetails.first_name || 'Test',
+          last_name: userDetails.last_name || 'User',
           email: defaultUser.email,
-          is_captain: userDetails.is_captain || false,
-          is_admin: userDetails.is_admin || false,
+          is_captain: userDetails.is_captain ?? false,
+          is_admin: userDetails.is_admin ?? false,
           ranking: 3,
-          is_active: true,
-          availability: { monday: true, tuesday: true }
-        }]),
+          is_active: true
+        },
+        {
+          id: 'other-player-id',
+          user_id: 'other-user-id',
+          first_name: 'Other',
+          last_name: 'Player',
+          email: 'other@test.com',
+          is_captain: false,
+          is_admin: false,
+          ranking: 4,
+          is_active: true
+        }
+      ];
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(isSingle ? playerData[0] : playerData),
       });
     } else {
       await route.continue();
     }
   });
 
-  await page.route('**/rest/v1/player_to_team*', async (route) => {
+  // Robust player_to_team mock
+  await page.route(/\/rest\/v1\/player_to_team($|\?)/, async (route) => {
     if (route.request().method() === 'GET') {
+      const url = route.request().url();
+      const acceptHeader = route.request().headers()['accept'] || '';
+      const isSingle = acceptHeader.includes('vnd.pgrst.object') || url.includes('limit=1');
+      
+      let filtered = [
+        { team: 't1', player: defaultUser.id },
+        { team: 't1', player: 'other-player-id' }
+      ];
+
+      // Filter by team if requested
+      if (url.includes('team=eq.t2')) {
+        filtered = [
+          { team: 't2', player: defaultUser.id },
+          { team: 't2', player: 'other-player-id' }
+        ];
+      } else if (url.includes(`player=eq.${defaultUser.id}`)) {
+        filtered = [
+          { team: 't1', player: defaultUser.id }
+        ];
+      }
+
+      // Handle joins
+      const results = filtered.map(link => {
+        const result = { ...link };
+        if (url.includes('player(') || url.includes('player%28') || url.includes('player:player') || url.includes('player%3Aplayer')) {
+          const isMe = result.player === defaultUser.id;
+          result.player = {
+            id: result.player,
+            first_name: isMe ? (userDetails.first_name || 'Test') : 'Other',
+            last_name: isMe ? (userDetails.last_name || 'User') : 'Player',
+            ranking: isMe ? 3 : 4,
+            is_active: true
+          };
+        }
+        if (url.includes('team(') || url.includes('team%28')) {
+          result.team = {
+            id: result.team,
+            number: result.team === 't1' ? 1 : 2,
+            name: result.team === 't1' ? 'Strikers' : 'Volleyers',
+            play_night: 'Tuesday'
+          };
+        }
+        return result;
+      });
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ 
-          team: 't1', 
-          player: {
-            id: defaultUser.id,
-            first_name: 'Test',
-            last_name: 'User',
-            email: defaultUser.email,
-            is_active: true,
-            ranking: 3
-          } 
-        }]),
+        body: JSON.stringify(isSingle ? results[0] : results),
       });
     } else {
       await route.continue();
     }
   });
 
-  await page.route('**/rest/v1/team*', async (route) => {
+  // Team mock - use regex to avoid matching team_match
+  await page.route(/\/rest\/v1\/team($|\?)/, async (route) => {
     if (route.request().method() === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([{ id: 't1', number: 1, name: 'Strikers', play_night: 'Tuesday' }]),
-      });
-    } else {
-      await route.continue();
-    }
-  });
+      const url = route.request().url();
+      const acceptHeader = route.request().headers()['accept'] || '';
+      const isSingle = acceptHeader.includes('vnd.pgrst.object') || url.includes('limit=1');
+      
+      let teamData = { id: 't1', number: 1, name: 'Strikers', play_night: 'Tuesday' };
+      if (url.includes('number=eq.2') || url.includes('id=eq.t2')) {
+        teamData = { id: 't2', number: 2, name: 'Volleyers', play_night: 'Tuesday' };
+      }
 
-  await page.route('**/rest/v1/matches*', async (route) => {
-    if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([
-          { id: 'm1', date: '2026-05-12', time: '6:00 PM', home_team_number: 1, away_team_number: 2, home_team_name: 'Strikers', away_team_name: 'Volleyers', courts: '1-2' }
-        ]),
+        body: JSON.stringify(isSingle ? teamData : [teamData]),
       });
     } else {
       await route.continue();
@@ -171,53 +228,47 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
   });
 
   // Mock team_match (the new relational table)
-  await page.route('**/rest/v1/team_match*', async (route) => {
+  await page.route(/\/rest\/v1\/team_match($|\?)/, async (route) => {
     if (route.request().method() === 'GET') {
+      const url = route.request().url();
+      const acceptHeader = route.request().headers()['accept'] || '';
+      const isSingle = acceptHeader.includes('vnd.pgrst.object') || url.includes('limit=1');
+      
+      // Robust team_match mock
+      const matchData = { 
+        id: 'm1-uuid', 
+        date: '2026-05-12', 
+        time: '18:00:00', 
+        status: 'scheduled', 
+        courts: '1-2',
+        is_disputed: false,
+        home_team_id: 't1',
+        away_team_id: 't2',
+        home_full_roster: false,
+        away_full_roster: false,
+        home_team: { id: 't1', name: 'Strikers', number: 1, play_night: 'Tuesday' },
+        away_team: { id: 't2', name: 'Volleyers', number: 2, play_night: 'Tuesday' }
+      };
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([
-          { 
-            id: 'm1-uuid', 
-            date: '2026-05-12', 
-            time: '18:00:00', 
-            status: 'scheduled', 
-            courts: '1-2',
-            home_team: { id: 't1', name: 'Strikers', number: 1 },
-            away_team: { id: 't2', name: 'Volleyers', number: 2 }
-          }
-        ]),
+        body: JSON.stringify(isSingle ? matchData : [matchData]),
       });
     } else {
       await route.continue();
     }
   });
 
-  await page.route('**/rest/v1/standings*', async (route) => {
+  await page.route('**/rest/v1/line_results*', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([
-          { id: 's1', team_id: 't1', team_number: 1, team_name: 'Strikers', wins: 5, losses: 1, ties: 0, points: 15, matches_played: 6, win_percentage: 83.3, sets_won: 12, sets_lost: 2, games_won: 72, games_lost: 40, play_night: 'Tuesday' },
-          { id: 's2', team_id: 't2', team_number: 2, team_name: 'Volleyers', wins: 3, losses: 3, ties: 0, points: 9, matches_played: 6, win_percentage: 50.0, sets_won: 8, sets_lost: 8, games_won: 60, games_lost: 60, play_night: 'Tuesday' }
-        ]),
+        body: JSON.stringify([]),
       });
     } else {
       await route.continue();
-    }
-  });
-
-  // Mock location for Courts
-  await page.route('**/rest/v1/location*', async (route) => {
-    if (route.request().method() === 'GET') {
-        await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify([{ id: 'l1', name: 'Green Island Park', address: '2312 7th St S, La Crosse, WI 54601', courts_count: 8 }])
-        });
-    } else {
-        await route.continue();
     }
   });
 }
