@@ -20,6 +20,20 @@ export async function disableNavigatorLocks(page) {
   });
 }
 
+export async function mockSupabaseData(page, table, data) {
+  await page.route(`**/rest/v1/${table}*`, async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(data)
+      });
+    } else {
+      await route.continue();
+    }
+  });
+}
+
 export async function mockSupabaseAuth(page, userDetails = {}) {
   await disableNavigatorLocks(page);
 
@@ -95,7 +109,17 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ team: 't1', player: defaultUser.id }]),
+        body: JSON.stringify([{ 
+          team: 't1', 
+          player: {
+            id: defaultUser.id,
+            first_name: 'Test',
+            last_name: 'User',
+            email: defaultUser.email,
+            is_active: true,
+            ranking: 3
+          } 
+        }]),
       });
     } else {
       await route.continue();
