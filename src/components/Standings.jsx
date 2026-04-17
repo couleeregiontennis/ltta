@@ -5,8 +5,8 @@ import { EmptyState } from './EmptyState';
 import '../styles/Style.css';
 import '../styles/Standings.css';
 
-// OPTIMIZATION: Memoized component to prevent re-rendering all rows when parent state (like auth or spotlight) updates
 const StandingsCard = memo(({ team, index }) => {
+  if (!team) return null;
   const rank = index + 1;
   const record =
     team.ties > 0
@@ -23,16 +23,16 @@ const StandingsCard = memo(({ team, index }) => {
         </div>
         <div className="card-stats-grid">
           <div className="stat-item">
-            <span className="stat-label">Record</span>
-            <span className="stat-value">{record}</span>
+            <span className="stat-label">Points</span>
+            <span className="stat-value">{team.totalPoints}</span>
           </div>
           <div className="stat-item">
-            <span className="stat-label">Win %</span>
-            <span className="stat-value">{team.winPercentage.toFixed(1)}%</span>
+            <span className="stat-label">Sets (W-L)</span>
+            <span className="stat-value">{team.setsWon}-{team.setsLost}</span>
           </div>
           <div className="stat-item">
-            <span className="stat-label">Played</span>
-            <span className="stat-value">{team.matchesPlayed}</span>
+            <span className="stat-label">Bonus</span>
+            <span className="stat-value">{team.bonusPoints}</span>
           </div>
         </div>
         {team.playoffStatus && (
@@ -47,58 +47,34 @@ const StandingsCard = memo(({ team, index }) => {
   );
 });
 
-const StandingsRow = memo(({ team, index }) => {
-  const rank = index + 1;
-  const record =
-    team.ties > 0
-      ? `${team.wins}-${team.losses}-${team.ties}`
-      : `${team.wins}-${team.losses}`;
+  const StandingsRow = memo(({ team, index }) => {
+    if (!team) return null;
+    const rank = index + 1;
 
-  return (
-    <tr
-      className={index === 0 ? 'leader' : index < 3 ? 'top-three' : ''}
-    >
-      <td data-label="Rank">{rank}</td>
-      <td data-label="Team">
-        <div className="team-cell">
-          <span className="team-number">Team {team.number}</span>
-          <span className="team-name">
-            {team.name}
-            {team.hasDisputes && (
-              <span className="dispute-badge" title="This team has one or more disputed match scores" aria-label="Disputed Match">⚠️</span>
-            )}
-          </span>
-        </div>
-      </td>
-      <td data-label="Night">{team.playNight || '—'}</td>
-      <td data-label="Status">
-        {team.playoffStatus === 'Clinched' && <span className="status-badge clinched" title="Clinched 1st Place">🏆 Clinched</span>}
-        {team.playoffStatus === 'Eliminated' && <span className="status-badge eliminated">Eliminated</span>}
-        {team.playoffStatus === 'Control Destiny' && <span className="status-badge control">Control Destiny</span>}
-        {team.playoffStatus === 'On the Hunt' && <span className="status-badge hunt" title="Magic Number to Clinch">Magic #: {team.magicNumber}</span>}
-        {!team.playoffStatus && <span className="status-badge">—</span>}
-      </td>
-      <td data-label="Matches">{team.matchesPlayed}</td>
-      <td data-label="Record">{record}</td>
-      <td data-label="Win %">
-        {team.matchesPlayed > 0
-          ? `${team.winPercentage.toFixed(1)}%`
-          : '0.0%'}
-      </td>
-      <td data-label="Sets (W-L)" className="hide-mobile">
-        {team.setsWon} - {team.setsLost}
-      </td>
-      <td data-label="Set %" className="hide-mobile">
-        {team.setsWon + team.setsLost > 0
-          ? `${team.setWinPercentage.toFixed(1)}%`
-          : '0.0%'}
-      </td>
-      <td data-label="Games (W-L)" className="hide-mobile">
-        {team.gamesWon} - {team.gamesLost}
-      </td>
-    </tr>
-  );
-});
+    return (
+      <tr
+        className={index === 0 ? 'leader' : index < 3 ? 'top-three' : ''}
+      >
+        <td data-label="Rank">{rank}</td>
+        <td data-label="Team">
+          <div className="team-cell">
+            <span className="team-number">Team {team.number}</span>
+            <span className="team-name">{team.name}</span>
+          </div>
+        </td>
+        <td data-label="Night">{team.playNight || '—'}</td>
+        <td data-label="Status">{team.playoffStatus || '—'}</td>
+        <td data-label="Matches">{team.matchesPlayed}</td>
+        <td data-label="Points"><strong>{team.totalPoints}</strong></td>
+        <td data-label="Sets (W-L)" className="hide-mobile">
+          {team.setsWon} - {team.setsLost}
+        </td>
+        <td data-label="Bonus" className="hide-mobile">
+          {team.bonusPoints}
+        </td>
+      </tr>
+    );
+  });
 
 const Standings = () => {
   const { user, loading: authLoading } = useAuth();
@@ -139,13 +115,13 @@ const Standings = () => {
 
       const [
         { data: standingsData, error: standingsError },
-        { count: playerCount, error: playerError },
+        { count: playerCount },
         { data: recentMatchesData, error: recentMatchesError },
-        { data: allMatchDates, error: datesError },
-        { data: playoffData, error: playoffError },
+        { data: allMatchDates },
+        { data: playoffData },
         { data: disputedMatches, error: disputedMatchesError }
       ] = await Promise.all([
-        supabase.from('standings_view').select('*'),
+        supabase.from('standings_2026_view').select('*'),
         supabase.from('player').select('*', { count: 'exact', head: true }),
         supabase.from('matches').select('id, date, time, status, home_team_name, away_team_name').order('date', { ascending: false }).limit(6),
         supabase.from('matches').select('date'),
@@ -167,41 +143,29 @@ const Standings = () => {
 
       // Process Standings
       const formattedStandings = (standingsData || []).map((team) => {
-        const scenarios = playoffData ? playoffData[team.team_number] : null;
+        const scenarios = (playoffData && typeof playoffData === 'object') ? playoffData[team.team_number] : null;
         return {
           id: team.team_id,
           number: team.team_number,
           name: team.team_name,
           playNight: team.play_night,
-          wins: team.wins,
-          losses: team.losses,
-          ties: team.ties,
+          totalPoints: team.total_points,
           matchesPlayed: team.matches_played,
-          setsWon: team.sets_won,
-          setsLost: team.sets_lost,
-          gamesWon: team.games_won,
-          gamesLost: team.games_lost,
-          winPercentage: team.win_percentage,
-          setWinPercentage: team.set_win_percentage,
+          setsWon: team.total_sets_won,
+          setsLost: team.total_sets_lost,
+          bonusPoints: team.total_bonus_points,
           playoffStatus: scenarios?.status || '',
           magicNumber: scenarios?.magicNumber || 0,
           hasDisputes: disputedTeamIds.has(team.team_id)
         };
       });
 
-      // Sort Standings
+      // Sort Standings by Total Points
       const sortedStandings = [...formattedStandings].sort((a, b) => {
-        if (b.winPercentage !== a.winPercentage) return b.winPercentage - a.winPercentage;
-
+        if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
         const setDiffA = a.setsWon - a.setsLost;
         const setDiffB = b.setsWon - b.setsLost;
-        if (setDiffB !== setDiffA) return setDiffB - setDiffA;
-
-        const gameDiffA = a.gamesWon - a.gamesLost;
-        const gameDiffB = b.gamesWon - b.gamesLost;
-        if (gameDiffB !== gameDiffA) return gameDiffB - gameDiffA;
-
-        return Number(a.number) - Number(b.number);
+        return setDiffB - setDiffA;
       });
 
       const uniqueNights = Array.from(
@@ -516,17 +480,15 @@ const Standings = () => {
                   <th>Night</th>
                   <th>Status</th>
                   <th>Matches</th>
-                  <th>Record</th>
-                  <th>Win %</th>
+                  <th>Points</th>
                   <th className="hide-mobile">Sets (W-L)</th>
-                  <th className="hide-mobile">Set %</th>
-                  <th className="hide-mobile">Games (W-L)</th>
+                  <th className="hide-mobile">Bonus</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStandings.length === 0 ? (
                   <tr className="empty-row">
-                    <td colSpan={10}>No results yet for this league night.</td>
+                    <td colSpan={8}>No results yet for this league night.</td>
                   </tr>
                 ) : (
                   filteredStandings.map((team, index) => (
