@@ -19,10 +19,10 @@ const StandingsCard = memo(({ team, index }) => {
       <div className="card-rank">#{rank}</div>
       <div className="card-main">
         <div className="card-team-info">
-          <span className="team-number">Team {team.number}</span>
-          <span className="team-name">{team.name}</span>
-        </div>
-        <div className="card-stats-grid">
+           {team.hasDisputes && <span className="dispute-badge" title="Disputed match results">⚠️</span>}
+           <span className="team-number">Team {team.number}</span>
+           <span className="team-name">{team.name}</span>
+         </div>        <div className="card-stats-grid">
           <div className="stat-item">
             <span className="stat-label">Points</span>
             <span className="stat-value">{team.totalPoints}</span>

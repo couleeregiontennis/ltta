@@ -163,13 +163,23 @@ test.describe('Score Flagging Feature', () => {
 
         test('should show warning badge in Standings for team with disputed match', async ({ page }) => {
             await page.goto('/standings');
+            // Give it a moment to settle
+            await page.waitForTimeout(1000);
 
-            // Find the team name in the table
-            const teamCell = page.locator('.standings-table td', { hasText: 'Home Team' }).first();
-            await expect(teamCell).toBeVisible();
+            // Check for the team and dispute badge in either desktop or mobile view
+            const isMobile = await page.evaluate(() => window.innerWidth <= 768);
+            let teamContainer;
 
-            // Check for the dispute badge
-            const badge = page.locator('.dispute-badge');
+            if (isMobile) {
+              teamContainer = page.locator('.standings-mobile-card').filter({ hasText: 'Home Team' }).first();
+            } else {
+              teamContainer = page.locator('.standings-table td').filter({ hasText: 'Home Team' }).first();
+            }
+
+            await expect(teamContainer).toBeVisible({ timeout: 10000 });
+            
+            // Check for the dispute badge within that container
+            const badge = teamContainer.locator('.dispute-badge');
             await expect(badge).toBeVisible();
             await expect(badge).toHaveText('⚠️');
         });

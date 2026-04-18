@@ -184,10 +184,20 @@ test.describe('Match Schedule Page', () => {
     await page.goto('/standings');
     await expect(page.getByRole('heading', { name: 'Team Standings' })).toBeVisible();
 
-    // Assert visibility of team names scoped to the standings table
-    const table = page.locator('.standings-table');
-    await expect(table.getByText('Team A')).toBeVisible();
-    await expect(table.getByText('Team B')).toBeVisible();
+    // Assert visibility of team names - support both desktop table and mobile cards
+    const isMobile = await page.evaluate(() => window.innerWidth <= 768);
+    let teamA, teamB;
+
+    if (isMobile) {
+      teamA = page.locator('.standings-mobile-card').filter({ hasText: 'Team A' }).first();
+      teamB = page.locator('.standings-mobile-card').filter({ hasText: 'Team B' }).first();
+    } else {
+      teamA = page.locator('.standings-table').getByText('Team A');
+      teamB = page.locator('.standings-table').getByText('Team B');
+    }
+    
+    await expect(teamA).toBeVisible();
+    await expect(teamB).toBeVisible();
   });
 
 });
