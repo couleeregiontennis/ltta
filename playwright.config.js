@@ -38,15 +38,14 @@ export default defineConfig({
   },
 
   /* Configure projects for major browsers. Run all in CI, but only Chromium locally for speed. */
-  projects: process.env.CI ? [
+  projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-  ] : [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 5'] },
     },
   ],
 
