@@ -8,7 +8,7 @@ test.describe('Team & Rankings (Public)', () => {
 
   test('Player Rankings page loads', async ({ page }) => {
     // Mock players data
-    await page.route('**/rest/v1/player*', async (route) => {
+    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -41,7 +41,7 @@ test.describe('Team & Rankings (Public)', () => {
     });
 
     // 2. Schedule fetch (matches table)
-    await page.route('**/rest/v1/matches*', async (route) => {
+    await page.route('**/rest/v1/team_match*', async (route) => {
         await route.fulfill({
             status: 200,
             contentType: 'application/json',

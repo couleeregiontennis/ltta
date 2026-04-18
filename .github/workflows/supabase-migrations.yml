@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "supabase/migrations/**"
+  workflow_dispatch:
 
 jobs:
   deploy-migrations:
@@ -27,4 +28,6 @@ jobs:
           version: latest
 
       - name: Run Supabase Migrations
-        run: supabase db push
+        run: |
+          supabase link --project-ref $SUPABASE_PROJECT_ID
+          supabase db push

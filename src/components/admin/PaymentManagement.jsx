@@ -99,6 +99,7 @@ export const PaymentManagement = () => {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
+            console.log('PaymentManagement: Loaded payments:', data?.length, data?.[0]?.status);
             setPayments(data || []);
         } catch (err) {
             console.error('Error fetching payments:', err);
@@ -121,6 +122,7 @@ export const PaymentManagement = () => {
                 season_id: selectedSeasonId,
                 amount_paid: parseFloat(newPayment.amount_paid),
                 payment_method: newPayment.payment_method,
+                status: 'verified',
                 notes: newPayment.notes,
                 player_id: newPayment.payer_type === 'player' ? newPayment.player_id : null,
                 team_id: newPayment.payer_type === 'team' ? newPayment.team_id : null
@@ -157,7 +159,28 @@ export const PaymentManagement = () => {
         }
     };
 
-    const totalCollected = payments.reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
+    const handleApprovePayment = async (paymentId) => {
+        try {
+            setError('');
+            const { error } = await supabase
+                .from('season_payments')
+                .update({ status: 'verified' })
+                .eq('id', paymentId);
+
+            if (error) throw error;
+
+            setSuccess('Payment approved successfully!');
+            fetchPayments(selectedSeasonId);
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err) {
+            console.error('Error approving payment:', err);
+            setError('Failed to approve payment.');
+        }
+    };
+
+    const totalCollected = payments.filter(p => p.status !== 'pending').reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
+    const pendingPayments = payments.filter(p => p.status === 'pending');
+    const verifiedPayments = payments.filter(p => p.status !== 'pending');
 
     if (loading || authLoading || seasonLoading) {
         return <div className="payment-management loading">Loading payment management...</div>;
@@ -206,11 +229,67 @@ export const PaymentManagement = () => {
                     <div className="value">${totalCollected.toFixed(2)}</div>
                 </div>
                 <div className="summary-card">
-                    <h3>Payments Count</h3>
-                    <div className="value">{payments.length}</div>
+                    <h3>Verified Payments</h3>
+                    <div className="value">{verifiedPayments.length}</div>
+                </div>
+                <div className="summary-card">
+                    <h3>Pending Approvals</h3>
+                    <div className="value" style={{ color: pendingPayments.length > 0 ? 'var(--color-danger)' : 'inherit' }}>
+                        {pendingPayments.length}
+                    </div>
                 </div>
             </div>
 
+            {pendingPayments.length > 0 && (
+                <div className="payment-table-container pending-container" style={{ marginBottom: '2rem', border: '2px solid var(--color-danger)', borderRadius: 'var(--radius-md)' }}>
+                    <h2 style={{ padding: '1rem', margin: 0, backgroundColor: 'rgba(var(--color-danger-rgb), 0.1)', color: 'var(--color-danger)' }}>
+                        Pending Verification
+                    </h2>
+                    <table className="payment-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Player/Team</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Notes</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {pendingPayments.map(payment => (
+                                <tr key={payment.id}>
+                                    <td>{new Date(payment.created_at).toLocaleDateString()}</td>
+                                    <td>
+                                        {payment.player ? 
+                                            `${payment.player.first_name} ${payment.player.last_name}` : 
+                                            `Team: ${payment.team?.name || 'Unknown'}`
+                                        }
+                                    </td>
+                                    <td>${parseFloat(payment.amount_paid).toFixed(2)}</td>
+                                    <td>
+                                        <span className={`method-badge ${payment.payment_method}`}>
+                                            {payment.payment_method.toUpperCase()}
+                                        </span>
+                                    </td>
+                                    <td>{payment.notes}</td>
+                                    <td>
+                                        <button 
+                                            className="btn-primary" 
+                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                                            onClick={() => handleApprovePayment(payment.id)}
+                                        >
+                                            Approve
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            <h3>Verified Payments</h3>
             <div className="payment-table-container">
                 <table className="payment-table">
                     <thead>
@@ -223,7 +302,7 @@ export const PaymentManagement = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {payments.map(payment => (
+                        {verifiedPayments.map(payment => (
                             <tr key={payment.id}>
                                 <td>{new Date(payment.created_at).toLocaleDateString()}</td>
                                 <td>
@@ -241,7 +320,7 @@ export const PaymentManagement = () => {
                                 <td>{payment.notes}</td>
                             </tr>
                         ))}
-                        {payments.length === 0 && (
+                        {verifiedPayments.length === 0 && (
                             <tr>
                                 <td colSpan="5" style={{ textAlign: 'center' }}>No payments found for this season.</td>
                             </tr>

@@ -12,7 +12,7 @@
   --captain-accent-strong: var(--card-accent-strong);
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2.5rem;
+  padding: var(--space-lg);
   background: var(--captain-page-bg);
   color: var(--captain-card-text);
   font-family: var(--font-family);
@@ -24,38 +24,38 @@
 
 .captain-header {
   text-align: center;
-  margin-bottom: var(--space-2xl);
+  margin-bottom: var(--space-lg);
 }
 
 .captain-header h1 {
-  font-size: var(--font-size-4xl);
+  font-size: var(--font-size-3xl);
   font-weight: 800;
   color: var(--captain-accent);
-  margin-bottom: var(--space-sm);
+  margin-bottom: var(--space-xs);
 }
 
 .captain-header p {
   color: var(--captain-card-muted);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   margin: 0;
 }
 
 .captain-team-banner {
   display: flex;
   align-items: center;
-  gap: var(--space-xl);
-  padding: var(--space-xl);
-  margin-bottom: var(--space-2xl);
+  gap: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-xl);
 }
 
 .team-emblem {
-  width: 70px;
-  height: 70px;
+  width: 60px;
+  height: 60px;
   border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.5rem;
+  font-size: 2rem;
   background: rgba(var(--color-secondary-rgb), 0.12);
   color: var(--captain-accent);
 }
@@ -63,7 +63,7 @@
 .team-meta-block {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-xxs);
 }
 
 .team-meta-label {
@@ -74,7 +74,7 @@
 }
 
 .team-meta-name {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-xl);
   font-weight: 700;
   color: var(--captain-card-text);
 }
@@ -86,9 +86,9 @@
 
 .captain-overview {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-xl);
-  margin-bottom: var(--space-2xl);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
 }
 
 .overview-card {
@@ -96,8 +96,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-xl);
+  gap: var(--space-xxs);
+  padding: var(--space-md);
 }
 
 .overview-card::after {
@@ -117,56 +117,57 @@
 }
 
 .card-value {
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-2xl);
   font-weight: 700;
   color: var(--captain-accent);
 }
 
 .card-subtitle {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--captain-card-muted);
 }
 
 .dashboard-sections {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2xl);
+  gap: var(--space-xl);
 }
 
 .captain-section {
-  padding: var(--space-2xl);
+  padding: var(--space-lg);
 }
 
 .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-lg);
-  margin-bottom: var(--space-xl);
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
 }
 
 .section-header h2 {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-xl);
   font-weight: 700;
   color: var(--captain-card-text);
   margin: 0;
 }
 
 .section-header p {
-  margin: var(--space-xs) 0 0;
+  margin: var(--space-xxs) 0 0;
   color: var(--captain-card-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
 }
 
 .section-action {
   background: rgba(var(--color-secondary-rgb), 0.12);
   border: 1px solid rgba(var(--color-secondary-rgb), 0.3);
   color: var(--captain-accent);
-  padding: var(--space-sm) var(--space-lg);
+  padding: var(--space-xs) var(--space-md);
   border-radius: var(--radius-full);
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-size: var(--font-size-sm);
 }
 
 .section-action:hover {

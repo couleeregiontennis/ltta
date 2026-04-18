@@ -10,7 +10,7 @@
     # Supabase Anon Key and URL are public by design.
     # Netlify's scanner flags them as a false positive.
     omit_keys = ["VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY"]
-
+    omit_paths = [".github/workflows"]
 [[redirects]]
   from = "/*"
   to = "/index.html"

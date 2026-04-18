@@ -15,8 +15,8 @@ jobs:
     # We use environment variables to hold Supabase credentials if available as secrets
     # Otherwise, it falls back to hardcoded public ANON key which is safe to expose
     env:
-      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://shlcqztfdhfwkhijwgue.supabase.co' }}
-      SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNobGNxenRmZGhmd2toaWp3Z3VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4ODYwNzIsImV4cCI6MjA4ODQ2MjA3Mn0.5dHZetSM3ZnEovHm58saEq02635Hm0BVGEdfMACAtSk' }}
+      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
     steps:
       - name: Ping Staging Supabase Database

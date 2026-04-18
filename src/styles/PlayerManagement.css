@@ -17,7 +17,7 @@
 .player-table-container {
   overflow-x: auto;
   background: var(--card-bg);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -74,7 +74,7 @@
 .modal-content {
   background: var(--card-bg);
   padding: 2rem;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   width: 90%;
   max-width: 600px;
   max-height: 90vh;
@@ -127,7 +127,7 @@
   width: 100%;
   padding: 0.75rem;
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background-color: var(--input-bg);
   color: var(--text-primary);
   font-family: inherit;
@@ -153,7 +153,7 @@
 .btn-primary,
 .btn-secondary {
   padding: 0.75rem 1.5rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -189,14 +189,14 @@
 .error-message {
   color: #d32f2f;
   background-color: #ffebee;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   margin-bottom: 1rem;
 }
 
 .success-message {
   color: #388e3c;
   background-color: #e8f5e9;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   margin-bottom: 1rem;
 }
 
@@ -225,7 +225,7 @@
   width: 20px;
   background-color: var(--input-bg);
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .checkbox-label:hover input ~ .checkmark {

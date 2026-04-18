@@ -30,6 +30,7 @@ test.describe('Payment Management', () => {
       team_id: null,
       amount_paid: 50.00,
       payment_method: 'zeffy',
+      status: 'verified',
       notes: 'Early bird',
       created_at: new Date().toISOString(),
       player: { first_name: 'John', last_name: 'Doe' },
@@ -38,11 +39,12 @@ test.describe('Payment Management', () => {
   ];
 
   test.beforeEach(async ({ page }) => {
+    page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
     // 1. Mock Auth
     await mockSupabaseAuth(page, adminUser);
 
     // 2. Mock Supabase REST calls
-    await page.route('**/rest/v1/player*', async (route) => {
+    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
       const url = route.request().url();
       const method = route.request().method();
 
@@ -72,7 +74,7 @@ test.describe('Payment Management', () => {
       }
     });
 
-    await page.route('**/rest/v1/season*', async (route) => {
+    await page.route(/\/rest\/v1\/season($|\?)/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -80,7 +82,7 @@ test.describe('Payment Management', () => {
       });
     });
 
-    await page.route('**/rest/v1/team*', async (route) => {
+    await page.route(/\/rest\/v1\/team($|\?)/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -121,8 +123,9 @@ test.describe('Payment Management', () => {
     await expect(page.locator('.payment-table')).toContainText('John Doe');
 
     // Check summary
-    await expect(page.locator('.summary-card .value').first()).toHaveText('$50.00');
-    await expect(page.locator('.summary-card .value').last()).toHaveText('1');
+    await expect(page.locator('.summary-card .value').nth(0)).toHaveText('$50.00');
+    await expect(page.locator('.summary-card .value').nth(1)).toHaveText('1');
+    await expect(page.locator('.summary-card .value').nth(2)).toHaveText('0');
   });
 
   test('should record a new payment', async ({ page }) => {

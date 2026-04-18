@@ -8,7 +8,7 @@ test.describe('Protected Pages', () => {
 
     // Mock generic user data calls that might happen on any protected page load
     // We default to a user with NO special roles, unless overridden in specific tests
-    await page.route('**/rest/v1/player*', async (route) => {
+    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
         await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -75,7 +75,7 @@ test.describe('Protected Pages', () => {
 
   test('Captain Dashboard loads', async ({ page }) => {
     // 1. Player check (needs is_captain=true)
-    await page.route('**/rest/v1/player*', async (route) => {
+    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
         await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -99,7 +99,7 @@ test.describe('Protected Pages', () => {
     });
 
     // 3. Team Details
-    await page.route('**/rest/v1/team*', async (route) => {
+    await page.route(/\/rest\/v1\/team($|\?)/, async (route) => {
         await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -117,7 +117,7 @@ test.describe('Protected Pages', () => {
     });
 
     // 5. Matches (season record, upcoming)
-    await page.route('**/rest/v1/matches*', async (route) => {
+    await page.route('**/rest/v1/team_match*', async (route) => {
          await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -131,7 +131,7 @@ test.describe('Protected Pages', () => {
 
   test('Admin: Schedule Generator loads', async ({ page }) => {
     // Mock captain for this route
-    await page.route('**/rest/v1/player*', async (route) => {
+    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
         await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -150,7 +150,7 @@ test.describe('Protected Pages', () => {
 
   test('Admin: Player Management loads', async ({ page }) => {
     // Mock admin/captain
-    await page.route('**/rest/v1/player*', async (route) => {
+    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
         await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -178,7 +178,7 @@ test.describe('Protected Pages', () => {
 
   test('Admin: Team Management loads', async ({ page }) => {
     // Mock admin/captain
-    await page.route('**/rest/v1/player*', async (route) => {
+    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
         await route.fulfill({
             status: 200,
             contentType: 'application/json',

@@ -48,7 +48,7 @@
   justify-content: center;
   width: 2.25rem;
   height: 2.25rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   border: 1px solid var(--border-primary);
   background: var(--bg-primary);
   color: var(--text-primary);
@@ -216,8 +216,8 @@
   list-style: none;
   padding: 0.75rem 0.35rem;
   margin: 0;
-  backdrop-filter: blur(180px);
-  -webkit-backdrop-filter: blur(180px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   background-clip: padding-box;
 }
 
@@ -297,8 +297,9 @@
     border: 1px solid var(--border-primary);
     border-radius: var(--radius-md);
     z-index: 999;
-    backdrop-filter: blur(180px);
-    -webkit-backdrop-filter: blur(180px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+
     background-clip: padding-box;
   }
 
@@ -440,8 +441,8 @@ body[data-theme="dark"] .navbar-toggle:focus-visible {
 }
 
 body[data-theme="dark"] .navbar-menu {
-  backdrop-filter: blur(84px);
-  -webkit-backdrop-filter: blur(84px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 body[data-theme="dark"] .dropdown-menu li {
@@ -472,8 +473,8 @@ body[data-theme="dark"] .dropdown-menu {
   background: rgba(17, 24, 39, 0.82);
   border: 1px solid rgba(148, 163, 184, 0.5);
   box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(84px);
-  -webkit-backdrop-filter: blur(84px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 body[data-theme="dark"] .dropdown-menu a {
