@@ -45,11 +45,31 @@ test.describe('Comprehensive Visual Regression Suite', () => {
         is_admin: route.role === 'admin'
       });
 
+      // Global Standings Mock for consistent rendering
+      await page.route(/\/rest\/v1\/standings_2026_view($|\?)/, async route => {
+        const data = [
+          {
+            team_id: 't1', team_number: 1, team_name: 'Strikers', play_night: 'Tuesday',
+            total_points: 15, matches_played: 3, total_sets_won: 12, total_sets_lost: 3,
+            total_bonus_points: 3, wins: 3, losses: 0, ties: 0, games_won: 90, games_lost: 45, win_percentage: 100
+          }
+        ];
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
+      });
+
       console.log(`Navigating to ${route.path} as ${route.role}...`);
       await page.goto(route.path, { waitUntil: 'networkidle' });
       
-      // Wait for main content to avoid capturing empty/loading states
-      // Increase timeout slightly for data-heavy pages
+      // Wait for specific content based on route to ensure page is loaded
+      if (route.path === '/') {
+        await page.waitForSelector('.match-card', { timeout: 10000 }).catch(() => console.log('Timeout waiting for .match-card'));
+      } else if (route.path === '/standings') {
+        await page.waitForSelector('.standings-table, .standings-mobile-card', { timeout: 10000 }).catch(() => console.log('Timeout waiting for standings'));
+      } else if (route.path === '/player-rankings') {
+        await page.waitForSelector('.rankings-table', { timeout: 10000 }).catch(() => console.log('Timeout waiting for rankings'));
+      }
+      
+      // Final settle time
       await page.waitForTimeout(2000);
 
       // Desktop Viewport
@@ -73,24 +93,85 @@ test('visual check: mobile standings cards', async ({ page }) => {
   page.on('console', msg => console.log(`[Browser Console] ${msg.type()}: ${msg.text()}`));
 
   await mockSupabaseAuth(page, { is_captain: true });
+
+  // Mock standings data
+  await page.route(/\/rest\/v1\/standings_2026_view($|\?)/, async route => {
+    const data = [
+      {
+        team_id: 't1',
+        team_number: 1,
+        team_name: 'Strikers',
+        play_night: 'Tuesday',
+        total_points: 15,
+        matches_played: 3,
+        total_sets_won: 12,
+        total_sets_lost: 3,
+        total_bonus_points: 3,
+        wins: 3,
+        losses: 0,
+        ties: 0,
+        games_won: 90,
+        games_lost: 45,
+        win_percentage: 100
+      },
+      {
+        team_id: 't2',
+        team_number: 2,
+        team_name: 'Volleyers',
+        play_night: 'Tuesday',
+        total_points: 10,
+        matches_played: 3,
+        total_sets_won: 8,
+        total_sets_lost: 7,
+        total_bonus_points: 2,
+        wins: 2,
+        losses: 1,
+        ties: 0,
+        games_won: 75,
+        games_lost: 60,
+        win_percentage: 66.7
+      }
+    ];
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
+  });
+
+  // Mock team_match for recent matches and disputes
+  await page.route(/\/rest\/v1\/team_match($|\?)/, async route => {
+    const url = route.request().url();
+    if (url.includes('is_disputed=eq.true')) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+    } else {
+      const data = [
+        {
+          id: 'm1',
+          date: '2026-05-12',
+          time: '18:00',
+          status: 'completed',
+          home_team: { name: 'Strikers' },
+          away_team: { name: 'Volleyers' }
+        }
+      ];
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
+    }
+  });
+
+  // Mock player count
+  await page.route(/\/rest\/v1\/player($|\?)/, async route => {
+    if (route.request().headers()['prefer']?.includes('count=exact')) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]), headers: { 'content-range': '0-0/48' } });
+    } else {
+      await route.continue();
+    }
+  });
+
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('/standings');
 
   // Explicitly wait for the cards to render from our mocks
   console.log('Waiting for .standings-mobile-card...');
 
-  // Check if the empty state is visible instead
-  const emptyState = page.locator('.empty-state');
-  if (await emptyState.isVisible()) {
-      console.log('Empty state is visible instead of cards');
-      const content = await emptyState.innerText();
-      console.log(`Empty state content: ${content}`);
-  }
-
-  await page.waitForTimeout(4000);
-  const card = page.locator('.standings-mobile-card').first();
-  await expect(card).toBeVisible({ timeout: 15000 });
-
+  await page.waitForSelector('.standings-mobile-card', { timeout: 15000 });
+  
   await expect(page.locator('.standings-mobile-list')).toHaveScreenshot('standings-mobile-list.png');
 });
 
