@@ -85,7 +85,7 @@ test.describe('Playoff Scenarios UI', () => {
         // Check for statuses in the table
         await expect(page.locator('.standings-table >> text=Clinched')).toBeVisible();
         await expect(page.locator('.standings-table >> text=Control Destiny')).toBeVisible();
-        await expect(page.locator('.standings-table >> text=On the Hunt')).toBeVisible();
+        await expect(page.locator('.standings-table >> text=Magic #:')).toBeVisible();
         await expect(page.locator('.standings-table >> text=Eliminated')).toBeVisible();
     });
 });

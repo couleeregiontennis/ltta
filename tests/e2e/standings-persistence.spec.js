@@ -75,7 +75,6 @@ test.describe('Standings Persistence', () => {
       });
     });
 
-<<<<<<< HEAD
     // Mock legacy matches table (Overview dates and recent matches)
     await page.route('**/rest/v1/matches*', async (route) => {
       await route.fulfill({
@@ -85,8 +84,6 @@ test.describe('Standings Persistence', () => {
       });
     });
 
-=======
->>>>>>> origin/main
     // Mock playoff scenarios
     await page.route('**/functions/v1/playoff-scenarios', async (route) => {
       await route.fulfill({
