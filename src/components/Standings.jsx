@@ -112,19 +112,17 @@ const Standings = () => {
   });
 
   const fetchStandings = useCallback(async () => {
-    if (!currentSeason) return;
+    if (!currentSeason) {
+      console.log('Standings: No current season, skipping fetch');
+      return;
+    }
     try {
       setLoading(true);
       setError('');
+      console.log('Standings: Fetching data for season:', currentSeason.id);
 
-      const [
-        { data: standingsData, error: standingsError },
-        { count: playerCount },
-        { data: recentMatchesData, error: recentMatchesError },
-        { data: allMatchDates },
-        { data: playoffData },
-        { data: disputedMatches, error: disputedMatchesError }
-      ] = await Promise.all([
+      // Use allSettled to ensure one failing call doesn't block the whole page
+      const results = await Promise.allSettled([
         supabase.from('standings_2026_view').select('*'),
         supabase.from('player').select('*', { count: 'exact', head: true }),
         supabase.from('team_match').select(`
@@ -137,9 +135,31 @@ const Standings = () => {
         supabase.from('team_match').select('home_team_id, away_team_id').eq('is_disputed', true)
       ]);
 
-      if (standingsError) throw standingsError;
-      if (recentMatchesError) throw recentMatchesError;
-      if (disputedMatchesError) throw disputedMatchesError;
+      const [
+        standingsRes,
+        playerCountRes,
+        recentMatchesRes,
+        allDatesRes,
+        playoffRes,
+        disputedRes
+      ] = results;
+
+      if (standingsRes.status === 'rejected' || standingsRes.value.error) {
+        console.error('Standings: Error loading standings_2026_view:', standingsRes.reason || standingsRes.value.error);
+        throw standingsRes.reason || standingsRes.value.error;
+      }
+
+      const standingsData = standingsRes.value.data;
+      const playerCount = playerCountRes.status === 'fulfilled' ? playerCountRes.value.count : 0;
+      const recentMatchesData = recentMatchesRes.status === 'fulfilled' ? recentMatchesRes.value.data : [];
+      const allMatchDates = allDatesRes.status === 'fulfilled' ? allDatesRes.value.data : [];
+      const playoffData = playoffRes.status === 'fulfilled' ? playoffRes.value.data : null;
+      const disputedMatches = disputedRes.status === 'fulfilled' ? disputedRes.value.data : [];
+
+      console.log('Standings: Data loaded successfully', { 
+        standingsCount: standingsData?.length,
+        recentCount: recentMatchesData?.length 
+      });
 
       const disputedTeamIds = new Set();
       if (disputedMatches) {

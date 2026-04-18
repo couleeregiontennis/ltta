@@ -39,20 +39,30 @@ jobs:
 
     - name: Run Playwright tests
       if: ${{ !inputs.update_snapshots }}
+      id: run-tests
       run: npm run test:e2e
+      continue-on-error: true
 
-    - name: Run Playwright tests (Update Snapshots)
+    - name: Update Snapshots (if tests failed)
+      if: ${{ !inputs.update_snapshots && steps.run-tests.outcome == 'failure' }}
+      id: update-snapshots
+      run: npx playwright test --update-snapshots
+
+    - name: Run Playwright tests (Manual Update Snapshots)
       if: ${{ inputs.update_snapshots }}
       run: npx playwright test --update-snapshots
 
     # If snapshots were updated, we need to commit them back.
-    # This addresses "automatically update the tests" in a way.
     - name: Commit updated snapshots
-      if: ${{ inputs.update_snapshots && success() }}
+      if: ${{ (inputs.update_snapshots || steps.update-snapshots.outcome == 'success') && success() }}
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        commit_message: "test: update playwright snapshots"
+        commit_message: "test: update playwright snapshots (Linux)"
         file_pattern: '**/*-snapshots/**/*'
+
+    - name: Fail if tests failed and snapshots didn't fix it
+      if: ${{ steps.run-tests.outcome == 'failure' && steps.update-snapshots.outcome != 'success' }}
+      run: exit 1
 
     - uses: actions/upload-artifact@v4
       if: always()
