@@ -504,7 +504,7 @@ body[data-theme="dark"] .dropdown-menu a:hover {
   transition: all var(--transition-fast);
   font-size: 0.95em;
   display: block;
-  text-align: left;
+  text-align: center;
   width: 100%;
 }
 
