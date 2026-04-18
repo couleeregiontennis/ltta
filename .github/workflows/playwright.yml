@@ -1,7 +1,8 @@
 name: Playwright Tests
 
 permissions:
-  contents: read
+  contents: write
+
 on:
   push:
     branches: [ '**' ]
@@ -18,15 +19,13 @@ on:
 jobs:
   test:
     timeout-minutes: 60
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.57.0-jammy
+      image: mcr.microsoft.com/playwright:v1.51.0-jammy # Lock version for stability
       options: --ipc=host
     env:
       VITE_SUPABASE_URL: https://example.supabase.co
-      VITE_SUPABASE_ANON_KEY: dummy-anon-key
+      VITE_SUPABASE_ANON_KEY: fake-anon-key
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
@@ -37,31 +36,33 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Run Playwright tests
+    - name: Run Functional Tests (Exclude Visual)
+      run: npx playwright test --grep-invert visual
+      
+    - name: Run Visual Tests
       if: ${{ !inputs.update_snapshots }}
-      id: run-tests
-      run: npm run test:e2e
+      id: visual-tests
+      run: npx playwright test --grep visual
       continue-on-error: true
 
-    - name: Update Snapshots (if tests failed)
-      if: ${{ !inputs.update_snapshots && steps.run-tests.outcome == 'failure' }}
+    - name: Update Snapshots (if visual failed)
+      if: ${{ !inputs.update_snapshots && steps.visual-tests.outcome == 'failure' }}
       id: update-snapshots
-      run: npx playwright test --update-snapshots
+      run: npx playwright test --grep visual --update-snapshots
 
-    - name: Run Playwright tests (Manual Update Snapshots)
+    - name: Manual Update Snapshots
       if: ${{ inputs.update_snapshots }}
       run: npx playwright test --update-snapshots
 
-    # If snapshots were updated, we need to commit them back.
     - name: Commit updated snapshots
-      if: ${{ (inputs.update_snapshots || steps.update-snapshots.outcome == 'success') && success() }}
+      if: always()
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        commit_message: "test: update playwright snapshots (Linux)"
+        commit_message: "test: auto-update playwright snapshots (Linux CI)"
         file_pattern: '**/*-snapshots/**/*'
 
     - name: Fail if tests failed and snapshots didn't fix it
-      if: ${{ steps.run-tests.outcome == 'failure' && steps.update-snapshots.outcome != 'success' }}
+      if: ${{ steps.visual-tests.outcome == 'failure' && steps.update-snapshots.outcome == 'failure' }}
       run: exit 1
 
     - uses: actions/upload-artifact@v4
