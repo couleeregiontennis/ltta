@@ -64,8 +64,8 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
     expires_at: Math.floor(Date.now() / 1000) + 3600,
   };
 
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://shlcqztfdhfwkhijwgue.supabase.co';
-  let projectRef = 'shlcqztfdhfwkhijwgue';
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://example.supabase.co';
+  let projectRef = 'example';
   try {
     const hostname = new URL(supabaseUrl).hostname;
     projectRef = hostname.split('.')[0];
