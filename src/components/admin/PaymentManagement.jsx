@@ -99,6 +99,7 @@ export const PaymentManagement = () => {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
+            console.log('PaymentManagement: Loaded payments:', data?.length, data?.[0]?.status);
             setPayments(data || []);
         } catch (err) {
             console.error('Error fetching payments:', err);

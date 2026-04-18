@@ -174,17 +174,18 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
       // Handle joins
       const results = filtered.map(link => {
         const result = { ...link };
-        if (url.includes('player(') || url.includes('player%28') || url.includes('player:player') || url.includes('player%3Aplayer')) {
+        // Check for any variant of player join
+        if (url.includes('player') && (url.includes('(') || url.includes('%28') || url.includes(':'))) {
           const isMe = result.player === defaultUser.id;
           result.player = {
             id: result.player,
-            first_name: isMe ? (userDetails.first_name || 'Test') : 'Other',
-            last_name: isMe ? (userDetails.last_name || 'User') : 'Player',
-            ranking: isMe ? 3 : 4,
+            first_name: isMe ? (userDetails.first_name || 'Test') : (result.player === 'p1' ? 'Player' : 'Other'),
+            last_name: isMe ? (userDetails.last_name || 'User') : (result.player === 'p1' ? 'One' : (result.player === 'p2' ? 'Two' : 'Player')),
+            ranking: isMe ? 3 : (result.player === 'p1' ? 1 : (result.player === 'p2' ? 2 : 4)),
             is_active: true
           };
         }
-        if (url.includes('team(') || url.includes('team%28')) {
+        if (url.includes('team') && (url.includes('(') || url.includes('%28') || url.includes(':'))) {
           result.team = {
             id: result.team,
             number: result.team === 't1' ? 1 : 2,
@@ -212,9 +213,9 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
       const acceptHeader = route.request().headers()['accept'] || '';
       const isSingle = acceptHeader.includes('vnd.pgrst.object') || url.includes('limit=1');
       
-      let teamData = { id: 't1', number: 1, name: 'Strikers', play_night: 'Tuesday' };
+      let teamData = { id: 't1', number: 1, name: 'Strikers', play_night: 'tuesday' };
       if (url.includes('number=eq.2') || url.includes('id=eq.t2')) {
-        teamData = { id: 't2', number: 2, name: 'Volleyers', play_night: 'Tuesday' };
+        teamData = { id: 't2', number: 2, name: 'Volleyers', play_night: 'tuesday' };
       }
 
       await route.fulfill({
@@ -246,8 +247,8 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
         away_team_id: 't2',
         home_full_roster: false,
         away_full_roster: false,
-        home_team: { id: 't1', name: 'Strikers', number: 1, play_night: 'Tuesday' },
-        away_team: { id: 't2', name: 'Volleyers', number: 2, play_night: 'Tuesday' }
+        home_team: { id: 't1', name: 'Strikers', number: 1, play_night: 'tuesday' },
+        away_team: { id: 't2', name: 'Volleyers', number: 2, play_night: 'tuesday' }
       };
 
       await route.fulfill({

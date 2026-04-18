@@ -7,90 +7,101 @@ test.describe('Tiebreak Validation', () => {
     await mockSupabaseAuth(page);
 
     // Mock initial data loading
-    await page.route('**/rest/v1/player*', async (route) => {
+    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
       const url = route.request().url();
-      if (url.includes('id=eq')) {
+      const isSingle = route.request().headers()['accept']?.includes('vnd.pgrst.object') || url.includes('limit=1');
+      if (url.includes('id=eq') || url.includes('user_id=eq')) {
+          const data = {
+            id: 'fake-user-id',
+            first_name: 'John',
+            last_name: 'Doe',
+            is_captain: true,
+            is_admin: true
+          };
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({
-              id: 'fake-user-id',
-              first_name: 'John',
-              last_name: 'Doe',
-              is_captain: true,
-              is_admin: true
-            }),
+            body: JSON.stringify(isSingle ? data : [data]),
           });
       } else {
           // Roster
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify([
+          const data = [
                 { id: 'p1', first_name: 'Player', last_name: 'One', ranking: 1 },
                 { id: 'p2', first_name: 'Player', last_name: 'Two', ranking: 2 }
-            ]),
+          ];
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(isSingle ? data[0] : data),
           });
       }
     });
 
-    await page.route('**/rest/v1/player_to_team*', async (route) => {
+    await page.route(/\/rest\/v1\/player_to_team($|\?)/, async (route) => {
       const url = route.request().url();
+      const isSingle = route.request().headers()['accept']?.includes('vnd.pgrst.object') || url.includes('limit=1');
       if (url.includes('player=eq')) {
+          const data = { team: 'fake-team-id' };
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ team: 'fake-team-id' }),
+            body: JSON.stringify(isSingle ? data : [data]),
           });
       } else {
+          const data = [
+                { player: { id: 'p1', first_name: 'Player', last_name: 'One', ranking: 1 } },
+                { player: { id: 'p2', first_name: 'Player', last_name: 'Two', ranking: 2 } }
+          ];
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify([
-                { player: { id: 'p1', first_name: 'Player', last_name: 'One', ranking: 1 } },
-                { player: { id: 'p2', first_name: 'Player', last_name: 'Two', ranking: 2 } }
-            ]),
+            body: JSON.stringify(isSingle ? data[0] : data),
           });
       }
     });
 
-    await page.route('**/rest/v1/team*', async (route) => {
+    await page.route(/\/rest\/v1\/team($|\?)/, async (route) => {
        const url = route.request().url();
+       const isSingle = route.request().headers()['accept']?.includes('vnd.pgrst.object') || url.includes('limit=1');
        if (url.includes('id=eq')) {
+           const data = { id: 'fake-team-id', name: 'My Team', number: 1, play_night: 'monday' };
            await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ id: 'fake-team-id', name: 'My Team', number: 1 }),
+            body: JSON.stringify(isSingle ? data : [data]),
           });
        } else if (url.includes('number=eq')) {
            const match = url.match(/number=eq\.(\d+)/);
            const number = match ? match[1] : '1';
+           const data = { id: `team-${number}`, number: parseInt(number), name: `Team ${number}`, play_night: 'monday' };
            await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ id: `team-${number}`, number: parseInt(number), name: `Team ${number}` }),
+            body: JSON.stringify(isSingle ? data : [data]),
           });
        }
     });
 
-    await page.route('**/rest/v1/matches*', async (route) => {
+    await page.route(/\/rest\/v1\/team_match($|\?)/, async (route) => {
+       const isSingle = route.request().headers()['accept']?.includes('vnd.pgrst.object') || route.request().url().includes('limit=1');
+       const matchData = {
+           id: 'match-1',
+           home_team: { id: 'fake-team-id', name: 'My Team', number: 1, play_night: 'monday' },
+           away_team: { id: 'team-2', name: 'Opponent Team', number: 2, play_night: 'monday' },
+           home_team_id: 'fake-team-id',
+           away_team_id: 'team-2',
+           date: '2023-10-10',
+           time: '18:00',
+           courts: '1-2',
+           home_full_roster: false,
+           away_full_roster: false,
+           is_disputed: false,
+           status: 'scheduled'
+       };
        await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([
-            {
-                id: 'match-1',
-                home_team_name: 'My Team',
-                home_team_number: 1,
-                home_team_night: 'Monday',
-                away_team_name: 'Opponent Team',
-                away_team_number: 2,
-                away_team_night: 'Monday',
-                date: '2023-10-10',
-                time: '18:00',
-                courts: '1-2'
-            }
-        ]),
+        body: JSON.stringify(isSingle ? matchData : [matchData]),
       });
     });
 
@@ -123,12 +134,12 @@ test.describe('Tiebreak Validation', () => {
     await page.locator('select[name="matchType"]').selectOption('singles');
 
     // Wait for players to load
-    const playerSelect = page.locator('select').filter({ hasText: 'Select Player 1' }).first();
+    const playerSelect = page.locator('select').filter({ hasText: 'Player 1' }).first();
     await expect(playerSelect).toContainText('Player One');
 
     // Select valid players
-    const homePlayer1 = page.locator('select').filter({ hasText: 'Select Player 1' }).nth(0);
-    const awayPlayer1 = page.locator('select').filter({ hasText: 'Select Player 1' }).nth(1);
+    const homePlayer1 = page.locator('select').filter({ hasText: 'Player 1' }).nth(0);
+    const awayPlayer1 = page.locator('select').filter({ hasText: 'Player 1' }).nth(1);
     await homePlayer1.selectOption('Player One');
     await awayPlayer1.selectOption('Player Two');
 
@@ -147,15 +158,15 @@ test.describe('Tiebreak Validation', () => {
     // Test case 1: 5-5 (invalid, game not over)
     await set3.locator('select').nth(0).selectOption('5');
     await set3.locator('select').nth(1).selectOption('5');
-    await page.getByRole('button', { name: 'Submit Scores' }).click();
+    await page.getByRole('button', { name: 'Save Line Results' }).click();
     await expect(page.locator('.error-message')).toContainText(/Third set must be a valid tiebreak/);
 
     // Test case 2: 7-5 (valid)
     await set3.locator('select').nth(0).selectOption('7');
     await set3.locator('select').nth(1).selectOption('5');
-    await page.getByRole('button', { name: 'Submit Scores' }).click();
+    await page.getByRole('button', { name: 'Save Line Results' }).click();
     await expect(page.locator('.error-message')).toBeHidden();
-    await expect(page.locator('.success-message')).toContainText(/Scores submitted successfully/);
+    await expect(page.getByText('Scores submitted successfully!')).toBeVisible();
   });
 
   test('validates 3rd set tiebreak win by 2', async ({ page }) => {
@@ -165,7 +176,7 @@ test.describe('Tiebreak Validation', () => {
     // Test case: 7-6 (invalid, must win by 2)
     await set3.locator('select').nth(0).selectOption('7');
     await set3.locator('select').nth(1).selectOption('6');
-    await page.getByRole('button', { name: 'Submit Scores' }).click();
+    await page.getByRole('button', { name: 'Save Line Results' }).click();
     await expect(page.locator('.error-message')).toContainText(/Third set must be a valid tiebreak/);
   });
 
@@ -176,9 +187,9 @@ test.describe('Tiebreak Validation', () => {
     // Test case: 8-6 (valid)
     await set3.locator('select').nth(0).selectOption('8');
     await set3.locator('select').nth(1).selectOption('6');
-    await page.getByRole('button', { name: 'Submit Scores' }).click();
+    await page.getByRole('button', { name: 'Save Line Results' }).click();
     await expect(page.locator('.error-message')).toBeHidden();
-    await expect(page.locator('.success-message')).toContainText(/Scores submitted successfully/);
+    await expect(page.getByText('Scores submitted successfully!')).toBeVisible();
 
     // Test case: 9-8 (invalid, must win by 2)
     // We need to reload or reset the form/mock for a new submission,
@@ -194,7 +205,7 @@ test.describe('Tiebreak Validation', () => {
     // Test case: 6-4 (invalid, must reach 7)
     await set3.locator('select').nth(0).selectOption('6');
     await set3.locator('select').nth(1).selectOption('4');
-    await page.getByRole('button', { name: 'Submit Scores' }).click();
+    await page.getByRole('button', { name: 'Save Line Results' }).click();
     await expect(page.locator('.error-message')).toContainText(/Third set must be a valid tiebreak/);
   });
 });

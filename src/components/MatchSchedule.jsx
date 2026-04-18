@@ -83,7 +83,6 @@ export const MatchSchedule = () => {
 
   const fetchAllData = async () => {
     if (!currentSeason) return;
-
     try {
       setLoading(true);
       setError(null);
@@ -298,7 +297,20 @@ export const MatchSchedule = () => {
                           </div>
                           {status === 'completed' && (
                             <div className="match-score-summary" style={{ textAlign: 'center', margin: '1rem 0', padding: '0.5rem', backgroundColor: 'var(--bg-card)', borderRadius: '6px' }}>
-                              Points Won: {match.home_points} - {match.away_points}
+                              <div>Points Won: {match.home_points} - {match.away_points}</div>
+                              {match.is_disputed ? (
+                                <div className="dispute-badge" style={{ marginTop: '0.5rem', color: 'var(--warning)', fontWeight: 'bold' }}>
+                                  Score Disputed ⚠️
+                                </div>
+                              ) : (
+                                <button
+                                  className="flag-score-btn"
+                                  onClick={(e) => { e.stopPropagation(); handleFlagScore(match.id); }}
+                                  style={{ marginTop: '0.5rem', padding: '0.25rem 0.75rem', fontSize: '0.8rem', backgroundColor: 'transparent', border: '1px solid var(--warning)', color: 'var(--warning)', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                  Flag Score
+                                </button>
+                              )}
                             </div>
                           )}
                           {(userRole?.isAdmin || userRole?.isCaptain) && status !== 'completed' && (
@@ -325,6 +337,18 @@ export const MatchSchedule = () => {
                                   {match.status === 'heat_cancellation' ? 'Undo Heat' : 'Mark Heat'}
                                 </button>
                               )}
+                            </div>
+                          )}
+                          
+                          {userRole?.isAdmin && (
+                            <div className="admin-actions" style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-color)' }}>
+                              <button
+                                className="edit-result-btn"
+                                onClick={(e) => { e.stopPropagation(); navigate(`/add-score?matchId=${match.id}`); }}
+                                style={{ width: '100%', backgroundColor: 'var(--primary)', color: 'white' }}
+                              >
+                                Edit
+                              </button>
                             </div>
                           )}
                         </article>

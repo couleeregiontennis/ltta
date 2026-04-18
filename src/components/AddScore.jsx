@@ -292,11 +292,12 @@ export const AddScore = () => {
         const { data: matches, error } = await supabase
           .from('team_match')
           .select(`
-            id, date, time, status, courts,
+            id, date, time, courts, status,
             home_team:home_team_id (id, name, number, play_night),
             away_team:away_team_id (id, name, number, play_night)
           `)
           .or(`home_team_id.eq.${userTeam.id},away_team_id.eq.${userTeam.id}`)
+          .eq('status', 'scheduled')
           .order('date', { ascending: true });
 
         if (error) throw error;
@@ -529,6 +530,7 @@ export const AddScore = () => {
   };
 
   const loadTeamRoster = async (teamNumber, night) => {
+    if (!teamNumber || !night) return [];
     try {
       const { data: team, error: teamError } = await supabase
         .from('team')
@@ -537,37 +539,39 @@ export const AddScore = () => {
         .eq('play_night', night.toLowerCase())
         .single();
 
-      if (teamError || !team) throw new Error(`Team ${teamNumber} on ${night} not found.`);
+      if (teamError || !team) {
+        return [];
+      }
 
       const { data: playerLinks, error: linksError } = await supabase
         .from('player_to_team')
-        .select('player')
+        .select(`
+          player:player (
+            id,
+            first_name,
+            last_name,
+            ranking
+          )
+        `)
         .eq('team', team.id);
 
-      if (linksError) throw linksError;
-      const playerIds = playerLinks.map(link => link.player);
-
-      if (playerIds.length > 0) {
-        const { data: players, error: playersError } = await supabase
-          .from('player')
-          .select('id, first_name, last_name, ranking')
-          .in('id', playerIds);
-
-        if (playersError) throw playersError;
-
-        const idMap = {};
-        const roster = players
-          .sort((a, b) => a.ranking - b.ranking)
-          .map((p) => {
-            const fullName = `${p.first_name} ${p.last_name}`;
-            idMap[fullName] = p.id;
-            return { name: fullName, position: p.ranking };
-          });
-
-        setPlayerIdMap(prev => ({ ...prev, ...idMap }));
-        return roster;
+      if (linksError) {
+        throw linksError;
       }
-      return [];
+
+      const idMap = {};
+      const roster = (playerLinks || [])
+        .map(link => link.player)
+        .filter(Boolean)
+        .sort((a, b) => a.ranking - b.ranking)
+        .map(p => {
+          const fullName = `${p.first_name} ${p.last_name}`;
+          idMap[fullName] = p.id;
+          return { name: fullName, position: p.ranking };
+        });
+
+      setPlayerIdMap(prev => ({ ...prev, ...idMap }));
+      return roster;
     } catch (err) {
       console.error(`Error loading roster:`, err);
       return [];
@@ -575,6 +579,7 @@ export const AddScore = () => {
   };
 
   const handleMatchSelect = async (matchId) => {
+    console.log('AddScore: Selected matchId:', matchId);
     const match = availableMatches.find(m => m.id === matchId);
     if (match) {
       const { data: teamMatchData } = await supabase
@@ -752,7 +757,14 @@ export const AddScore = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="score-form">
+      {selectedMatch?.is_disputed && (
+        <div className="dispute-banner" style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeft: '4px solid var(--error)', borderRadius: '4px' }}>
+          <h3 style={{ color: 'var(--error)', margin: 0 }}>⚠️ Score Disputed</h3>
+          <p style={{ margin: '0.5rem 0 0', color: 'var(--text-primary)' }}>A player has flagged this match score for review. Submitting new scores will resolve this dispute.</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="score-form" noValidate>
         <div className="score-section card card--interactive">
           <h2>Select Match</h2>
           <select
@@ -818,7 +830,6 @@ export const AddScore = () => {
               <select
                 value={formData.homePlayers[0]}
                 onChange={(e) => handlePlayerChange('home', 0, e.target.value)}
-                required
               >
                 <option value="">Player 1</option>
                 {homeTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
@@ -827,7 +838,6 @@ export const AddScore = () => {
                 <select
                   value={formData.homePlayers[1]}
                   onChange={(e) => handlePlayerChange('home', 1, e.target.value)}
-                  required
                 >
                   <option value="">Player 2</option>
                   {homeTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
@@ -839,7 +849,6 @@ export const AddScore = () => {
               <select
                 value={formData.awayPlayers[0]}
                 onChange={(e) => handlePlayerChange('away', 0, e.target.value)}
-                required
               >
                 <option value="">Player 1</option>
                 {awayTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
@@ -848,7 +857,6 @@ export const AddScore = () => {
                 <select
                   value={formData.awayPlayers[1]}
                   onChange={(e) => handlePlayerChange('away', 1, e.target.value)}
-                  required
                 >
                   <option value="">Player 2</option>
                   {awayTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
@@ -893,6 +901,23 @@ export const AddScore = () => {
                   <option value="">A</option>{generateTiebreakOptions()}
                 </select>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="score-section card card--interactive">
+          <h2>Notes (Optional)</h2>
+          <div className="form-group">
+            <textarea
+              name="notes"
+              value={formData.notes}
+              onChange={handleInputChange}
+              placeholder="Add any notes about this line (e.g. sub names, tiebreak score, disputes)..."
+              maxLength={MAX_NOTES_LENGTH}
+              aria-describedby="notes-counter"
+            ></textarea>
+            <div id="notes-counter" className="character-counter">
+              {formData.notes.length} / {MAX_NOTES_LENGTH} characters
             </div>
           </div>
         </div>

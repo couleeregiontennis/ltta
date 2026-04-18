@@ -22,7 +22,7 @@ test.describe('UX Audit Capture', () => {
       
       // Mock player and team data for role-based pages
       if (route.role === 'captain') {
-        await page.route('**/rest/v1/player*', async (r) => {
+        await page.route(/\/rest\/v1\/player($|\?)/, async (r) => {
           if (r.request().method() === 'GET') {
             await r.fulfill({
               status: 200,
@@ -49,7 +49,7 @@ test.describe('UX Audit Capture', () => {
           });
         });
 
-        await page.route('**/rest/v1/team*', async (r) => {
+        await page.route(/\/rest\/v1\/team($|\?)/, async (r) => {
            await r.fulfill({
             status: 200,
             contentType: 'application/json',

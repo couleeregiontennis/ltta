@@ -110,14 +110,11 @@ function App() {
                   }
                 />
 
-                <Route
-                  path="/add-score"
-                  element={
-                    <ProtectedRoute requireCaptain>
-                      <AddScore />
-                    </ProtectedRoute>
-                  }
-                />
+                <Route path="/add-score" element={
+                  <ProtectedRoute requireCaptain>
+                    <AddScore />
+                  </ProtectedRoute>
+                } />
                 <Route
                   path="/captain-dashboard"
                   element={

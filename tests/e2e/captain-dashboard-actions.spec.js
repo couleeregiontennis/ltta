@@ -11,7 +11,7 @@ test.describe('Captain Dashboard Actions', () => {
             email: 'captain@test.local'
         });
 
-        await page.route('**/rest/v1/player*', async (route) => {
+        await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
             const url = route.request().url();
             if (url.includes('id=eq')) {
                 const playerObj = {
@@ -60,7 +60,7 @@ test.describe('Captain Dashboard Actions', () => {
             await route.continue();
         });
 
-        await page.route('**/rest/v1/team*', async (route) => {
+        await page.route(/\/rest\/v1\/team($|\?)/, async (route) => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -69,7 +69,7 @@ test.describe('Captain Dashboard Actions', () => {
         });
 
         // 5. Matches (season record, upcoming)
-        await page.route('**/rest/v1/matches*', async (route) => {
+        await page.route('**/rest/v1/team_match*', async (route) => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',

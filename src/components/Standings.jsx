@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { supabase } from '../scripts/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
+import { useSeason } from '../hooks/useSeason';
 import { EmptyState } from './EmptyState';
 import '../styles/Style.css';
 import '../styles/Standings.css';
@@ -58,6 +59,7 @@ const StandingsCard = memo(({ team, index }) => {
         <td data-label="Rank">{rank}</td>
         <td data-label="Team">
           <div className="team-cell">
+            {team.hasDisputes && <span className="dispute-badge" title="Disputed match results">⚠️</span>}
             <span className="team-number">Team {team.number}</span>
             <span className="team-name">{team.name}</span>
           </div>
@@ -78,6 +80,7 @@ const StandingsCard = memo(({ team, index }) => {
 
 const Standings = () => {
   const { user, loading: authLoading } = useAuth();
+  const { currentSeason, loading: seasonLoading } = useSeason();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [standings, setStandings] = useState([]);
@@ -109,6 +112,7 @@ const Standings = () => {
   });
 
   const fetchStandings = useCallback(async () => {
+    if (!currentSeason) return;
     try {
       setLoading(true);
       setError('');
@@ -123,8 +127,12 @@ const Standings = () => {
       ] = await Promise.all([
         supabase.from('standings_2026_view').select('*'),
         supabase.from('player').select('*', { count: 'exact', head: true }),
-        supabase.from('matches').select('id, date, time, status, home_team_name, away_team_name').order('date', { ascending: false }).limit(6),
-        supabase.from('matches').select('date'),
+        supabase.from('team_match').select(`
+          id, date, time, status, 
+          home_team:home_team_id (name), 
+          away_team:away_team_id (name)
+        `).order('date', { ascending: false }).limit(6),
+        supabase.from('team_match').select('date'),
         supabase.functions.invoke('playoff-scenarios'),
         supabase.from('team_match').select('home_team_id, away_team_id').eq('is_disputed', true)
       ]);
@@ -145,19 +153,25 @@ const Standings = () => {
       const formattedStandings = (standingsData || []).map((team) => {
         const scenarios = (playoffData && typeof playoffData === 'object') ? playoffData[team.team_number] : null;
         return {
-          id: team.team_id,
-          number: team.team_number,
-          name: team.team_name,
-          playNight: team.play_night,
-          totalPoints: team.total_points,
-          matchesPlayed: team.matches_played,
-          setsWon: team.total_sets_won,
-          setsLost: team.total_sets_lost,
-          bonusPoints: team.total_bonus_points,
-          playoffStatus: scenarios?.status || '',
-          magicNumber: scenarios?.magicNumber || 0,
-          hasDisputes: disputedTeamIds.has(team.team_id)
-        };
+            id: team.team_id,
+            number: team.team_number,
+            name: team.team_name,
+            playNight: team.play_night,
+            totalPoints: team.total_points,
+            matchesPlayed: team.matches_played,
+            setsWon: team.total_sets_won,
+            setsLost: team.total_sets_lost,
+            wins: team.wins || 0,
+            losses: team.losses || 0,
+            ties: team.ties || 0,
+            gamesWon: team.games_won || 0,
+            gamesLost: team.games_lost || 0,
+            winPercentage: team.win_percentage || 0,
+            bonusPoints: team.total_bonus_points,
+            playoffStatus: scenarios?.status || '',
+            magicNumber: scenarios?.magicNumber || 0,
+            hasDisputes: disputedTeamIds.has(team.team_id)
+          };
       });
 
       // Sort Standings by Total Points
@@ -203,12 +217,19 @@ const Standings = () => {
         .sort((a, b) => new Date(a.date) - new Date(b.date))
         .slice(-8);
 
+      // Process recent matches
+      const formattedMatches = (recentMatchesData || []).map(m => ({
+        ...m,
+        home_team_name: m.home_team?.name || 'Unknown',
+        away_team_name: m.away_team?.name || 'Unknown'
+      }));
+
       setLeagueOverview({
         totalMatches,
         totalTeams,
         totalPlayers,
         avgMatchesPerTeam,
-        recentMatches: recentMatchesData || [],
+        recentMatches: formattedMatches,
         matchesByWeek
       });
 
@@ -218,7 +239,7 @@ const Standings = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentSeason]);
 
   useEffect(() => {
     fetchStandings();

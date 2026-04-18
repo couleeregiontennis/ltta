@@ -12,7 +12,7 @@ test('schedule screenshot', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // Mock season data
-  await page.route('**/rest/v1/season*', async (route) => {
+  await page.route(/\/rest\/v1\/season($|\?)/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -26,7 +26,7 @@ test('schedule screenshot', async ({ page }) => {
   });
 
   // Mock data to ensure consistent screenshots
-  await page.route('**/rest/v1/team*', async (route) => {
+  await page.route(/\/rest\/v1\/team($|\?)/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
