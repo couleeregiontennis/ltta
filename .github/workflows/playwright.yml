@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.51.0-jammy # Lock version for stability
+      image: mcr.microsoft.com/playwright:v1.57.0-jammy # Matches package.json
       options: --ipc=host
     env:
       VITE_SUPABASE_URL: https://example.supabase.co
@@ -36,6 +36,9 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps
+
     - name: Run Functional Tests (Exclude Visual)
       run: npx playwright test --grep-invert visual
       
@@ -47,7 +50,7 @@ jobs:
 
     - name: Update Snapshots (if visual failed)
       if: ${{ !inputs.update_snapshots && steps.visual-tests.outcome == 'failure' }}
-      id: update-snapshots
+      id: auto-update
       run: npx playwright test --grep visual --update-snapshots
 
     - name: Manual Update Snapshots
@@ -62,7 +65,7 @@ jobs:
         file_pattern: '**/*-snapshots/**/*'
 
     - name: Fail if tests failed and snapshots didn't fix it
-      if: ${{ steps.visual-tests.outcome == 'failure' && steps.update-snapshots.outcome == 'failure' }}
+      if: ${{ steps.visual-tests.outcome == 'failure' && steps.auto-update.outcome == 'failure' }}
       run: exit 1
 
     - uses: actions/upload-artifact@v4
