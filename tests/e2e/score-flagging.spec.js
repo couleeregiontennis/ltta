@@ -141,6 +141,14 @@ test.describe('Score Flagging Feature', () => {
                 await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
               }
             });
+
+            await page.route('**/functions/v1/playoff-scenarios', async (route) => {
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({})
+                });
+            });
         });
 
         test('should allow flagging a completed score, changing the button to a warning badge', async ({ page }) => {

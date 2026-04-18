@@ -22,7 +22,8 @@ const StandingsCard = memo(({ team, index }) => {
            {team.hasDisputes && <span className="dispute-badge" title="Disputed match results">⚠️</span>}
            <span className="team-number">Team {team.number}</span>
            <span className="team-name">{team.name}</span>
-         </div>        <div className="card-stats-grid">
+         </div>
+        <div className="card-stats-grid">
           <div className="stat-item">
             <span className="stat-label">Points</span>
             <span className="stat-value">{team.totalPoints}</span>
@@ -36,13 +37,13 @@ const StandingsCard = memo(({ team, index }) => {
             <span className="stat-value">{team.bonusPoints}</span>
           </div>
         </div>
-        {team.playoffStatus && (
-          <div className="card-status">
-            <span className={`status-badge ${team.playoffStatus.toLowerCase().includes('clinched') ? 'clinched' : ''}`}>
-              {team.playoffStatus}
-            </span>
-          </div>
-        )}
+        <div className="card-status">
+          {team.playoffStatus === 'Clinched' && <span className="status-badge clinched" title="Clinched 1st Place">🏆 Clinched</span>}
+          {team.playoffStatus === 'Eliminated' && <span className="status-badge eliminated">Eliminated</span>}
+          {team.playoffStatus === 'Control Destiny' && <span className="status-badge control">Control Destiny</span>}
+          {team.playoffStatus === 'On the Hunt' && <span className="status-badge hunt" title="Magic Number to Clinch">Magic #: {team.magicNumber}</span>}
+          {!team.playoffStatus && team.playNight && <span className="status-badge">—</span>}
+        </div>
       </div>
     </div>
   );
@@ -51,6 +52,10 @@ const StandingsCard = memo(({ team, index }) => {
   const StandingsRow = memo(({ team, index }) => {
     if (!team) return null;
     const rank = index + 1;
+    const record =
+      team.ties > 0
+        ? `${team.wins}-${team.losses}-${team.ties}`
+        : `${team.wins}-${team.losses}`;
 
     return (
       <tr
@@ -65,7 +70,13 @@ const StandingsCard = memo(({ team, index }) => {
           </div>
         </td>
         <td data-label="Night">{team.playNight || '—'}</td>
-        <td data-label="Status">{team.playoffStatus || '—'}</td>
+        <td data-label="Status">
+          {team.playoffStatus === 'Clinched' && <span className="status-badge clinched" title="Clinched 1st Place">🏆 Clinched</span>}
+          {team.playoffStatus === 'Eliminated' && <span className="status-badge eliminated">Eliminated</span>}
+          {team.playoffStatus === 'Control Destiny' && <span className="status-badge control">Control Destiny</span>}
+          {team.playoffStatus === 'On the Hunt' && <span className="status-badge hunt" title="Magic Number to Clinch">Magic #: {team.magicNumber}</span>}
+          {!team.playoffStatus && <span className="status-badge">—</span>}
+        </td>
         <td data-label="Matches">{team.matchesPlayed}</td>
         <td data-label="Points"><strong>{team.totalPoints}</strong></td>
         <td data-label="Sets (W-L)" className="hide-mobile">

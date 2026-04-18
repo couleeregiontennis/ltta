@@ -45,10 +45,10 @@ test.describe('Playoff Scenarios UI', () => {
                 status: 200,
                 contentType: 'application/json',
                 body: JSON.stringify([
-                    { team_id: 't1', team_name: 'Team A', team_number: 1, play_night: 'Monday', total_points: 20, matches_played: 12, total_sets_won: 20, total_sets_lost: 4, win_percentage: 83.3 },
-                    { team_id: 't2', team_name: 'Team B', team_number: 2, play_night: 'Tuesday', total_points: 10, matches_played: 12, total_sets_won: 10, total_sets_lost: 14, win_percentage: 41.7 },
-                    { team_id: 't3', team_name: 'Team C', team_number: 3, play_night: 'Tuesday', total_points: 10, matches_played: 12, total_sets_won: 10, total_sets_lost: 14, win_percentage: 41.7 },
-                    { team_id: 't4', team_name: 'Team D', team_number: 4, play_night: 'Tuesday', total_points: 10, matches_played: 12, total_sets_won: 10, total_sets_lost: 14, win_percentage: 41.7 }
+                    { team_id: 't1', team_name: 'Team A', team_number: 1, play_night: 'Monday', total_points: 20, matches_played: 12, total_sets_won: 20, total_sets_lost: 4, win_percentage: 83.3, wins: 10, losses: 2, games_won: 120, games_lost: 40, total_bonus_points: 2 },
+                    { team_id: 't2', team_name: 'Team B', team_number: 2, play_night: 'Tuesday', total_points: 10, matches_played: 12, total_sets_won: 10, total_sets_lost: 14, win_percentage: 41.7, wins: 5, losses: 7, games_won: 60, games_lost: 70, total_bonus_points: 1 },
+                    { team_id: 't3', team_name: 'Team C', team_number: 3, play_night: 'Tuesday', total_points: 10, matches_played: 12, total_sets_won: 10, total_sets_lost: 14, win_percentage: 41.7, wins: 5, losses: 7, games_won: 60, games_lost: 70, total_bonus_points: 1 },
+                    { team_id: 't4', team_name: 'Team D', team_number: 4, play_night: 'Tuesday', total_points: 10, matches_played: 12, total_sets_won: 10, total_sets_lost: 14, win_percentage: 41.7, wins: 5, losses: 7, games_won: 60, games_lost: 70, total_bonus_points: 1 }
                 ])
             });
         });
@@ -67,7 +67,6 @@ test.describe('Playoff Scenarios UI', () => {
             await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
         });
 
-        // Mock legacy matches table
         await page.route('**/rest/v1/matches*', async (route) => {
             await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
         });
@@ -83,7 +82,10 @@ test.describe('Playoff Scenarios UI', () => {
         // The table is sortable, so they should be there.
         await expect(page.locator('.standings-table')).toBeVisible();
         
-        // Check for at least one status in the table (it's text in the row)
+        // Check for statuses in the table
         await expect(page.locator('.standings-table >> text=Clinched')).toBeVisible();
+        await expect(page.locator('.standings-table >> text=Control Destiny')).toBeVisible();
+        await expect(page.locator('.standings-table >> text=On the Hunt')).toBeVisible();
+        await expect(page.locator('.standings-table >> text=Eliminated')).toBeVisible();
     });
 });
