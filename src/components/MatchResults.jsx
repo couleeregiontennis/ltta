@@ -13,14 +13,17 @@ const formatDate = (dateStr) => {
 const MatchResultRow = memo(({ match, teamNumber }) => {
   const isHomeTeam = match.home_team?.number === parseInt(teamNumber);
   const opponent = isHomeTeam ? match.away_team?.name : match.home_team?.name;
-  const teamWon = isHomeTeam ? match.home_points > match.away_points : match.away_points > match.home_points;
+
+  // In 2026, points are the primary score (sets won + participation bonus)
+  const teamPoints = isHomeTeam ? match.home_points : match.away_points;
+  const opponentPoints = isHomeTeam ? match.away_points : match.home_points;
+  const teamWon = teamPoints > opponentPoints;
+
   const linesWon = match.line_results?.filter(line => {
     const lineWonByHome = line.home_won;
     return isHomeTeam ? lineWonByHome : !lineWonByHome;
   }).length || 0;
   const totalLines = match.line_results?.length || 0;
-  const games = isHomeTeam ? match.home_points : match.away_points;
-  const opponentGames = isHomeTeam ? match.away_points : match.home_points;
 
   return (
     <tr className={teamWon ? 'win' : 'loss'}>
@@ -32,7 +35,7 @@ const MatchResultRow = memo(({ match, teamNumber }) => {
         </span>
       </td>
       <td>{linesWon || 0}/{totalLines}</td>
-      <td>{games || 0}-{opponentGames || 0}</td>
+      <td>{teamPoints || 0}-{opponentPoints || 0}</td>
     </tr>
   );
 });

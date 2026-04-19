@@ -35,7 +35,7 @@ test.describe('Player Management', () => {
     await mockSupabaseAuth(page, adminUser);
 
     // 2. Mock 'player' table requests
-    await page.route('**/rest/v1/player*', async (route) => {
+    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
       const url = route.request().url();
       const method = route.request().method();
 

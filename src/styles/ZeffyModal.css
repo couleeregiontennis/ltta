@@ -85,11 +85,15 @@
   font-weight: 600;
   transition: background-color 0.2s;
   display: inline-block;
+<<<<<<< HEAD
+}
+=======
 
   border: none;
   cursor: pointer;
   font-family: inherit;
   font-size: 1rem;}
+>>>>>>> master
 
 .btn-zeffy-continue:hover {
   background-color: var(--secondary-dark);

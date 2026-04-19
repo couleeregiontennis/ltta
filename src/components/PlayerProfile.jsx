@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../scripts/supabaseClient';
+import { useToast } from '../context/ToastContext';
 import '../styles/PlayerProfile.css';
 
 const getDefaultAvailability = () => ({
@@ -58,10 +59,10 @@ const normalizeProfile = (data, user = null) => {
 };
 
 export const PlayerProfile = () => {
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(createEmptyProfile());
   const [matchHistory, setMatchHistory] = useState([]);
@@ -171,7 +172,6 @@ export const PlayerProfile = () => {
     try {
       setSaving(true);
       setError(null);
-      setSuccess(null);
 
       const nameString = (profile.name || '').trim();
       const nameParts = nameString ? nameString.split(/\s+/) : [];
@@ -221,7 +221,7 @@ export const PlayerProfile = () => {
       }
 
       setProfile(normalizeProfile(savedData, user));
-      setSuccess('Profile saved successfully!');
+      addToast('Profile saved successfully!', 'success');
 
       // If this was their very first time creating a profile, trigger a hard reload 
       // or navigation so the AuthProvider picks up the new 'hasProfile' state
@@ -229,12 +229,11 @@ export const PlayerProfile = () => {
         window.location.href = '/';
       } else {
         setIsEditing(false);
-        // Clear success message after 3 seconds
-        setTimeout(() => setSuccess(null), 3000);
       }
 
     } catch (err) {
       console.error('Error saving profile:', err);
+      addToast(err.message || 'Failed to save profile', 'error');
       setError('Failed to save profile. Please try again.');
     } finally {
       setSaving(false);
@@ -244,17 +243,21 @@ export const PlayerProfile = () => {
   const handleCancel = () => {
     setIsEditing(false);
     setError(null);
-    setSuccess(null);
     // Reset form to original values
     fetchPlayerProfile(user.id, user);
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    if (!dateString) return 'Date TBA';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch (e) {
+      return 'Invalid Date';
+    }
   };
 
   if (loading) {
@@ -281,7 +284,6 @@ export const PlayerProfile = () => {
       </div>
 
       {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
 
       <div className="profile-content">
         {/* Basic Information */}
@@ -477,13 +479,13 @@ export const PlayerProfile = () => {
               {matchHistory.map((matchPlayer) => (
                 <div key={matchPlayer.id} className="match-item card card--interactive card--overlay">
                   <div className="match-date">
-                    {formatDate(matchPlayer.match.match_date)}
+                    {formatDate(matchPlayer.match?.date)}
                   </div>
                   <div className="match-details">
-                    Match on {formatDate(matchPlayer.match.match_date)}
+                    Match on {formatDate(matchPlayer.match?.date)}
                   </div>
                   <div className="match-score">
-                    Points: {matchPlayer.match.team_1_points} - {matchPlayer.match.team_2_points}
+                    Points: {matchPlayer.match?.team_1_points ?? 0} - {matchPlayer.match?.team_2_points ?? 0}
                   </div>
                 </div>
               ))}

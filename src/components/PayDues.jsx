@@ -62,7 +62,11 @@ export const PayDues = () => {
                 <iframe
                     title="Donation form powered by Zeffy"
                     style={{ position: 'relative', border: 0, width: '100%', padding: 0, height: '800px' }}
+<<<<<<< HEAD
+                    src="https://www.zeffy.com/en-US/embed/donation-form/placeholder-form-id"
+=======
                     src="https://www.zeffy.com/en-US/embed/donation-form/donate-to-coulee-region-tennis-association"
+>>>>>>> master
                     allowpaymentrequest="allowpaymentrequest"
                     allowtransparency="true"
                     allow="credit-card"
