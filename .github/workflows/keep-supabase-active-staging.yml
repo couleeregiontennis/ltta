@@ -1,0 +1,38 @@
+name: Keep Supabase Active (Staging)
+
+on:
+  schedule:
+    # Run once a week, every Sunday at midnight (UTC)
+    - cron: "0 0 * * 0"
+  # Allow running manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  ping-supabase-staging:
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    # We use environment variables to hold Supabase credentials if available as secrets
+    # Otherwise, it falls back to hardcoded public ANON key which is safe to expose
+    env:
+      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+    steps:
+      - name: Ping Staging Supabase Database
+        run: |
+          echo "Pinging Staging Supabase REST API to prevent pausing..."
+          
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL}/rest/v1/")
+            
+          echo "Staging Supabase responded with status code: $STATUS_CODE"
+          
+          if [ "$STATUS_CODE" -eq 200 ] || [ "$STATUS_CODE" -eq 400 ] || [ "$STATUS_CODE" -eq 401 ] || [ "$STATUS_CODE" -eq 404 ]; then
+            echo "Successfully connected to Staging Supabase."
+          else
+            echo "Failed to connect to Staging Supabase, status: $STATUS_CODE"
+            exit 1
+          fi

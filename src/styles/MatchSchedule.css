@@ -12,7 +12,7 @@
   --schedule-card-shadow-hover: var(--card-shadow-hover);
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2.5rem;
+  padding: var(--space-lg);
   font-family: var(--font-family);
   background: var(--schedule-page-bg);
   color: var(--schedule-card-text);
@@ -25,19 +25,19 @@
 
 .schedule-header {
   text-align: center;
-  margin-bottom: var(--space-2xl);
+  margin-bottom: var(--space-lg);
 }
 
 .schedule-header h1 {
-  font-size: var(--font-size-4xl);
+  font-size: var(--font-size-3xl);
   font-weight: 800;
   color: var(--schedule-accent);
-  margin-bottom: var(--space-sm);
+  margin-bottom: var(--space-xs);
 }
 
 .schedule-header p {
   color: var(--schedule-card-muted);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   margin: 0;
 }
 
@@ -45,7 +45,7 @@
   background: var(--schedule-card-bg);
   border: 1px solid var(--schedule-card-border);
   border-radius: var(--card-radius-lg);
-  padding: var(--space-2xl);
+  padding: var(--space-lg);
   box-shadow: var(--schedule-card-shadow);
   text-align: center;
   position: relative;
@@ -69,15 +69,15 @@
 
 .schedule-overview {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-xl);
-  margin-bottom: var(--space-2xl);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
 }
 
 .overview-card {
   position: relative;
   overflow: hidden;
-  padding: var(--space-xl);
+  padding: var(--space-md);
 }
 
 .overview-card::after {
@@ -97,19 +97,19 @@
 }
 
 .card-value {
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-2xl);
   font-weight: 700;
   color: var(--schedule-accent);
 }
 
 .card-subtitle {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--schedule-card-muted);
 }
 
 .schedule-controls {
-  padding: var(--space-xl);
-  margin-bottom: var(--space-2xl);
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
   position: relative;
   overflow: hidden;
 }
@@ -126,7 +126,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-xl);
+  gap: var(--space-md);
   justify-content: space-between;
 }
 
@@ -223,133 +223,125 @@
 .matches-container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
+  gap: 8px;
+  background: cyan !important;
 }
 
 .day-section {
   overflow: hidden;
+  background: orange !important;
 }
 
 .day-header {
-  padding: var(--space-xl);
+  padding: 8px 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, rgba(var(--color-secondary-rgb), 0.12), transparent);
+  background: linear-gradient(135deg, rgba(var(--color-secondary-rgb), 0.08), transparent);
+  border-bottom: 1px solid rgba(var(--color-secondary-rgb), 0.1);
 }
 
 .day-title {
-  font-size: var(--font-size-xl);
+  font-size: 14px;
   font-weight: 700;
   color: var(--schedule-card-text);
+  margin: 0 !important;
 }
 
 .day-count {
-  font-size: var(--font-size-sm);
+  font-size: 11px;
   color: var(--schedule-card-muted);
   font-weight: 600;
 }
 
 .day-matches {
-  padding: var(--space-xl);
-  display: grid;
-  gap: var(--space-lg);
-}
-
-.match-card {
-  padding: var(--space-xl);
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: 8px;
+}
+
+.match-card.card {
+  padding: 8px 12px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  min-height: 0 !important;
+  height: auto !important;
+  margin: 0 !important;
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+  flex: none !important;
 }
 
-.match-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, var(--card-highlight), transparent);
-  pointer-events: none;
-}
-
-.match-card:hover {
-  border-color: var(--schedule-accent);
-  border-left: 4px solid var(--schedule-accent);
-}
-
-.match-card.completed {
-  border-left: 4px solid var(--success);
-}
-
-.match-card.pending-result {
-  border-left: 4px solid var(--warning);
+.match-card.card > * {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
 }
 
 .match-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 0;
 }
 
 .match-time {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--schedule-card-muted);
 }
 
 .status-badge {
-  padding: var(--space-xs) var(--space-md);
+  padding: 1px 6px;
   border-radius: var(--radius-full);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
+  font-size: 9px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
 }
 
 .status-upcoming {
-  background: rgba(var(--color-secondary-rgb), 0.12);
+  background: rgba(var(--color-secondary-rgb), 0.1);
   color: var(--schedule-accent);
-  border: 1px solid rgba(var(--color-secondary-rgb), 0.25);
+  border: 1px solid rgba(var(--color-secondary-rgb), 0.2);
 }
 
 .status-completed {
-  background: rgba(var(--color-success-rgb), 0.12);
+  background: rgba(var(--color-success-rgb), 0.1);
   color: var(--success);
-  border: 1px solid rgba(var(--color-success-rgb), 0.4);
+  border: 1px solid rgba(var(--color-success-rgb), 0.3);
 }
 
 .status-pending {
-  background: rgba(var(--color-warning-rgb), 0.12);
+  background: rgba(var(--color-warning-rgb), 0.1);
   color: var(--warning);
-  border: 1px solid rgba(var(--color-warning-rgb), 0.4);
+  border: 1px solid rgba(var(--color-warning-rgb), 0.3);
 }
 
 .match-teams {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-lg);
-}
-
-.team {
-  flex: 1;
-  display: flex;
   justify-content: center;
-  align-items: center;
-  text-align: center;
+  gap: var(--space-md);
+  padding: 0;
+  margin: 2px 0;
 }
 
 .team-name {
   font-weight: 700;
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-sm);
   color: var(--schedule-card-text);
-  word-break: break-word;
 }
 
 .vs {
   font-weight: 700;
   color: var(--schedule-card-muted);
+  font-size: 10px;
 }
 
 .match-details {
@@ -357,13 +349,13 @@
   justify-content: space-between;
   align-items: center;
   color: var(--schedule-card-muted);
-  font-size: var(--font-size-sm);
+  font-size: 10px;
 }
 
 .location {
   display: flex;
   align-items: center;
-  gap: var(--space-xxs);
+  gap: 4px;
 }
 
 .match-id {
@@ -371,13 +363,14 @@
 }
 
 .match-result {
-  padding: var(--space-sm) var(--space-md);
-  background: rgba(var(--color-success-rgb), 0.12);
+  padding: 2px 8px;
+  background: rgba(var(--color-success-rgb), 0.1);
   color: var(--success);
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(var(--color-success-rgb), 0.4);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(var(--color-success-rgb), 0.3);
   text-align: center;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: var(--font-size-xs);
 }
 
 .no-matches {

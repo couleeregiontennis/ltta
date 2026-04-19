@@ -107,7 +107,7 @@ test.describe('Sub Board Feature', () => {
             });
 
             // Mock teams/locations for the form
-            await page.route('**/rest/v1/team*', async (route) => {
+            await page.route(/\/rest\/v1\/team($|\?)/, async (route) => {
                 await route.fulfill({
                     status: 200,
                     contentType: 'application/json',

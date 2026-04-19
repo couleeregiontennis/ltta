@@ -1,6 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
-
 export const ProtectedRoute = ({ children, requireAdmin, requireCaptain, allowIncompleteProfile = false }) => {
   const { session, loading, userRole, hasProfile } = useAuth();
   const location = useLocation();

@@ -12,17 +12,19 @@ test.describe('Access Control Verification', () => {
     await mockSupabaseData(page, 'team', []);
 
     // Default: Mock generic user data - NOT admin, NOT captain
-    await page.route('**/rest/v1/player*', async (route) => {
+    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
+        const data = {
+          id: 'fake-user-id',
+          first_name: 'Regular',
+          last_name: 'User',
+          is_captain: false,
+          is_admin: false
+        };
+        const isSingle = route.request().headers()['accept']?.includes('vnd.pgrst.object');
         await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({
-              id: 'fake-user-id',
-              first_name: 'Regular',
-              last_name: 'User',
-              is_captain: false,
-              is_admin: false
-            }),
+            body: JSON.stringify(isSingle ? data : [data]),
         });
     });
   });
@@ -41,17 +43,19 @@ test.describe('Access Control Verification', () => {
 
   test('Admin CAN access Schedule Generator', async ({ page }) => {
     // Override player mock
-    await page.route('**/rest/v1/player*', async (route) => {
+    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
+        const data = {
+          id: 'fake-user-id',
+          first_name: 'Admin',
+          last_name: 'User',
+          is_captain: true,
+          is_admin: true
+        };
+        const isSingle = route.request().headers()['accept']?.includes('vnd.pgrst.object');
         await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({
-              id: 'fake-user-id',
-              first_name: 'Admin',
-              last_name: 'User',
-              is_captain: true,
-              is_admin: true
-            }),
+            body: JSON.stringify(isSingle ? data : [data]),
         });
     });
 
@@ -64,23 +68,29 @@ test.describe('Access Control Verification', () => {
 
   test('Captain CAN access Captain Dashboard', async ({ page }) => {
      // Override player mock
-    await page.route('**/rest/v1/player*', async (route) => {
+    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
+        const data = {
+          id: 'fake-user-id',
+          first_name: 'Captain',
+          last_name: 'User',
+          is_captain: true,
+          is_admin: false
+        };
+        const isSingle = route.request().headers()['accept']?.includes('vnd.pgrst.object');
         await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({
-              id: 'fake-user-id',
-              first_name: 'Captain',
-              last_name: 'User',
-              is_captain: true,
-              is_admin: false
-            }),
+            body: JSON.stringify(isSingle ? data : [data]),
         });
     });
 
     // Mock specific dashboard data to avoid errors
-    await page.route('**/rest/v1/player_to_team*', async route => route.fulfill({ status: 200, body: JSON.stringify({ team: 'team-1' }) }));
-    await page.route('**/rest/v1/team*', async route => route.fulfill({ status: 200, body: JSON.stringify([{ id: 'team-1', number: 1, name: 'Test Team', play_night: 'Tuesday' }]) }));
+    await page.route('**/rest/v1/player_to_team*', async route => {
+      const data = [{ team: 'team-1', player: { id: 'fake-user-id', first_name: 'Captain', last_name: 'User', ranking: 1, is_active: true } }];
+      const isSingle = route.request().headers()['accept']?.includes('vnd.pgrst.object');
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(isSingle ? data[0] : data) });
+    });
+    await page.route(/\/rest\/v1\/team($|\?)/, async route => route.fulfill({ status: 200, body: JSON.stringify([{ id: 'team-1', number: 1, name: 'Test Team', play_night: 'Tuesday' }]) }));
 
     await page.goto('/captain-dashboard');
     expect(page.url()).toContain('/captain-dashboard');

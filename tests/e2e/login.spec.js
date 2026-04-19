@@ -96,7 +96,7 @@ test.describe('Login Page', () => {
     });
 
     // Mock the player profile fetch (AuthProvider uses .single())
-    await page.route('**/rest/v1/player*', async (route) => {
+    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -162,7 +162,7 @@ test.describe('Login Page', () => {
 
     // Mock the player table call to return an empty profile (since it's a new sign up)
     // AuthProvider uses .single() which means it expects an object. Return 406 to simulate not found.
-    await page.route('**/rest/v1/player*', async (route) => {
+    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
       await route.fulfill({
         status: 406,
         contentType: 'application/json',

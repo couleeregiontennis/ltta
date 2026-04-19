@@ -17,10 +17,21 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 -- but for now we'll allow authenticated users to view logs if they are implementing an admin UI)
 -- Adjust this policy based on your specific RLS needs. 
 -- For strict security: only allow service_role to insert, and specific admins to select.
-CREATE POLICY "Admins can view audit logs" ON public.audit_logs
-    FOR SELECT
-    TO authenticated
-    USING (true); -- customize this check (e.g., auth.email() = 'admin@example.com')
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_policy
+        WHERE polname = 'Admins can view audit logs'
+        AND polrelid = 'public.audit_logs'::regclass
+    ) THEN
+        CREATE POLICY "Admins can view audit logs" ON public.audit_logs
+            FOR SELECT
+            TO authenticated
+            USING (true);
+    END IF;
+END
+$$;
 
 -- Audit Trigger Function
 CREATE OR REPLACE FUNCTION public.process_audit_log()

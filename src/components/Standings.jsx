@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { supabase } from '../scripts/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
+import { useSeason } from '../hooks/useSeason';
+import { EmptyState } from './EmptyState';
 import '../styles/Style.css';
 import '../styles/Standings.css';
 
-// OPTIMIZATION: Memoized component to prevent re-rendering all rows when parent state (like auth or spotlight) updates
-const StandingsRow = memo(({ team, index }) => {
+const StandingsCard = memo(({ team, index }) => {
+  if (!team) return null;
   const rank = index + 1;
   const record =
     team.ties > 0
@@ -13,53 +15,83 @@ const StandingsRow = memo(({ team, index }) => {
       : `${team.wins}-${team.losses}`;
 
   return (
-    <tr
-      className={index === 0 ? 'leader' : index < 3 ? 'top-three' : ''}
-    >
-      <td data-label="Rank">{rank}</td>
-      <td data-label="Team">
-        <div className="team-cell">
-          <span className="team-number">Team {team.number}</span>
-          <span className="team-name">
-            {team.name}
-            {team.hasDisputes && (
-              <span className="dispute-badge" title="This team has one or more disputed match scores" aria-label="Disputed Match">⚠️</span>
-            )}
-          </span>
+    <div className={`standings-mobile-card card card--interactive ${index === 0 ? 'leader' : ''}`}>
+      <div className="card-rank">#{rank}</div>
+      <div className="card-main">
+        <div className="card-team-info">
+           {team.hasDisputes && <span className="dispute-badge" title="Disputed match results">⚠️</span>}
+           <span className="team-number">Team {team.number}</span>
+           <span className="team-name">{team.name}</span>
+         </div>
+        <div className="card-stats-grid">
+          <div className="stat-item">
+            <span className="stat-label">Points</span>
+            <span className="stat-value">{team.totalPoints}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Sets (W-L)</span>
+            <span className="stat-value">{team.setsWon}-{team.setsLost}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Bonus</span>
+            <span className="stat-value">{team.bonusPoints}</span>
+          </div>
         </div>
-      </td>
-      <td data-label="Night">{team.playNight || '—'}</td>
-      <td data-label="Status">
-        {team.playoffStatus === 'Clinched' && <span className="status-badge clinched" title="Clinched 1st Place">🏆 Clinched</span>}
-        {team.playoffStatus === 'Eliminated' && <span className="status-badge eliminated">Eliminated</span>}
-        {team.playoffStatus === 'Control Destiny' && <span className="status-badge control">Control Destiny</span>}
-        {team.playoffStatus === 'On the Hunt' && <span className="status-badge hunt" title="Magic Number to Clinch">Magic #: {team.magicNumber}</span>}
-        {!team.playoffStatus && <span className="status-badge">—</span>}
-      </td>
-      <td data-label="Matches">{team.matchesPlayed}</td>
-      <td data-label="Record">{record}</td>
-      <td data-label="Win %">
-        {team.matchesPlayed > 0
-          ? `${team.winPercentage.toFixed(1)}%`
-          : '0.0%'}
-      </td>
-      <td data-label="Sets (W-L)">
-        {team.setsWon} - {team.setsLost}
-      </td>
-      <td data-label="Set %">
-        {team.setsWon + team.setsLost > 0
-          ? `${team.setWinPercentage.toFixed(1)}%`
-          : '0.0%'}
-      </td>
-      <td data-label="Games (W-L)">
-        {team.gamesWon} - {team.gamesLost}
-      </td>
-    </tr>
+        <div className="card-status">
+          {team.playoffStatus === 'Clinched' && <span className="status-badge clinched" title="Clinched 1st Place">🏆 Clinched</span>}
+          {team.playoffStatus === 'Eliminated' && <span className="status-badge eliminated">Eliminated</span>}
+          {team.playoffStatus === 'Control Destiny' && <span className="status-badge control">Control Destiny</span>}
+          {team.playoffStatus === 'On the Hunt' && <span className="status-badge hunt" title="Magic Number to Clinch">Magic #: {team.magicNumber}</span>}
+          {!team.playoffStatus && team.playNight && <span className="status-badge">—</span>}
+        </div>
+      </div>
+    </div>
   );
 });
 
+  const StandingsRow = memo(({ team, index }) => {
+    if (!team) return null;
+    const rank = index + 1;
+    const record =
+      team.ties > 0
+        ? `${team.wins}-${team.losses}-${team.ties}`
+        : `${team.wins}-${team.losses}`;
+
+    return (
+      <tr
+        className={index === 0 ? 'leader' : index < 3 ? 'top-three' : ''}
+      >
+        <td data-label="Rank">{rank}</td>
+        <td data-label="Team">
+          <div className="team-cell">
+            {team.hasDisputes && <span className="dispute-badge" title="Disputed match results">⚠️</span>}
+            <span className="team-number">Team {team.number}</span>
+            <span className="team-name">{team.name}</span>
+          </div>
+        </td>
+        <td data-label="Night">{team.playNight || '—'}</td>
+        <td data-label="Status">
+          {team.playoffStatus === 'Clinched' && <span className="status-badge clinched" title="Clinched 1st Place">🏆 Clinched</span>}
+          {team.playoffStatus === 'Eliminated' && <span className="status-badge eliminated">Eliminated</span>}
+          {team.playoffStatus === 'Control Destiny' && <span className="status-badge control">Control Destiny</span>}
+          {team.playoffStatus === 'On the Hunt' && <span className="status-badge hunt" title="Magic Number to Clinch">Magic #: {team.magicNumber}</span>}
+          {!team.playoffStatus && <span className="status-badge">—</span>}
+        </td>
+        <td data-label="Matches">{team.matchesPlayed}</td>
+        <td data-label="Points"><strong>{team.totalPoints}</strong></td>
+        <td data-label="Sets (W-L)" className="hide-mobile">
+          {team.setsWon} - {team.setsLost}
+        </td>
+        <td data-label="Bonus" className="hide-mobile">
+          {team.bonusPoints}
+        </td>
+      </tr>
+    );
+  });
+
 const Standings = () => {
   const { user, loading: authLoading } = useAuth();
+  const { currentSeason, loading: seasonLoading } = useSeason();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [standings, setStandings] = useState([]);
@@ -91,29 +123,54 @@ const Standings = () => {
   });
 
   const fetchStandings = useCallback(async () => {
+    if (!currentSeason) {
+      console.log('Standings: No current season, skipping fetch');
+      return;
+    }
     try {
       setLoading(true);
       setError('');
+      console.log('Standings: Fetching data for season:', currentSeason.id);
 
-      const [
-        { data: standingsData, error: standingsError },
-        { count: playerCount, error: playerError },
-        { data: recentMatchesData, error: recentMatchesError },
-        { data: allMatchDates, error: datesError },
-        { data: playoffData, error: playoffError },
-        { data: disputedMatches, error: disputedMatchesError }
-      ] = await Promise.all([
-        supabase.from('standings_view').select('*'),
+      // Use allSettled to ensure one failing call doesn't block the whole page
+      const results = await Promise.allSettled([
+        supabase.from('standings_2026_view').select('*'),
         supabase.from('player').select('*', { count: 'exact', head: true }),
-        supabase.from('matches').select('id, date, time, status, home_team_name, away_team_name').order('date', { ascending: false }).limit(6),
-        supabase.from('matches').select('date'),
+        supabase.from('team_match').select(`
+          id, date, time, status, 
+          home_team:home_team_id (name), 
+          away_team:away_team_id (name)
+        `).order('date', { ascending: false }).limit(6),
+        supabase.from('team_match').select('date'),
         supabase.functions.invoke('playoff-scenarios'),
         supabase.from('team_match').select('home_team_id, away_team_id').eq('is_disputed', true)
       ]);
 
-      if (standingsError) throw standingsError;
-      if (recentMatchesError) throw recentMatchesError;
-      if (disputedMatchesError) throw disputedMatchesError;
+      const [
+        standingsRes,
+        playerCountRes,
+        recentMatchesRes,
+        allDatesRes,
+        playoffRes,
+        disputedRes
+      ] = results;
+
+      if (standingsRes.status === 'rejected' || standingsRes.value.error) {
+        console.error('Standings: Error loading standings_2026_view:', standingsRes.reason || standingsRes.value.error);
+        throw standingsRes.reason || standingsRes.value.error;
+      }
+
+      const standingsData = standingsRes.value.data;
+      const playerCount = playerCountRes.status === 'fulfilled' ? playerCountRes.value.count : 0;
+      const recentMatchesData = recentMatchesRes.status === 'fulfilled' ? recentMatchesRes.value.data : [];
+      const allMatchDates = allDatesRes.status === 'fulfilled' ? allDatesRes.value.data : [];
+      const playoffData = playoffRes.status === 'fulfilled' ? playoffRes.value.data : null;
+      const disputedMatches = disputedRes.status === 'fulfilled' ? disputedRes.value.data : [];
+
+      console.log('Standings: Data loaded successfully', { 
+        standingsCount: standingsData?.length,
+        recentCount: recentMatchesData?.length 
+      });
 
       const disputedTeamIds = new Set();
       if (disputedMatches) {
@@ -125,41 +182,35 @@ const Standings = () => {
 
       // Process Standings
       const formattedStandings = (standingsData || []).map((team) => {
-        const scenarios = playoffData ? playoffData[team.team_number] : null;
+        const scenarios = (playoffData && typeof playoffData === 'object') ? playoffData[team.team_number] : null;
         return {
-          id: team.team_id,
-          number: team.team_number,
-          name: team.team_name,
-          playNight: team.play_night,
-          wins: team.wins,
-          losses: team.losses,
-          ties: team.ties,
-          matchesPlayed: team.matches_played,
-          setsWon: team.sets_won,
-          setsLost: team.sets_lost,
-          gamesWon: team.games_won,
-          gamesLost: team.games_lost,
-          winPercentage: team.win_percentage,
-          setWinPercentage: team.set_win_percentage,
-          playoffStatus: scenarios?.status || '',
-          magicNumber: scenarios?.magicNumber || 0,
-          hasDisputes: disputedTeamIds.has(team.team_id)
-        };
+            id: team.team_id,
+            number: team.team_number,
+            name: team.team_name,
+            playNight: team.play_night,
+            totalPoints: team.total_points,
+            matchesPlayed: team.matches_played,
+            setsWon: team.total_sets_won,
+            setsLost: team.total_sets_lost,
+            wins: team.wins || 0,
+            losses: team.losses || 0,
+            ties: team.ties || 0,
+            gamesWon: team.games_won || 0,
+            gamesLost: team.games_lost || 0,
+            winPercentage: team.win_percentage || 0,
+            bonusPoints: team.total_bonus_points,
+            playoffStatus: scenarios?.status || '',
+            magicNumber: scenarios?.magicNumber || 0,
+            hasDisputes: disputedTeamIds.has(team.team_id)
+          };
       });
 
-      // Sort Standings
+      // Sort Standings by Total Points
       const sortedStandings = [...formattedStandings].sort((a, b) => {
-        if (b.winPercentage !== a.winPercentage) return b.winPercentage - a.winPercentage;
-
+        if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
         const setDiffA = a.setsWon - a.setsLost;
         const setDiffB = b.setsWon - b.setsLost;
-        if (setDiffB !== setDiffA) return setDiffB - setDiffA;
-
-        const gameDiffA = a.gamesWon - a.gamesLost;
-        const gameDiffB = b.gamesWon - b.gamesLost;
-        if (gameDiffB !== gameDiffA) return gameDiffB - gameDiffA;
-
-        return Number(a.number) - Number(b.number);
+        return setDiffB - setDiffA;
       });
 
       const uniqueNights = Array.from(
@@ -197,12 +248,19 @@ const Standings = () => {
         .sort((a, b) => new Date(a.date) - new Date(b.date))
         .slice(-8);
 
+      // Process recent matches
+      const formattedMatches = (recentMatchesData || []).map(m => ({
+        ...m,
+        home_team_name: m.home_team?.name || 'Unknown',
+        away_team_name: m.away_team?.name || 'Unknown'
+      }));
+
       setLeagueOverview({
         totalMatches,
         totalTeams,
         totalPlayers,
         avgMatchesPerTeam,
-        recentMatches: recentMatchesData || [],
+        recentMatches: formattedMatches,
         matchesByWeek
       });
 
@@ -212,7 +270,7 @@ const Standings = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentSeason]);
 
   useEffect(() => {
     fetchStandings();
@@ -466,7 +524,7 @@ const Standings = () => {
           </div>
 
           <div className="standings-table-card card card--interactive">
-            <table className="standings-table">
+            <table className="standings-table hide-mobile-flex">
               <thead>
                 <tr>
                   <th>#</th>
@@ -474,17 +532,15 @@ const Standings = () => {
                   <th>Night</th>
                   <th>Status</th>
                   <th>Matches</th>
-                  <th>Record</th>
-                  <th>Win %</th>
-                  <th>Sets (W-L)</th>
-                  <th>Set %</th>
-                  <th>Games (W-L)</th>
+                  <th>Points</th>
+                  <th className="hide-mobile">Sets (W-L)</th>
+                  <th className="hide-mobile">Bonus</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStandings.length === 0 ? (
                   <tr className="empty-row">
-                    <td colSpan={9}>No results yet for this league night.</td>
+                    <td colSpan={8}>No results yet for this league night.</td>
                   </tr>
                 ) : (
                   filteredStandings.map((team, index) => (
@@ -493,6 +549,20 @@ const Standings = () => {
                 )}
               </tbody>
             </table>
+
+            {/* Mobile Card View */}
+            <div className="standings-mobile-list show-mobile-only">
+              {filteredStandings.length === 0 ? (
+                <EmptyState 
+                  title="No results yet" 
+                  description="Standings will appear here once the season begins and match scores are submitted."
+                />
+              ) : (
+                filteredStandings.map((team, index) => (
+                  <StandingsCard key={team.id} team={team} index={index} />
+                ))
+              )}
+            </div>
           </div>
 
           <div className="standings-legend card card--interactive">

@@ -16,6 +16,7 @@ import { LandingPage } from './components/LandingPage';
 import { ScheduleGenerator } from './components/admin/ScheduleGenerator';
 import { AuditLogViewer } from './components/admin/AuditLogViewer';
 import { PlayerManagement } from './components/admin/PlayerManagement';
+import { PaymentManagement } from './components/admin/PaymentManagement';
 import { PlayerRankings } from './components/PlayerRankings';
 import { MySchedule } from './components/MySchedule';
 import { CourtsLocations } from './components/CourtsLocations';
@@ -23,7 +24,9 @@ import { PlayerResources } from './components/PlayerResources';
 import { SuggestionBox } from './components/SuggestionBox';
 import { AskTheUmpire } from './components/AskTheUmpire';
 import { SubBoard } from './components/SubBoard';
+import { PayDues } from './components/PayDues';
 import { AuthProvider } from './context/AuthProvider';
+import { ToastProvider } from './context/ToastContext';
 import './styles/colors.css';
 import './styles/Style.css';
 import './styles/Navigation.css';
@@ -66,109 +69,124 @@ function App() {
 
   return (
     <AuthProvider>
-      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <div className={`App theme-${theme}`}>
-          <Navigation theme={theme} onToggleTheme={toggleTheme} />
-          <AnnouncementBar />
-          <main>
-            <Routes>
-              <Route path="/" element={<MatchSchedule />} />
-              <Route path="/welcome" element={<LandingPage />} />
-              <Route path="/team/:day/:teamId" element={<Team />} />
-              <Route path="/player-resources" element={<PlayerResources />} />
-              <Route
-                path="/feedback"
-                element={
-                  <ProtectedRoute>
-                    <SuggestionBox />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/rules" element={<Rules />} />
-              <Route path="/standings" element={<Standings />} />
-              <Route path="/player-rankings" element={<PlayerRankings />} />
-              <Route
-                path="/sub-board"
-                element={
-                  <ProtectedRoute>
-                    <SubBoard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/courts-locations" element={<CourtsLocations />} />
-              <Route path="/login" element={<Login />} />
+      <ToastProvider>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <div className={`App theme-${theme}`}>
+            <Navigation theme={theme} onToggleTheme={toggleTheme} />
+            <AnnouncementBar />
+            <main>
+              <Routes>
+                <Route path="/" element={<MatchSchedule />} />
+                <Route path="/welcome" element={<LandingPage />} />
+                <Route path="/team/:day/:teamId" element={<Team />} />
+                <Route path="/player-resources" element={<PlayerResources />} />
+                <Route
+                  path="/feedback"
+                  element={
+                    <ProtectedRoute>
+                      <SuggestionBox />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/rules" element={<Rules />} />
+                <Route path="/standings" element={<Standings />} />
+                <Route path="/player-rankings" element={<PlayerRankings />} />
+                <Route
+                  path="/sub-board"
+                  element={
+                    <ProtectedRoute>
+                      <SubBoard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/courts-locations" element={<CourtsLocations />} />
+                <Route path="/login" element={<Login />} />
+                <Route
+                  path="/pay-dues"
+                  element={
+                    <ProtectedRoute>
+                      <PayDues />
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/add-score"
-                element={
+                <Route path="/add-score" element={
                   <ProtectedRoute requireCaptain>
                     <AddScore />
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/captain-dashboard"
-                element={
-                  <ProtectedRoute requireCaptain>
-                    <CaptainDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/schedule-generator"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <ScheduleGenerator />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/audit-logs"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <AuditLogViewer />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/player-management"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <PlayerManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/team-management"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <div>Team Management (Coming Soon)</div>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/player-profile"
-                element={
-                  <ProtectedRoute allowIncompleteProfile={true}>
-                    <PlayerProfile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/my-schedule"
-                element={
-                  <ProtectedRoute>
-                    <MySchedule />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/schedule" element={<MatchSchedule />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </main>
-          <AskTheUmpire />
-        </div>
-      </Router>
+                } />
+                <Route
+                  path="/captain-dashboard"
+                  element={
+                    <ProtectedRoute requireCaptain>
+                      <CaptainDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/schedule-generator"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <ScheduleGenerator />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/audit-logs"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <AuditLogViewer />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/player-management"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <PlayerManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/payment-management"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <PaymentManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/team-management"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <div>Team Management (Coming Soon)</div>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/player-profile"
+                  element={
+                    <ProtectedRoute allowIncompleteProfile={true}>
+                      <PlayerProfile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/my-schedule"
+                  element={
+                    <ProtectedRoute>
+                      <MySchedule />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/schedule" element={<MatchSchedule />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </main>
+            <AskTheUmpire />
+          </div>
+        </Router>
+      </ToastProvider>
     </AuthProvider>
   );
 }

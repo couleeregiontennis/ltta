@@ -15,25 +15,32 @@ For detailed instructions on how each agent should behave, review the following 
 - [@Developer](personas/developer.md): Focuses on execution, writing clean code, and adhering to project rules.
 - [@QA](personas/qa.md): Focuses on testing, edge cases, and breaking the system.
 
-## Pipeline Flow
+## Pipeline Flow & Iteration
 
-When the user provides a feature request, execute the following multi-agent conversation script in your response:
+This pipeline is **highly iterative and bidirectional**. While the stages below describe a general progression, agents should not hesitate to loop back to a previous stage whenever necessary. For example:
+- **@Architect** or **@Developer** may push back on a requirement if it is technically unfeasible, sending it back to **@ProductOwner** for refinement.
+- **@QA** may identify a design flaw during testing that requires **@Architect** to revisit the technical design.
+- **@Developer** may realize a requirement is ambiguous during implementation and ask **@ProductOwner** for immediate clarification.
+
+When the user provides a feature request, execute the following multi-agent conversation script in your response, maintaining an iterative flow:
 
 1. **Requirements Gathering & Refinement:**
    * **@ProductOwner** analyzes the request, proposing User Stories and Acceptance Criteria.
    * **@Architect** asks clarifying questions to the **@ProductOwner** about technical constraints or non-functional requirements.
    * **@ProductOwner** responds and finalizes the Requirements Document.
+   * *Iteration:* If **@Architect** identifies a conflict between requirements and system constraints, they debate and resolve it before proceeding.
    *(Pause for user approval before proceeding to technical design. Ask the user if the requirements look good.)*
 
 2. **Technical Design:**
    * **@Architect** reviews the established requirements and proposes a Technical Design and Implementation Plan.
    * **@Developer** reviews the design, pointing out any potential implementation challenges or suggesting code-level optimizations.
    * **@Architect** adjusts the plan if necessary and finalizes the Technical Design Document.
+   * *Iteration:* If **@Developer** discovers a simpler path that meets the goal but changes the design, **@Architect** reviews and updates the plan.
 
 3. **Iterative Implementation & QA (TDD Cycle):**
    * **@Developer** explicitly states the code changes for a specific chunk or area of the feature.
    * **@QA** immediately tests that specific area, writing/running Playwright tests to mandate that screens load correctly, data populates, and forms upload correctly.
-   * If **@QA** finds issues, **@Developer** responds with immediate fixes.
+   * *Iteration:* If **@QA** finds issues, **@Developer** responds with immediate fixes. If implementation reveals a requirement gap, they pause to consult **@ProductOwner**.
    * They rapidly cycle together, component by component, until the entire Technical Design is fully implemented and tested.
    * Once all parts are built, tested via Playwright, and clean, **@QA** gives the green light for the feature as a whole.
 

@@ -12,7 +12,7 @@ test.describe('Player Profile Editing', () => {
         });
 
         // Mock getting the profile data on load
-        await page.route('**/rest/v1/player*', async (route) => {
+        await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
             const url = route.request().url();
             const isSingle = url.includes('eq');
             const playerObj = {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../scripts/supabaseClient';
+import { LoadingSpinner } from './LoadingSpinner';
 import '../styles/CourtsLocations.css';
 
 export const CourtsLocations = () => {
@@ -49,7 +50,14 @@ export const CourtsLocations = () => {
     setExpandedLocation(expandedLocation === locationId ? null : locationId);
   };
 
-  if (loading) return <div className="courts-loading">Loading courts & locations...</div>;
+  if (loading) {
+    return (
+      <div className="courts-loading" style={{ textAlign: 'center', padding: '3rem' }}>
+        <LoadingSpinner size="md" />
+        <p style={{ marginTop: '1rem' }}>Loading courts & locations...</p>
+      </div>
+    );
+  }
   if (error) return <div className="courts-error">{error}</div>;
 
   return (
