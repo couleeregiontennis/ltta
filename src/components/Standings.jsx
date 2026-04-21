@@ -137,8 +137,8 @@ const Standings = () => {
         supabase.from('standings_2026_view').select('*'),
         supabase.from('player').select('*', { count: 'exact', head: true }),
         supabase.from('team_match').select(`
-          id, date, time, status,
-          home_team:home_team_id (name),
+          id, date, time, status, 
+          home_team:home_team_id (name), 
           away_team:away_team_id (name)
         `).order('date', { ascending: false }).limit(6),
         supabase.from('team_match').select('date'),
@@ -167,9 +167,9 @@ const Standings = () => {
       const playoffData = playoffRes.status === 'fulfilled' ? playoffRes.value.data : null;
       const disputedMatches = disputedRes.status === 'fulfilled' ? disputedRes.value.data : [];
 
-      console.log('Standings: Data loaded successfully', {
+      console.log('Standings: Data loaded successfully', { 
         standingsCount: standingsData?.length,
-        recentCount: recentMatchesData?.length
+        recentCount: recentMatchesData?.length 
       });
 
       const disputedTeamIds = new Set();
@@ -354,7 +354,7 @@ const Standings = () => {
     try {
       localStorage.setItem('ltta-standings-filter', nightFilter);
     } catch (err) {
-      console.warn('Failed to save to localStorage:', err);
+      console.warn('Failed to access localStorage:', err);
     }
   }, [nightFilter]);
 
@@ -553,8 +553,8 @@ const Standings = () => {
             {/* Mobile Card View */}
             <div className="standings-mobile-list show-mobile-only">
               {filteredStandings.length === 0 ? (
-                <EmptyState
-                  title="No results yet"
+                <EmptyState 
+                  title="No results yet" 
                   description="Standings will appear here once the season begins and match scores are submitted."
                 />
               ) : (

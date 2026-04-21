@@ -14,7 +14,7 @@ const ROUTES = [
   { name: 'login', path: '/login', role: 'player' },
   { name: 'player-profile', path: '/player-profile', role: 'player' },
   { name: 'my-schedule', path: '/my-schedule', role: 'player' },
-
+  
   // Protected Routes (Player)
   { name: 'feedback', path: '/feedback', role: 'player' },
   { name: 'sub-board', path: '/sub-board', role: 'player' },
@@ -29,7 +29,7 @@ const ROUTES = [
   { name: 'admin-audit-logs', path: '/admin/audit-logs', role: 'admin' },
   { name: 'admin-player-management', path: '/admin/player-management', role: 'admin' },
   { name: 'admin-payment-management', path: '/admin/payment-management', role: 'admin' },
-
+  
   // Dynamic / Edge Routes
   { name: 'not-found', path: '/some-random-page', role: 'player' },
 ];
@@ -59,7 +59,7 @@ test.describe('Comprehensive Visual Regression Suite', () => {
 
       console.log(`Navigating to ${route.path} as ${route.role}...`);
       await page.goto(route.path, { waitUntil: 'networkidle' });
-
+      
       // Wait for specific content based on route to ensure page is loaded
       if (route.path === '/') {
         await page.waitForSelector('.match-card', { timeout: 10000 }).catch(() => console.log('Timeout waiting for .match-card'));
@@ -68,7 +68,7 @@ test.describe('Comprehensive Visual Regression Suite', () => {
       } else if (route.path === '/player-rankings') {
         await page.waitForSelector('.rankings-table', { timeout: 10000 }).catch(() => console.log('Timeout waiting for rankings'));
       }
-
+      
       // Final settle time
       await page.waitForTimeout(2000);
 
@@ -171,7 +171,7 @@ test('visual check: mobile standings cards', async ({ page }) => {
   console.log('Waiting for .standings-mobile-card...');
 
   await page.waitForSelector('.standings-mobile-card', { timeout: 15000 });
-
+  
   await expect(page.locator('.standings-mobile-list')).toHaveScreenshot('standings-mobile-list.png');
 });
 
@@ -180,20 +180,20 @@ test('visual check: mobile standings cards', async ({ page }) => {
   test('visual check: toast notification position', async ({ page }) => {
     await mockSupabaseAuth(page, { id: 'test-user' });
     await page.setViewportSize({ width: 375, height: 812 });
-
+    
     // Go to profile and trigger a save to get a real toast
     await page.goto('/player-profile');
     await page.waitForTimeout(2000);
-
+    
     const editBtn = page.locator('button:has-text("Edit Profile")');
     if (await editBtn.isVisible()) {
         await editBtn.click();
         await page.locator('button:has-text("Save Profile")').click();
-
+        
         // Wait for toast
         const toast = page.locator('.toast').first();
         await expect(toast).toBeVisible({ timeout: 15000 });
-
+        
         await expect(page.locator('.toast-container')).toHaveScreenshot('mobile-toast-position.png');
     }
   });

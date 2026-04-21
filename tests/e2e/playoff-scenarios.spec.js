@@ -81,7 +81,7 @@ test.describe('Playoff Scenarios UI', () => {
         // Verifybadges are visible
         // The table is sortable, so they should be there.
         await expect(page.locator('.standings-table')).toBeVisible();
-
+        
         // Check for statuses in the table
         await expect(page.locator('.standings-table >> text=Clinched')).toBeVisible();
         await expect(page.locator('.standings-table >> text=Control Destiny')).toBeVisible();

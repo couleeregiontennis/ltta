@@ -29,10 +29,10 @@ test.describe('Standings Persistence', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          {
-            team_id: 't1',
-            team_name: 'Team A',
-            team_number: 1,
+          { 
+            team_id: 't1', 
+            team_name: 'Team A', 
+            team_number: 1, 
             play_night: 'Monday',
             total_points: 20,
             matches_played: 12,
@@ -41,10 +41,10 @@ test.describe('Standings Persistence', () => {
             win_percentage: 83.3,
             total_bonus_points: 2
           },
-          {
-            team_id: 't2',
-            team_name: 'Team B',
-            team_number: 2,
+          { 
+            team_id: 't2', 
+            team_name: 'Team B', 
+            team_number: 2, 
             play_night: 'Tuesday',
             total_points: 10,
             matches_played: 12,

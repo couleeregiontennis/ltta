@@ -7,7 +7,7 @@ export const AnnouncementBar = () => {
   if (loading) return null;
 
   const seasonYear = currentSeason?.number || new Date().getFullYear();
-
+  
   // Format start date if available
   let startInfo = "June 3rd and 4th";
   if (currentSeason?.start_date) {

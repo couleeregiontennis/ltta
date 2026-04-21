@@ -301,7 +301,7 @@ export const AddScore = () => {
           .order('date', { ascending: true });
 
         if (error) throw error;
-
+        
         const flattenedMatches = (matches || []).map(m => ({
           id: m.id,
           date: m.date,
@@ -505,7 +505,7 @@ export const AddScore = () => {
     else if (awaySet1 > homeSet1 && (awaySet1 >= 6 && (awaySet1 - homeSet1 >= 2 || awaySet1 === 7))) awaySetsWon++;
 
     if (homeSet2 > awaySet2 && (homeSet2 >= 6 && (homeSet2 - awaySet2 >= 2 || homeSet2 === 7))) homeSetsWon++;
-    else if (awaySet2 > homeSet2 && (awaySet2 >= 6 && (awaySet2 - homeSet2 >= 2 || homeSet2 === 7))) awaySetsWon++;
+    else if (awaySet2 > homeSet2 && (awaySet2 >= 6 && (awaySet2 - homeSet2 >= 2 || awaySet2 === 7))) awaySetsWon++;
 
     if (homeSet3 && awaySet3) {
       if (homeSet3 >= MATCH_TIEBREAK_TARGET && homeSet3 - awaySet3 >= 2) homeSetsWon++;
@@ -589,9 +589,9 @@ export const AddScore = () => {
         .single();
 
       const isDisputed = teamMatchData?.is_disputed || false;
-
+      
       setSelectedMatch({ ...match, is_disputed: isDisputed });
-
+      
       const isHome = teamMatchData?.home_team_id === userTeam.id;
       setFormData(prev => ({
         ...prev,
@@ -786,8 +786,8 @@ export const AddScore = () => {
           <h2>Line & Roster Status</h2>
           <div className="participation-bonus">
              <label className="checkbox-label">
-                <input
-                  type="checkbox"
+                <input 
+                  type="checkbox" 
                   name="fullRosterPresent"
                   checked={formData.fullRosterPresent}
                   onChange={handleInputChange}
@@ -823,7 +823,7 @@ export const AddScore = () => {
               </select>
             </div>
           </div>
-
+          
           <div className="form-row">
             <div className="form-group">
               <label>Home Players</label>

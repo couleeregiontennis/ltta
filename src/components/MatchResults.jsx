@@ -13,7 +13,7 @@ const formatDate = (dateStr) => {
 const MatchResultRow = memo(({ match, teamNumber }) => {
   const isHomeTeam = match.home_team?.number === parseInt(teamNumber);
   const opponent = isHomeTeam ? match.away_team?.name : match.home_team?.name;
-
+  
   // In 2026, points are the primary score (sets won + participation bonus)
   const teamPoints = isHomeTeam ? match.home_points : match.away_points;
   const opponentPoints = isHomeTeam ? match.away_points : match.home_points;

@@ -8,18 +8,18 @@ import '../../styles/PlayerManagement.css'; // Reuse modal and form styles
 export const PaymentManagement = () => {
     const { user, userRole, loading: authLoading } = useAuth();
     const { currentSeason: defaultSeason, loading: seasonLoading } = useSeason();
-
+    
     const [seasons, setSeasons] = useState([]);
     const [selectedSeasonId, setSelectedSeasonId] = useState(null);
     const [players, setPlayers] = useState([]);
     const [teams, setTeams] = useState([]);
     const [payments, setPayments] = useState([]);
-
+    
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-
+    
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newPayment, setNewPayment] = useState({
@@ -33,7 +33,7 @@ export const PaymentManagement = () => {
 
     useEffect(() => {
         if (authLoading || seasonLoading) return;
-
+        
         if (user && userRole.isAdmin) {
             fetchInitialData();
         } else {
@@ -56,7 +56,7 @@ export const PaymentManagement = () => {
     const fetchInitialData = async () => {
         try {
             setLoading(true);
-
+            
             // Fetch all seasons
             const { data: seasonData } = await supabase
                 .from('season')
@@ -149,7 +149,7 @@ export const PaymentManagement = () => {
                 notes: ''
             });
             fetchPayments(selectedSeasonId);
-
+            
             setTimeout(() => setSuccess(''), 3000);
         } catch (err) {
             console.error('Error recording payment:', err);
@@ -208,9 +208,9 @@ export const PaymentManagement = () => {
             <div className="admin-controls">
                 <div className="season-selector">
                     <label htmlFor="season-select">Season:</label>
-                    <select
+                    <select 
                         id="season-select"
-                        value={selectedSeasonId || ''}
+                        value={selectedSeasonId || ''} 
                         onChange={(e) => setSelectedSeasonId(e.target.value)}
                     >
                         {seasons.map(s => (
@@ -261,8 +261,8 @@ export const PaymentManagement = () => {
                                 <tr key={payment.id}>
                                     <td>{new Date(payment.created_at).toLocaleDateString()}</td>
                                     <td>
-                                        {payment.player ?
-                                            `${payment.player.first_name} ${payment.player.last_name}` :
+                                        {payment.player ? 
+                                            `${payment.player.first_name} ${payment.player.last_name}` : 
                                             `Team: ${payment.team?.name || 'Unknown'}`
                                         }
                                     </td>
@@ -274,8 +274,8 @@ export const PaymentManagement = () => {
                                     </td>
                                     <td>{payment.notes}</td>
                                     <td>
-                                        <button
-                                            className="btn-primary"
+                                        <button 
+                                            className="btn-primary" 
                                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
                                             onClick={() => handleApprovePayment(payment.id)}
                                         >
@@ -306,8 +306,8 @@ export const PaymentManagement = () => {
                             <tr key={payment.id}>
                                 <td>{new Date(payment.created_at).toLocaleDateString()}</td>
                                 <td>
-                                    {payment.player ?
-                                        `${payment.player.first_name} ${payment.player.last_name}` :
+                                    {payment.player ? 
+                                        `${payment.player.first_name} ${payment.player.last_name}` : 
                                         `Team: ${payment.team?.name || 'Unknown'}`
                                     }
                                 </td>
@@ -343,10 +343,10 @@ export const PaymentManagement = () => {
                                 <label>Payer Type</label>
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                                     <label className="checkbox-label" style={{ paddingLeft: '25px' }}>
-                                        <input
-                                            type="radio"
-                                            name="payer_type"
-                                            value="player"
+                                        <input 
+                                            type="radio" 
+                                            name="payer_type" 
+                                            value="player" 
                                             checked={newPayment.payer_type === 'player'}
                                             onChange={(e) => setNewPayment({...newPayment, payer_type: e.target.value})}
                                         />
@@ -354,10 +354,10 @@ export const PaymentManagement = () => {
                                         Player
                                     </label>
                                     <label className="checkbox-label" style={{ paddingLeft: '25px' }}>
-                                        <input
-                                            type="radio"
-                                            name="payer_type"
-                                            value="team"
+                                        <input 
+                                            type="radio" 
+                                            name="payer_type" 
+                                            value="team" 
                                             checked={newPayment.payer_type === 'team'}
                                             onChange={(e) => setNewPayment({...newPayment, payer_type: e.target.value})}
                                         />
@@ -370,7 +370,7 @@ export const PaymentManagement = () => {
                             {newPayment.payer_type === 'player' ? (
                                 <div className="form-group">
                                     <label htmlFor="player-select">Select Player</label>
-                                    <select
+                                    <select 
                                         id="player-select"
                                         required
                                         value={newPayment.player_id}
@@ -385,7 +385,7 @@ export const PaymentManagement = () => {
                             ) : (
                                 <div className="form-group">
                                     <label htmlFor="team-select">Select Team</label>
-                                    <select
+                                    <select 
                                         id="team-select"
                                         required
                                         value={newPayment.team_id}
@@ -402,10 +402,10 @@ export const PaymentManagement = () => {
                             <div className="form-grid">
                                 <div className="form-group">
                                     <label htmlFor="amount">Amount ($)</label>
-                                    <input
+                                    <input 
                                         id="amount"
-                                        type="number"
-                                        step="0.01"
+                                        type="number" 
+                                        step="0.01" 
                                         required
                                         value={newPayment.amount_paid}
                                         onChange={(e) => setNewPayment({...newPayment, amount_paid: e.target.value})}
@@ -414,7 +414,7 @@ export const PaymentManagement = () => {
                                 </div>
                                 <div className="form-group">
                                     <label htmlFor="method">Method</label>
-                                    <select
+                                    <select 
                                         id="method"
                                         value={newPayment.payment_method}
                                         onChange={(e) => setNewPayment({...newPayment, payment_method: e.target.value})}
@@ -429,7 +429,7 @@ export const PaymentManagement = () => {
 
                             <div className="form-group full-width">
                                 <label htmlFor="notes">Notes</label>
-                                <textarea
+                                <textarea 
                                     id="notes"
                                     value={newPayment.notes}
                                     onChange={(e) => setNewPayment({...newPayment, notes: e.target.value})}

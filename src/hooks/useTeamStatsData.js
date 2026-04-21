@@ -72,12 +72,12 @@ export const useTeamStatsData = () => {
       const { data, error: matchesError } = await supabase
         .from('team_match')
         .select(`
-          id,
-          date,
-          time,
-          status,
-          courts,
-          home_team:home_team_id (id, name, number),
+          id, 
+          date, 
+          time, 
+          status, 
+          courts, 
+          home_team:home_team_id (id, name, number), 
           away_team:away_team_id (id, name, number)
         `)
         .eq('season_id', seasonId)

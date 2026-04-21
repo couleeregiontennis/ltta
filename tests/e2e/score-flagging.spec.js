@@ -100,10 +100,10 @@ test.describe('Score Flagging Feature', () => {
 
             // Mock team filter for schedule
             await page.route(/\/rest\/v1\/team($|\?)/, async (route) => {
-                await route.fulfill({
-                  status: 200,
+                await route.fulfill({ 
+                  status: 200, 
                   contentType: 'application/json',
-                  body: JSON.stringify([{ id: 'team-1', name: 'Home Team', number: 1 }])
+                  body: JSON.stringify([{ id: 'team-1', name: 'Home Team', number: 1 }]) 
                 });
             });
 
@@ -132,7 +132,7 @@ test.describe('Score Flagging Feature', () => {
                     body: JSON.stringify({})
                 });
             });
-
+            
             // Mock player count
             await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
               if (route.request().method() === 'HEAD') {
@@ -185,7 +185,7 @@ test.describe('Score Flagging Feature', () => {
             }
 
             await expect(teamContainer).toBeVisible({ timeout: 10000 });
-
+            
             // Check for the dispute badge within that container
             const badge = teamContainer.locator('.dispute-badge');
             await expect(badge).toBeVisible();

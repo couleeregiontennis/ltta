@@ -83,7 +83,6 @@ serve(async (req) => {
         stream: false,
       }),
     });
-
     if (!response.ok) {
       const errText = await response.text();
       throw new Error(`Ollama API failed: ${response.status} ${errText}`);

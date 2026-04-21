@@ -18,16 +18,16 @@ let clientConfig = {
 try {
     const dbUrlObj = new URL(DB_URL);
     const stagingProjectId = 'shlcqztfdhfwkhijwgue';
-
+    
     // Honor the hostname and port from the provided DB_URL if it's already a Supavisor URL
     // Otherwise, fallback to the default Supavisor (IPv4) setup.
     if (!dbUrlObj.hostname.includes('pooler.supabase.com')) {
         dbUrlObj.hostname = 'aws-0-us-east-1.pooler.supabase.com';
-        dbUrlObj.port = '6543';
+        dbUrlObj.port = '6543'; 
     }
     dbUrlObj.username = `postgres.${stagingProjectId}`;
     dbUrlObj.searchParams.delete('options');
-
+    
     clientConfig.connectionString = dbUrlObj.toString();
     console.log(`Connecting to Supavisor (IPv4) at ${dbUrlObj.hostname}...`);
 } catch (e) {

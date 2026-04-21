@@ -21,11 +21,11 @@ test.describe('Add Score Page (Protected)', () => {
 
     // Select match
     await page.selectOption('select[name="matchId"]', 'm1-uuid');
-
+    
     // Check if match details show up in the dropdown selection
     const matchSelect = page.locator('select[name="matchId"]');
     await expect(matchSelect).toHaveValue('m1-uuid');
-
+    
     // The Line switcher buttons should be visible (target the button specifically)
     await expect(page.getByRole('button', { name: 'Line 1' })).toBeVisible();
   });
@@ -35,16 +35,16 @@ test.describe('Add Score Page (Protected)', () => {
 
     // Select match
     await page.selectOption('select[name="matchId"]', 'm1-uuid');
-
+    
     // Select match type
     await page.locator('select[name="matchType"]').selectOption('singles');
 
     // DO NOT select players
-
+    
     // Set some scores
     const set1Home = page.locator('.score-group').nth(0).locator('select').nth(0);
     const set1Away = page.locator('.score-group').nth(0).locator('select').nth(1);
-
+    
     await set1Home.selectOption({ label: '6' });
     await set1Away.selectOption({ label: '0' });
 
@@ -62,7 +62,7 @@ test.describe('Add Score Page (Protected)', () => {
 
      // Select match
      await page.selectOption('select[name="matchId"]', 'm1-uuid');
-
+     
      // Select match type
      await page.locator('select[name="matchType"]').selectOption('singles');
 
@@ -78,7 +78,7 @@ test.describe('Add Score Page (Protected)', () => {
      const set1Away = page.locator('.score-group').nth(0).locator('select').nth(1);
      await set1Home.selectOption('6');
      await set1Away.selectOption('0');
-
+     
      const set2Home = page.locator('.score-group').nth(1).locator('select').nth(0);
      const set2Away = page.locator('.score-group').nth(1).locator('select').nth(1);
      await set2Home.selectOption('6');

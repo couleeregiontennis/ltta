@@ -14,12 +14,12 @@ test.describe('UX Audit Capture', () => {
   for (const route of ROUTES) {
     test(`capture ${route.name}`, async ({ page }) => {
       // Mock auth based on required role
-      const userDetails = route.role === 'captain'
-        ? { id: 'captain-user-id', email: 'captain@ltta.com' }
+      const userDetails = route.role === 'captain' 
+        ? { id: 'captain-user-id', email: 'captain@ltta.com' } 
         : { id: 'player-user-id', email: 'player@ltta.com' };
-
+      
       await mockSupabaseAuth(page, userDetails);
-
+      
       // Mock player and team data for role-based pages
       if (route.role === 'captain') {
         await page.route(/\/rest\/v1\/player($|\?)/, async (r) => {
@@ -64,22 +64,22 @@ test.describe('UX Audit Capture', () => {
       }
 
       await page.goto(route.path);
-
+      
       // Wait for content to load
       await page.waitForTimeout(2000); // Wait for animations/transitions
 
       // Take desktop screenshot
       await page.setViewportSize({ width: 1280, height: 800 });
-      await page.screenshot({
-        path: `verification/ux-audit/${route.name}-desktop.png`,
-        fullPage: true
+      await page.screenshot({ 
+        path: `verification/ux-audit/${route.name}-desktop.png`, 
+        fullPage: true 
       });
 
       // Take mobile screenshot
       await page.setViewportSize({ width: 375, height: 812 });
-      await page.screenshot({
-        path: `verification/ux-audit/${route.name}-mobile.png`,
-        fullPage: true
+      await page.screenshot({ 
+        path: `verification/ux-audit/${route.name}-mobile.png`, 
+        fullPage: true 
       });
     });
   }

@@ -322,7 +322,7 @@ export const MatchSchedule = () => {
                               >
                                 {match.status === 'rain_cancellation' ? 'Undo Rainout' : 'Mark Rainout'}
                               </button>
-
+                              
                               {userRole?.isAdmin && (
                                 <button
                                   className="edit-result-btn"
@@ -339,7 +339,7 @@ export const MatchSchedule = () => {
                               )}
                             </div>
                           )}
-
+                          
                           {userRole?.isAdmin && (
                             <div className="admin-actions" style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-color)' }}>
                               <button

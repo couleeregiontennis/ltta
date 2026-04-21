@@ -7,7 +7,7 @@ import '../styles/PayDues.css';
 export const PayDues = () => {
     const { user, currentPlayerData } = useAuth();
     const { currentSeason } = useSeason();
-
+    
     const [submitting, setSubmitting] = useState(false);
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
@@ -55,18 +55,13 @@ export const PayDues = () => {
             </div>
 
             <div className="zeffy-embed">
-                {/*
+                {/* 
                   Replace this src URL with the actual Zeffy form URL.
-                  Wait, we need the Zeffy form URL from the user. We will use a placeholder for now.
                 */}
                 <iframe
                     title="Donation form powered by Zeffy"
                     style={{ position: 'relative', border: 0, width: '100%', padding: 0, height: '800px' }}
-<<<<<<< HEAD
-                    src="https://www.zeffy.com/en-US/embed/donation-form/placeholder-form-id"
-=======
                     src="https://www.zeffy.com/en-US/embed/donation-form/donate-to-coulee-region-tennis-association"
->>>>>>> master
                     allowpaymentrequest="allowpaymentrequest"
                     allowtransparency="true"
                     allow="credit-card"
@@ -76,13 +71,13 @@ export const PayDues = () => {
             <div className="self-report-section">
                 <h2>Already Paid?</h2>
                 <p>If you've just completed your payment using the form above, please click the button below so we can update your account.</p>
-
+                
                 {error && <div className="error-message">{error}</div>}
                 {message ? (
                     <div className="success-message">{message}</div>
                 ) : (
-                    <button
-                        className="btn-primary btn-report"
+                    <button 
+                        className="btn-primary btn-report" 
                         onClick={handleSelfReport}
                         disabled={submitting || !currentPlayerData}
                     >

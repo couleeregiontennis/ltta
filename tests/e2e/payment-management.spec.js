@@ -53,9 +53,9 @@ test.describe('Payment Management', () => {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({
-              id: 'admin-p-id',
-              user_id: adminUser.id,
+            body: JSON.stringify({ 
+              id: 'admin-p-id', 
+              user_id: adminUser.id, 
               is_admin: true,
               is_captain: false,
               first_name: 'Admin',
@@ -115,7 +115,7 @@ test.describe('Payment Management', () => {
 
   test('should display payment list and summary', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Payment Management' })).toBeVisible();
-
+    
     // Manually select a season to ensure fetch is triggered
     await page.locator('#season-select').selectOption({ label: 'Season 2 (2026)' });
 
@@ -148,16 +148,16 @@ test.describe('Payment Management', () => {
 
   test('should switch between player and team payer types', async ({ page }) => {
     await page.getByRole('button', { name: '+ Record Payment' }).click();
-
+    
     // Default is Player
     await expect(page.getByLabel('Select Player')).toBeVisible();
-
+    
     // Switch to Team - Click the text label instead of the hidden input
     await page.getByText('Team', { exact: true }).click();
-
+    
     await expect(page.getByLabel('Select Player')).not.toBeVisible();
     await expect(page.getByLabel('Select Team')).toBeVisible();
-
+    
     await page.getByLabel('Select Team').selectOption({ label: 'Aces (#101)' });
   });
 });

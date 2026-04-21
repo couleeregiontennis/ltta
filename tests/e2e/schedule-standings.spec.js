@@ -195,7 +195,7 @@ test.describe('Match Schedule Page', () => {
       teamA = page.locator('.standings-table').getByText('Team A');
       teamB = page.locator('.standings-table').getByText('Team B');
     }
-
+    
     await expect(teamA).toBeVisible();
     await expect(teamB).toBeVisible();
   });

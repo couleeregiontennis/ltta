@@ -26,7 +26,7 @@ export async function mockSupabaseData(page, table, data) {
       const url = route.request().url();
       const acceptHeader = route.request().headers()['accept'] || '';
       const isSingle = acceptHeader.includes('vnd.pgrst.object') || url.includes('limit=1');
-
+      
       if (isSingle) {
         console.log(`MOCK: Returning SINGLE object (Accept: ${acceptHeader}, URL: ${url})`);
       }
@@ -70,7 +70,7 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
     const hostname = new URL(supabaseUrl).hostname;
     projectRef = hostname.split('.')[0];
   } catch (e) {}
-
+  
   const storageKey = `sb-${projectRef}-auth-token`;
 
   await page.addInitScript(({ key, value }) => {
@@ -81,7 +81,7 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
   await page.route('**/auth/v1/user', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(defaultUser) }));
 
   // GLOBAL DATA MOCKS
-
+  
   // Mock current season - use regex to avoid matching other tables
   await page.route(/\/rest\/v1\/season($|\?)/, async (route) => {
     if (route.request().method() === 'GET') {
@@ -111,7 +111,7 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
       const url = route.request().url();
       const acceptHeader = route.request().headers()['accept'] || '';
       const isSingle = acceptHeader.includes('vnd.pgrst.object') || url.includes('limit=1');
-
+      
       const playerData = [
         {
           id: defaultUser.id,
@@ -153,7 +153,7 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
       const url = route.request().url();
       const acceptHeader = route.request().headers()['accept'] || '';
       const isSingle = acceptHeader.includes('vnd.pgrst.object') || url.includes('limit=1');
-
+      
       let filtered = [
         { team: 't1', player: defaultUser.id },
         { team: 't1', player: 'other-player-id' }
@@ -212,7 +212,7 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
       const url = route.request().url();
       const acceptHeader = route.request().headers()['accept'] || '';
       const isSingle = acceptHeader.includes('vnd.pgrst.object') || url.includes('limit=1');
-
+      
       let teamData = { id: 't1', number: 1, name: 'Strikers', play_night: 'tuesday' };
       if (url.includes('number=eq.2') || url.includes('id=eq.t2')) {
         teamData = { id: 't2', number: 2, name: 'Volleyers', play_night: 'tuesday' };
@@ -234,13 +234,13 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
       const url = route.request().url();
       const acceptHeader = route.request().headers()['accept'] || '';
       const isSingle = acceptHeader.includes('vnd.pgrst.object') || url.includes('limit=1');
-
+      
       // Robust team_match mock
-      const matchData = {
-        id: 'm1-uuid',
-        date: '2026-05-12',
-        time: '18:00:00',
-        status: 'scheduled',
+      const matchData = { 
+        id: 'm1-uuid', 
+        date: '2026-05-12', 
+        time: '18:00:00', 
+        status: 'scheduled', 
         courts: '1-2',
         is_disputed: false,
         home_team_id: 't1',
