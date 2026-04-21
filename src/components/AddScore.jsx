@@ -735,6 +735,13 @@ export const AddScore = () => {
         <p>Record results for 2026 Season (4 Lines of Doubles).</p>
       </div>
 
+      {loading && (
+        <div className="loading-overlay">
+          <LoadingSpinner size="lg" />
+          <p>Saving line results...</p>
+        </div>
+      )}
+
       {userTeam && (
         <div className="team-banner card card--interactive card--overlay">
           <div className="team-icon">🛡️</div>

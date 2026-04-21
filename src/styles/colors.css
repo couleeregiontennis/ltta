@@ -51,14 +51,14 @@
   --secondary-light: var(--color-secondary-light);
   --secondary-dark: var(--color-secondary-dark);
 
-  --bg-primary: #fefeff;
-  --bg-secondary: #f7fbff;
-  --bg-tertiary: #edf3fb;
+  --bg-primary: var(--color-surface);
+  --bg-secondary: var(--color-surface-muted);
+  --bg-tertiary: var(--color-surface-alt);
   --bg-dark: #1f2937;
 
   --text-primary: var(--color-text);
   --text-secondary: var(--color-text-muted);
-  --text-muted: #708098;
+  --text-muted: var(--color-text-muted);
   --text-inverse: var(--color-text-inverse);
   --text-white: var(--text-inverse);
 
@@ -68,12 +68,12 @@
   --border-accent: var(--color-primary);
 
   --success: var(--color-success);
-  --success-light: #10b981;
+  --success-light: var(--color-success-rgb);
   --success-bg: rgba(var(--color-success-rgb), 0.14);
   --warning: var(--color-warning);
   --warning-bg: rgba(var(--color-warning-rgb), 0.18);
   --error: var(--color-error);
-  --error-light: #ef4444;
+  --error-light: var(--color-error-rgb);
   --error-bg: rgba(var(--color-error-rgb), 0.16);
   --info: var(--color-secondary);
   --info-bg: rgba(var(--color-secondary-rgb), 0.12);
@@ -188,22 +188,6 @@
 .text-secondary { color: var(--text-secondary); }
 .text-muted { color: var(--text-muted); }
 .text-white { color: var(--text-inverse); }
-
-.bg-primary { background-color: var(--bg-primary); }
-.bg-secondary { background-color: var(--bg-secondary); }
-.bg-tertiary { background-color: var(--bg-tertiary); }
-
-.border-primary { border-color: var(--border-primary); }
-.border-accent { border-color: var(--border-accent); }
-
-.shadow-sm { box-shadow: var(--shadow-sm); }
-.shadow-md { box-shadow: var(--shadow-md); }
-.shadow-lg { box-shadow: var(--shadow-lg); }
-
-.transition-fast { transition: all var(--transition-fast); }
-.transition-normal { transition: all var(--transition-normal); }
-.transition-slow { transition: all var(--transition-slow); }
-.text-white { color: var(--text-white); }
 
 .bg-primary { background-color: var(--bg-primary); }
 .bg-secondary { background-color: var(--bg-secondary); }

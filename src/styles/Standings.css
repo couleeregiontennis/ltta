@@ -25,7 +25,7 @@
   --standings-muted: var(--text-secondary);
   --standings-heading: var(--secondary-light);
   --standings-accent: var(--secondary-light);
-  --standings-header-bg: rgba(var(--color-secondary-rgb), 0.24);
+  --standings-header-bg: rgba(var(--color-secondary-rgb), 0.45);
   --standings-header-text: var(--text-primary);
   --standings-stripe: rgba(var(--color-secondary-rgb), 0.18);
   --standings-row-hover: rgba(var(--color-secondary-rgb), 0.28);

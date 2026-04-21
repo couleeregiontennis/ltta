@@ -32,7 +32,7 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: var(--font-size-xs);
-  color: var(--layout-muted);
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -47,7 +47,7 @@
 .support-grid,
 .resource-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: var(--space-xl);
 }
 
@@ -70,7 +70,7 @@
 }
 
 .carousel-controls button {
-  border: 1px solid var(--layout-border);
+  border: 1px solid var(--border-primary);
   background: transparent;
   border-radius: var(--radius-md);
   padding: var(--space-xs) var(--space-md);
@@ -89,13 +89,13 @@
   position: relative;
   overflow: hidden;
   margin-top: var(--space-lg);
-  height: 220px;
+  height: 320px;
 }
 
 .carousel-image {
   position: absolute;
   width: 100%;
-  height: 220px;
+  height: 320px;
   object-fit: cover;
   border-radius: var(--radius-lg);
   opacity: 0.4;
@@ -120,7 +120,7 @@
   height: 10px;
   border-radius: var(--radius-full);
   border: none;
-  background: var(--layout-border);
+  background: var(--border-primary);
   cursor: pointer;
   transition: background var(--transition-fast), width var(--transition-fast);
 }
@@ -139,7 +139,7 @@
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
   box-shadow: var(--card-shadow);
-  background: rgba(var(--layout-surface-rgb), 0.96);
+  background: rgba(var(--color-surface-rgb), 0.96);
 }
 
 .location-card h3,
