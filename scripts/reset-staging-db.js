@@ -3,6 +3,7 @@ import fs from 'fs';
 
 const { Client } = pkg;
 
+// Fetch the URL from the environment
 let DB_URL = process.env.STAGING_DB_URL;
 
 if (!DB_URL) {
@@ -10,35 +11,39 @@ if (!DB_URL) {
     process.exit(1);
 }
 
-let clientConfig = {
-    connectionString: DB_URL,
-    ssl: { rejectUnauthorized: false }
-};
+// Supabase IPv4 Pooler REQUIRES the project reference to be passed in the connection options
+// or it will throw "Tenant or user not found".
+// GitHub Actions lacks IPv6, so we MUST use the pooler.
+const PROJECT_REF = 'shlcqztfdhfwkhijwgue';
 
 try {
-    const dbUrlObj = new URL(DB_URL);
-    const stagingProjectId = 'shlcqztfdhfwkhijwgue';
+    const urlObj = new URL(DB_URL);
     
-    // Honor the hostname and port from the provided DB_URL if it's already a Supavisor URL
-    // Otherwise, fallback to the default Supavisor (IPv4) setup.
-    if (!dbUrlObj.hostname.includes('pooler.supabase.com')) {
-        dbUrlObj.hostname = 'aws-0-us-east-1.pooler.supabase.com';
-        dbUrlObj.port = '6543'; 
+    // Ensure we are using the port 6543 for the pooler to avoid direct connection conflicts
+    if (urlObj.hostname.includes('pooler.supabase.com')) {
+        urlObj.port = '6543';
+
+        // Append the options parameter. If it exists, append to it, otherwise create it.
+        const currentOptions = urlObj.searchParams.get('options');
+        if (!currentOptions || !currentOptions.includes('reference=')) {
+            const newOptions = currentOptions ? `${currentOptions}&reference=${PROJECT_REF}` : `reference=${PROJECT_REF}`;
+            urlObj.searchParams.set('options', newOptions);
+        }
     }
-    dbUrlObj.username = `postgres.${stagingProjectId}`;
-    dbUrlObj.searchParams.delete('options');
-    
-    clientConfig.connectionString = dbUrlObj.toString();
-    console.log(`Connecting to Supavisor (IPv4) at ${dbUrlObj.hostname}...`);
+    DB_URL = urlObj.toString();
 } catch (e) {
-    console.warn("Could not parse URLs:", e.message);
+    console.error("Invalid database URL provided.");
+    process.exit(1);
 }
 
-const client = new Client(clientConfig);
+const client = new Client({
+    connectionString: DB_URL,
+    keepAlive: false
+});
 
 async function run() {
     try {
-        console.log("Connecting to Staging Database...");
+        console.log("Connecting to Staging Database (IPv4 Pooler)...");
         await client.connect();
         console.log("Connected successfully!");
 
@@ -66,4 +71,3 @@ async function run() {
 }
 
 run();
-// Trigger workflow run - $(date)
