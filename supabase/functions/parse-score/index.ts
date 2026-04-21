@@ -3,7 +3,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 console.log('Hello from Functions! (Local Ollama Version)');
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', 
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -83,14 +83,13 @@ serve(async (req) => {
         stream: false,
       }),
     });
-
     if (!response.ok) {
       const errText = await response.text();
       throw new Error(`Ollama API failed: ${response.status} ${errText}`);
     }
 
     const data = await response.json();
-    
+
     let parsedResponse;
     try {
       parsedResponse = JSON.parse(data.response);

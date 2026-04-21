@@ -4,7 +4,7 @@ ALTER TABLE public.line_results DROP CONSTRAINT IF EXISTS line_results_line_numb
 ALTER TABLE public.line_results ADD CONSTRAINT line_results_line_number_check CHECK (line_number = ANY (ARRAY[1, 2, 3, 4]));
 
 -- 2. Add participation bonus columns to team_match
--- Note: We track this per match, but for which team? 
+-- Note: We track this per match, but for which team?
 -- Requirements say "bonus point to that team's standings".
 -- Usually, both captains confirm or the submitter marks their own.
 ALTER TABLE public.team_match ADD COLUMN IF NOT EXISTS home_full_roster boolean DEFAULT false;
@@ -25,7 +25,7 @@ DROP VIEW IF EXISTS public.standings_2026_view;
 CREATE OR REPLACE VIEW public.standings_2026_view WITH (security_invoker='on') AS
  WITH match_points AS (
     -- Calculate sets won and participation points per team per match
-    SELECT 
+    SELECT
         m.id as match_id,
         m.season_id,
         m.play_night,
@@ -34,27 +34,27 @@ CREATE OR REPLACE VIEW public.standings_2026_view WITH (security_invoker='on') A
         t.name as team_name,
         -- Sets won in this match
         (
-            SELECT count(*) 
-            FROM line_results lr 
-            WHERE lr.match_id = m.id 
+            SELECT count(*)
+            FROM line_results lr
+            WHERE lr.match_id = m.id
             AND (
                 (m.home_team_id = t.id AND lr.home_set_1 > lr.away_set_1) OR
                 (m.away_team_id = t.id AND lr.away_set_1 > lr.home_set_1)
             )
-        ) + 
+        ) +
         (
-            SELECT count(*) 
-            FROM line_results lr 
-            WHERE lr.match_id = m.id 
+            SELECT count(*)
+            FROM line_results lr
+            WHERE lr.match_id = m.id
             AND (
                 (m.home_team_id = t.id AND lr.home_set_2 > lr.away_set_2) OR
                 (m.away_team_id = t.id AND lr.away_set_2 > lr.home_set_2)
             )
         ) +
         (
-            SELECT count(*) 
-            FROM line_results lr 
-            WHERE lr.match_id = m.id 
+            SELECT count(*)
+            FROM line_results lr
+            WHERE lr.match_id = m.id
             AND (
                 (m.home_team_id = t.id AND lr.home_set_3 > lr.away_set_3) OR
                 (m.away_team_id = t.id AND lr.away_set_3 > lr.home_set_3)
@@ -62,34 +62,34 @@ CREATE OR REPLACE VIEW public.standings_2026_view WITH (security_invoker='on') A
         ) as sets_won,
         -- Sets lost
         (
-            SELECT count(*) 
-            FROM line_results lr 
-            WHERE lr.match_id = m.id 
+            SELECT count(*)
+            FROM line_results lr
+            WHERE lr.match_id = m.id
             AND (
                 (m.home_team_id = t.id AND lr.home_set_1 < lr.away_set_1) OR
                 (m.away_team_id = t.id AND lr.away_set_1 < lr.home_set_1)
             )
-        ) + 
+        ) +
         (
-            SELECT count(*) 
-            FROM line_results lr 
-            WHERE lr.match_id = m.id 
+            SELECT count(*)
+            FROM line_results lr
+            WHERE lr.match_id = m.id
             AND (
                 (m.home_team_id = t.id AND lr.home_set_2 < lr.away_set_2) OR
                 (m.away_team_id = t.id AND lr.away_set_2 < lr.home_set_2)
             )
         ) +
         (
-            SELECT count(*) 
-            FROM line_results lr 
-            WHERE lr.match_id = m.id 
+            SELECT count(*)
+            FROM line_results lr
+            WHERE lr.match_id = m.id
             AND (
                 (m.home_team_id = t.id AND lr.home_set_3 < lr.away_set_3) OR
                 (m.away_team_id = t.id AND lr.away_set_3 < lr.home_set_3)
             )
         ) as sets_lost,
         -- Bonus Point
-        CASE 
+        CASE
             WHEN (m.home_team_id = t.id AND m.home_full_roster = true) THEN 1
             WHEN (m.away_team_id = t.id AND m.away_full_roster = true) THEN 1
             ELSE 0
@@ -98,7 +98,7 @@ CREATE OR REPLACE VIEW public.standings_2026_view WITH (security_invoker='on') A
     JOIN team t ON (m.home_team_id = t.id OR m.away_team_id = t.id)
     WHERE m.status = 'completed'
  )
- SELECT 
+ SELECT
     team_id,
     team_number,
     team_name,

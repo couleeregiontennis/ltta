@@ -24,5 +24,5 @@ This file tracks suggestions from players and captains for future league improve
 ---
 
 ## Internal Committee Notes
-*   *Note (March 2025):* These suggestions align with the committee's goal of "Variety and more competitive matches" mentioned in the preseason meeting. 
+*   *Note (March 2025):* These suggestions align with the committee's goal of "Variety and more competitive matches" mentioned in the preseason meeting.
 *   *Technical Note:* Moving to an 8-player "Line 1-4" system would simplify the database schema for the new 4th line of doubles.

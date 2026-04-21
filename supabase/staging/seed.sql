@@ -1,5 +1,5 @@
 -- location
-INSERT INTO "public"."location" ("id", "name", "address", "number_of_courts", "facility_type") 
+INSERT INTO "public"."location" ("id", "name", "address", "number_of_courts", "facility_type")
 VALUES ('11111111-1111-1111-1111-111111111111', 'Coulee Region Tennis Center', '123 Main St, La Crosse, WI', 6, 'outdoor');
 
 -- season

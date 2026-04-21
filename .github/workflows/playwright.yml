@@ -41,7 +41,7 @@ jobs:
 
     - name: Run Functional Tests (Exclude Visual)
       run: npx playwright test --grep-invert visual
-      
+
     - name: Run Visual Tests
       if: ${{ !inputs.update_snapshots }}
       id: visual-tests
@@ -103,4 +103,3 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-

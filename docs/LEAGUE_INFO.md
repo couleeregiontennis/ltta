@@ -51,7 +51,7 @@ This document serves as the central reference for the La Crosse Team Tennis Asso
     *   Best 2 of 3 sets.
     *   Set Tiebreak (at 6-6): 7-point tiebreak.
     *   3rd Set: 7-point tiebreak.
-*   **Extreme Heat Rule:** 
+*   **Extreme Heat Rule:**
     *   If "Feels Like" > 95°F: Sets can start at 2-2 by request.
     *   If "Feels Like" > 104°F: Play is cancelled by 4:30 PM.
 

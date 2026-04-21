@@ -32,4 +32,3 @@ jobs:
         env:
           STAGING_DB_URL: ${{ secrets.DB_URL }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-
