@@ -1,0 +1,21 @@
+name: Enforce Staging Flow
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Source Branch
+        if: github.head_ref != 'staging'
+        run: |
+          echo "ERROR: Direct merges into 'main' are forbidden."
+          echo "All changes must be merged into 'staging' first, then 'staging' can be merged into 'main'."
+          echo "Source branch was: ${{ github.head_ref }}"
+          exit 1
+      - name: Success
+        if: github.head_ref == 'staging'
+        run: echo "Branch verified. Proceeding with staging -> main merge."
