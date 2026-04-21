@@ -11,40 +11,38 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState({ isCaptain: false, isAdmin: false });
   const [hasProfile, setHasProfile] = useState(null);
+  const [currentPlayerData, setCurrentPlayerData] = useState(null);
+  const [currentSeason, setCurrentSeason] = useState(null);
 
-  const fetchUserData = async (userId) => {
-    if (!userId) {
-      setUserRole({ isCaptain: false, isAdmin: false });
-      return;
-    }
+  const prefetchCoreData = async (userId) => {
     try {
-      const { data, error } = await supabase
-        .from('player')
-        .select('is_captain, is_admin, first_name, last_name')
-        .eq('user_id', userId)
-        .single();
+      const [playerRes, seasonRes] = await Promise.all([
+        supabase
+          .from('player')
+          .select('*, is_captain, is_admin')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        supabase
+          .from('season')
+          .select('*')
+          .eq('is_active', true)
+          .maybeSingle()
+      ]);
 
-      if (error) {
-        if (error.code !== 'PGRST116') {
-          console.warn('Error fetching user data:', error.message);
-        }
-        setUserRole({ isCaptain: false, isAdmin: false });
-        setHasProfile(false);
-        return;
+      if (playerRes.data) {
+        setCurrentPlayerData(playerRes.data);
+        setUserRole({
+          isCaptain: !!playerRes.data.is_captain,
+          isAdmin: !!playerRes.data.is_admin
+        });
+        setHasProfile(!!playerRes.data.first_name);
       }
 
-      setUserRole({
-        isCaptain: !!data?.is_captain,
-        isAdmin: !!data?.is_admin
-      });
-
-      // Consider a profile complete if they have at least a first name saved
-      setHasProfile(!!data?.first_name);
-
+      if (seasonRes.data) {
+        setCurrentSeason(seasonRes.data);
+      }
     } catch (err) {
-      console.error('Error fetching user data:', err);
-      setUserRole({ isCaptain: false, isAdmin: false });
-      setHasProfile(false);
+      console.error('Systematic Pre-fetch Error:', err);
     }
   };
 
@@ -60,9 +58,12 @@ export const AuthProvider = ({ children }) => {
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
           if (initialSession?.user) {
-            await fetchUserData(initialSession.user.id);
+            await prefetchCoreData(initialSession.user.id);
           } else {
             setHasProfile(false);
+            // Even if not logged in, we need the active season for the public schedule
+            const { data } = await supabase.from('season').select('*').eq('is_active', true).maybeSingle();
+            if (mounted && data) setCurrentSeason(data);
           }
           setLoading(false);
         }
@@ -110,8 +111,10 @@ export const AuthProvider = ({ children }) => {
     loading,
     userRole,
     hasProfile,
+    currentPlayerData,
+    currentSeason,
     signOut,
-  }), [session, user, loading, userRole, hasProfile, signOut]);
+  }), [session, user, loading, userRole, hasProfile, currentPlayerData, currentSeason, signOut]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

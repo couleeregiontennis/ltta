@@ -1,16 +1,25 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../scripts/supabaseClient';
+import { useAuth } from '../context/AuthProvider';
 
 export const useSeason = () => {
-    const [currentSeason, setCurrentSeason] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const { currentSeason: prefetchedSeason, loading: authLoading } = useAuth();
+    const [currentSeason, setCurrentSeason] = useState(prefetchedSeason);
+    const [loading, setLoading] = useState(!prefetchedSeason && authLoading);
     const [error, setError] = useState(null);
 
     useEffect(() => {
+        if (prefetchedSeason) {
+            setCurrentSeason(prefetchedSeason);
+            setLoading(false);
+            return;
+        }
+
+        if (authLoading) return;
+
         const fetchSeason = async () => {
             try {
                 setLoading(true);
-
                 // Logic: Fetch the most recent season by end_date
                 const { data, error } = await supabase
                     .from('season')
@@ -20,28 +29,21 @@ export const useSeason = () => {
                     .single();
 
                 if (error) {
-                    if (error.code !== 'PGRST116') {
-                        console.error('useSeason: DB Error', error);
-                        throw error;
-                    }
-                    // No seasons found
-                    console.log('useSeason: No season found (PGRST116)');
+                    if (error.code !== 'PGRST116') throw error;
                     setCurrentSeason(null);
                 } else {
-                    console.log('useSeason: Found season:', data);
                     setCurrentSeason(data);
                 }
             } catch (err) {
-                console.error('useSeason: Catch Error:', err);
+                console.error('useSeason Error:', err);
                 setError(err.message);
             } finally {
-                console.log('useSeason: Finished loading');
                 setLoading(false);
             }
         };
 
         fetchSeason();
-    }, []);
+    }, [prefetchedSeason, authLoading]);
 
     return { currentSeason, loading, error };
 };
