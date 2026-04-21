@@ -47,15 +47,13 @@ export const ZeffyModal = ({ isOpen, onClose }) => {
         </div>
 
         <div className="zeffy-modal-actions">
-          <a 
-            href="https://www.zeffy.com/en-US/ticketing/2026-la-crosse-team-tennis" 
-            target="_blank" 
-            rel="noopener noreferrer"
+          <button
+            zeffy-form-link="https://www.zeffy.com/en-US/ticketing/2026-la-crosse-team-tennis"
             className="btn-zeffy-continue"
             onClick={onClose}
           >
             Continue to Registration
-          </a>
+          </button>
         </div>
       </div>
     </div>

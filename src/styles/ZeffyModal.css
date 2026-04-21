@@ -85,6 +85,10 @@
   font-weight: 600;
   transition: background-color 0.2s;
   display: inline-block;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1rem;
 }
 
 .btn-zeffy-continue:hover {

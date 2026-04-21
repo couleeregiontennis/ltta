@@ -34,9 +34,9 @@ serve(async (req) => {
     console.log("Generating embedding (Ollama)...");
     const embedResponse = await fetch(`${OLLAMA_URL}/api/embeddings`, {
         method: 'POST',
-        headers: { 
+        headers: {
             'Content-Type': 'application/json',
-            'x-home-server-secret': SECRET 
+            'x-home-server-secret': SECRET
         },
         body: JSON.stringify({
             model: 'nomic-embed-text',
@@ -81,9 +81,9 @@ serve(async (req) => {
 
     const chatResponse = await fetch(`${OLLAMA_URL}/api/generate`, {
         method: 'POST',
-        headers: { 
+        headers: {
             'Content-Type': 'application/json',
-            'x-home-server-secret': SECRET 
+            'x-home-server-secret': SECRET
         },
         body: JSON.stringify({
             model: 'gemma4:4b',

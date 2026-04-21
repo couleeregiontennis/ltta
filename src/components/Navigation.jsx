@@ -186,15 +186,13 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
                 </button>
               </li>
               <li>
-                <a
-                  href="https://www.zeffy.com/en-US/donation-form/donate-to-coulee-region-tennis-association"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  zeffy-form-link="https://www.zeffy.com/en-US/donation-form/donate-to-coulee-region-tennis-association"
                   className="nav-btn-zeffy donate"
                   onClick={closeMenu}
                 >
                   Donate ❤️
-                </a>
+                </button>
               </li>
 
               {/* Authentication */}

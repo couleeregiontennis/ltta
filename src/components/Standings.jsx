@@ -354,7 +354,7 @@ const Standings = () => {
     try {
       localStorage.setItem('ltta-standings-filter', nightFilter);
     } catch (err) {
-      console.warn('Failed to save to localStorage:', err);
+      console.warn('Failed to access localStorage:', err);
     }
   }, [nightFilter]);
 

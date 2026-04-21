@@ -17,7 +17,7 @@
 *   **Schedule Overview:** Key dates and match timings.
 *   **Venue:** Green Island Park (Primary).
 *   **Conflict Dates:** Use Central or Logan courts for conflicting dates.
-*   **Format Changes:** 
+*   **Format Changes:**
     *   Discussion on whether teams should have four #3s.
     *   Discussion on whether #1s and #2s should only play doubles.
 
