@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }) => {
         setCurrentSeason(seasonRes.data);
       }
     } catch (err) {
-      console.error('Systematic Pre-fetch Error:', err);
+      // Quietly handle pre-fetch errors
     }
   };
 
@@ -68,7 +68,6 @@ export const AuthProvider = ({ children }) => {
           setLoading(false);
         }
       } catch (err) {
-        console.error('Error getting session:', err);
         if (mounted) setLoading(false);
       }
     };
@@ -84,13 +83,14 @@ export const AuthProvider = ({ children }) => {
           setUser(session?.user ?? null);
 
           if (newUserId) {
-            await fetchUserData(newUserId);
+            await prefetchCoreData(newUserId);
           } else {
             setUserRole({ isCaptain: false, isAdmin: false });
             setHasProfile(false);
+            setCurrentPlayerData(null);
           }
         } catch (err) {
-          console.error('Error handling auth state change:', err);
+          // Error handling is handled by specific components
         } finally {
           setLoading(false);
         }

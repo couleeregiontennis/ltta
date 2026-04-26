@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../scripts/supabaseClient';
+import { useAuth } from '../context/AuthProvider';
 import { useVoiceScoreInput } from '../hooks/useVoiceScoreInput';
 import { LoadingSpinner } from './LoadingSpinner';
 import { useToast } from '../context/ToastContext';
@@ -154,11 +155,11 @@ const isPayloadUnchanged = (existing, payload) => {
 
 export const AddScore = () => {
   const { addToast } = useToast();
+  const { user, currentPlayerData, currentSeason, loading: authLoading } = useAuth();
+  
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [user, setUser] = useState(null);
-  const [player, setPlayer] = useState(null);
-  const [teams, setTeams] = useState([]);
   const [userTeam, setUserTeam] = useState(null);
   const [availableMatches, setAvailableMatches] = useState([]);
   const [selectedMatch, setSelectedMatch] = useState(null);
@@ -193,43 +194,6 @@ export const AddScore = () => {
     stopListening,
     isSpeechRecognitionSupported
   } = useVoiceScoreInput((parsedData) => {
-    const sanitizedLineNumber = parseInteger(parsedData?.lineNumber) || formData.lineNumber;
-    const sanitizedMatchType = parsedData?.matchType === 'singles' || parsedData?.matchType === 'doubles'
-      ? parsedData.matchType
-      : formData.matchType;
-
-    const nextForm = {
-      ...formData,
-      lineNumber: sanitizedLineNumber,
-      matchType: sanitizedMatchType,
-      homeSet1: parsedData?.homeSet1 != null ? parseInteger(parsedData.homeSet1) : null,
-      awaySet1: parsedData?.awaySet1 != null ? parseInteger(parsedData.awaySet1) : null,
-      homeSet2: parsedData?.homeSet2 != null ? parseInteger(parsedData.homeSet2) : null,
-      awaySet2: parsedData?.awaySet2 != null ? parseInteger(parsedData.awaySet2) : null,
-      homeSet3: parsedData?.homeSet3 != null ? parseInteger(parsedData.homeSet3) : null,
-      awaySet3: parsedData?.awaySet3 != null ? parseInteger(parsedData.awaySet3) : null,
-      notes: parsedData?.notes?.trim?.() || formData.notes
-    };
-
-    const set1Home = parseInteger(nextForm.homeSet1);
-    const set1Away = parseInteger(nextForm.awaySet1);
-    const set2Home = parseInteger(nextForm.homeSet2);
-    const set2Away = parseInteger(nextForm.awaySet2);
-    const set3Home = parseInteger(nextForm.homeSet3);
-    const set3Away = parseInteger(nextForm.awaySet3);
-
-    const hasThirdSet = !isEmptyValue(nextForm.homeSet3) || !isEmptyValue(nextForm.awaySet3);
-    const invalid =
-      !isStandardSetValid(set1Home, set1Away) ||
-      !isStandardSetValid(set2Home, set2Away) ||
-      (hasThirdSet && !isMatchTiebreakValid(set3Home, set3Away));
-
-    if (invalid) {
-      setError('AI parsed an invalid score. Please correct the values and try again.');
-      return;
-    }
-
-    const matchOrLineChanged = sanitizedMatchType !== formData.matchType || sanitizedLineNumber !== formData.lineNumber;
     setFormData((prev) => ({
       ...prev,
       lineNumber: sanitizedLineNumber,
@@ -249,58 +213,58 @@ export const AddScore = () => {
   });
 
   useEffect(() => {
-    const loadInitialData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUser(user);
+    const isReady = !authLoading && !!currentPlayerData && !!currentSeason;
+    
+    if (!isReady) {
+      if (!authLoading && !currentPlayerData) {
+        setLoading(false);
+      }
+      return;
+    }
 
-      const { data: playerData, error: playerError } = await supabase
-        .from('player')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (playerError || !playerData) return;
-      setPlayer(playerData);
-
-      const { data: teamLink, error: teamLinkError } = await supabase
-        .from('player_to_team')
-        .select('team')
-        .eq('player', playerData.id)
-        .single();
-
-      if (teamLinkError || !teamLink) return;
-
-      const { data: teamData, error: teamError } = await supabase
-        .from('team')
-        .select('*')
-        .eq('id', teamLink.team)
-        .single();
-
-      if (teamError || !teamData) return;
-      setUserTeam(teamData);
-    };
-
-    loadInitialData();
-  }, []);
-
-  useEffect(() => {
-    if (!userTeam) return;
-
-    const loadMatches = async () => {
+    const loadMatchData = async () => {
       try {
-        const { data: matches, error } = await supabase
+        setLoading(true);
+        setError('');
+
+        // 1. Get Team Assignment
+        const { data: teamLink, error: teamLinkError } = await supabase
+          .from('player_to_team')
+          .select('team')
+          .eq('player', currentPlayerData.id)
+          .single();
+
+        if (teamLinkError || !teamLink) {
+          setLoading(false);
+          return;
+        }
+
+        const { data: teamData, error: teamError } = await supabase
+          .from('team')
+          .select('*')
+          .eq('id', teamLink.team)
+          .single();
+
+        if (teamError || !teamData) {
+          setLoading(false);
+          return;
+        }
+        
+        setUserTeam(teamData);
+
+        // 2. Get Available Matches
+        const { data: matches, error: matchesError } = await supabase
           .from('team_match')
           .select(`
             id, date, time, courts, status,
             home_team:home_team_id (id, name, number, play_night),
             away_team:away_team_id (id, name, number, play_night)
           `)
-          .or(`home_team_id.eq.${userTeam.id},away_team_id.eq.${userTeam.id}`)
+          .or(`home_team_id.eq.${teamData.id},away_team_id.eq.${teamData.id}`)
           .eq('status', 'scheduled')
           .order('date', { ascending: true });
 
-        if (error) throw error;
+        if (matchesError) throw matchesError;
         
         const flattenedMatches = (matches || []).map(m => ({
           id: m.id,
@@ -317,13 +281,17 @@ export const AddScore = () => {
         }));
 
         setAvailableMatches(flattenedMatches);
+
       } catch (err) {
-        console.error('Error loading matches:', err);
+        console.error('Systematic Data Load Error:', err);
+        setError('Failed to load match data. Please try again.');
+      } finally {
+        setLoading(false);
       }
     };
 
-    loadMatches();
-  }, [userTeam]);
+    loadMatchData();
+  }, [authLoading, currentPlayerData?.id, currentSeason?.id]);
 
   const getEligiblePlayers = (roster, lineNumber) => {
     if (!roster || roster.length === 0) return [];
@@ -657,7 +625,7 @@ export const AddScore = () => {
     e.preventDefault();
     setError('');
     if (!validateForm()) return;
-    setLoading(true);
+    setSubmitting(true);
     try {
       if (!selectedMatch) throw new Error('No match selected');
 
@@ -716,7 +684,7 @@ export const AddScore = () => {
     } catch (err) {
       setError('Error submitting scores: ' + err.message);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -735,7 +703,7 @@ export const AddScore = () => {
         <p>Record results for 2026 Season (4 Lines of Doubles).</p>
       </div>
 
-      {loading && (
+      {submitting && (
         <div className="loading-overlay">
           <LoadingSpinner size="lg" />
           <p>Saving line results...</p>
@@ -930,8 +898,8 @@ export const AddScore = () => {
         </div>
 
         {error && <div className="error-message">{error}</div>}
-        <button type="submit" disabled={loading} className="submit-button">
-          {loading ? 'Submitting...' : 'Save Line Results'}
+        <button type="submit" disabled={submitting} className="submit-button">
+          {submitting ? 'Submitting...' : 'Save Line Results'}
         </button>
       </form>
     </div>
