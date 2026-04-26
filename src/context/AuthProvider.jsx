@@ -36,13 +36,16 @@ export const AuthProvider = ({ children }) => {
           isAdmin: !!playerRes.data.is_admin
         });
         setHasProfile(!!playerRes.data.first_name);
+      } else {
+        setHasProfile(false);
       }
 
       if (seasonRes.data) {
         setCurrentSeason(seasonRes.data);
       }
     } catch (err) {
-      // Quietly handle pre-fetch errors
+      console.error('Core data pre-fetch error:', err);
+      setHasProfile(false);
     }
   };
 

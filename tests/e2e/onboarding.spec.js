@@ -62,15 +62,12 @@ test.describe('New Player Onboarding Flow', () => {
         // We expect the app to evaluate hasProfile = false via ProtectedRoute and redirect to /welcome
         await page.waitForURL('**/welcome');
 
-        // Due to hasProfile = false, LandingPage renders the Onboarding Header
+        // Due to hasProfile = false, LandingPage renders the Onboarding Wizard
         await expect(page.getByText('Welcome to LTTA!')).toBeVisible();
-        await expect(page.getByText('Please complete your player profile to continue to your dashboard.')).toBeVisible();
+        await expect(page.getByText('Personal Details')).toBeVisible();
 
-        // Ensure the PlayerProfile component is rendered in edit mode implicitly
-        await expect(page.getByRole('button', { name: '💾 Save Profile' })).toBeVisible();
-        await expect(page.getByLabel(/Full Name/i)).toBeVisible();
-
-        // Ensure Cancel button is hidden since no prior profile exists
-        await expect(page.getByRole('button', { name: '❌ Cancel' })).toBeHidden();
+        // Ensure the OnboardingWizard is rendered and showing Step 1
+        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+        await expect(page.getByLabel(/First Name/i)).toBeVisible();
     });
 });

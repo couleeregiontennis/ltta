@@ -337,6 +337,7 @@ CREATE TABLE IF NOT EXISTS "public"."player_to_team" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "player" "uuid",
     "team" "uuid",
+    "status" text DEFAULT 'active' CHECK (status IN ('pending', 'active', 'invited', 'declined')),
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
@@ -1038,6 +1039,86 @@ CREATE POLICY "Allow authenticated users to read player to match" ON "public"."p
 
 
 CREATE POLICY "Allow authenticated users to read player to team" ON "public"."player_to_team" FOR SELECT USING ((( SELECT "auth"."role"() AS "role") = 'authenticated'::"text"));
+
+CREATE POLICY "Players can request to join a team"
+ON public.player_to_team
+FOR INSERT TO authenticated
+WITH CHECK (
+    player = (SELECT id FROM public.player WHERE user_id = auth.uid())
+    AND status = 'pending'
+);
+
+CREATE POLICY "Captains can invite players to their team"
+ON public.player_to_team
+FOR INSERT TO authenticated
+WITH CHECK (
+    status = 'invited'
+    AND team IN (
+        SELECT pt.team 
+        FROM public.player_to_team pt
+        JOIN public.player p ON p.id = pt.player
+        WHERE p.user_id = auth.uid() AND p.is_captain = true
+    )
+);
+
+CREATE POLICY "Captains can update requests for their team"
+ON public.player_to_team
+FOR UPDATE TO authenticated
+USING (
+    team IN (
+        SELECT pt.team 
+        FROM public.player_to_team pt
+        JOIN public.player p ON p.id = pt.player
+        WHERE p.user_id = auth.uid() AND p.is_captain = true
+    )
+)
+WITH CHECK (
+    team IN (
+        SELECT pt.team 
+        FROM public.player_to_team pt
+        JOIN public.player p ON p.id = pt.player
+        WHERE p.user_id = auth.uid() AND p.is_captain = true
+    )
+);
+
+CREATE POLICY "Players can update their own invitations"
+ON public.player_to_team
+FOR UPDATE TO authenticated
+USING (
+    player = (SELECT id FROM public.player WHERE user_id = auth.uid())
+)
+WITH CHECK (
+    player = (SELECT id FROM public.player WHERE user_id = auth.uid())
+);
+
+CREATE POLICY "Admins have full access to player_to_team"
+ON public.player_to_team
+FOR ALL TO authenticated
+USING (
+    EXISTS (SELECT 1 FROM public.player WHERE user_id = auth.uid() AND is_admin = true)
+)
+WITH CHECK (
+    EXISTS (SELECT 1 FROM public.player WHERE user_id = auth.uid() AND is_admin = true)
+);
+
+CREATE POLICY "Captains can delete requests for their team"
+ON public.player_to_team
+FOR DELETE TO authenticated
+USING (
+    team IN (
+        SELECT pt.team 
+        FROM public.player_to_team pt
+        JOIN public.player p ON p.id = pt.player
+        WHERE p.user_id = auth.uid() AND p.is_captain = true
+    )
+);
+
+CREATE POLICY "Players can delete their own requests"
+ON public.player_to_team
+FOR DELETE TO authenticated
+USING (
+    player = (SELECT id FROM public.player WHERE user_id = auth.uid())
+);
 
 
 

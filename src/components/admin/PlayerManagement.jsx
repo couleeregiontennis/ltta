@@ -19,6 +19,7 @@ export const PlayerManagement = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [players, setPlayers] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -32,18 +33,32 @@ export const PlayerManagement = () => {
     if (user && userRole.isAdmin) {
       setIsAdmin(true);
       fetchPlayers();
+      fetchTeams();
     } else {
       setIsAdmin(false);
       setLoading(false);
     }
   }, [authLoading, user, userRole]);
 
+  const fetchTeams = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('team')
+        .select('id, name, number, play_night')
+        .order('name', { ascending: true });
+      if (error) throw error;
+      setTeams(data || []);
+    } catch (err) {
+      console.error('Error fetching teams:', err);
+    }
+  };
+
   const fetchPlayers = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('player')
-        .select('*')
+        .select('*, player_to_team(team, status)')
         .order('last_name', { ascending: true });
 
       if (error) throw error;
@@ -58,13 +73,16 @@ export const PlayerManagement = () => {
 
   const handleEditClick = (player) => {
     // Deep copy to avoid mutating state directly
-    const availability = typeof player.availability === 'object' && player.availability
-      ? { ...getDefaultAvailability(), ...player.availability }
+    const availability = typeof player.day_availability === 'object' && player.day_availability
+      ? { ...getDefaultAvailability(), ...player.day_availability }
       : getDefaultAvailability();
 
+    const activeTeamLink = player.player_to_team?.find(pt => pt.status === 'active');
+    
     const playerToEdit = {
       ...player,
-      day_availability: player.day_availability || getDefaultAvailability()
+      active_team: activeTeamLink?.team || '',
+      day_availability: availability
     };
 
     setSelectedPlayer(playerToEdit);
@@ -114,17 +132,52 @@ export const PlayerManagement = () => {
         notes: updates.notes
       };
 
-      const { data, error } = await supabase
+      const { data: updatedPlayer, error: playerUpdateError } = await supabase
         .from('player')
         .update(dataToUpdate)
         .eq('id', id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (playerUpdateError) throw playerUpdateError;
 
-      // Update local list
-      setPlayers(prev => prev.map(p => p.id === id ? data : p));
+      // Update team assignment
+      const currentActiveTeam = players.find(p => p.id === id)?.player_to_team?.find(pt => pt.status === 'active')?.team;
+      
+      if (updates.active_team !== currentActiveTeam) {
+        // Remove old team link if exists
+        if (currentActiveTeam) {
+          await supabase
+            .from('player_to_team')
+            .delete()
+            .eq('player', id)
+            .eq('team', currentActiveTeam);
+        }
+        
+        // Add or reactivate new team link
+        if (updates.active_team) {
+          const { data: existingLink } = await supabase
+            .from('player_to_team')
+            .select('id')
+            .eq('player', id)
+            .eq('team', updates.active_team)
+            .maybeSingle();
+            
+          if (existingLink) {
+             await supabase
+               .from('player_to_team')
+               .update({ status: 'active' })
+               .eq('id', existingLink.id);
+          } else {
+             await supabase
+               .from('player_to_team')
+               .insert({ player: id, team: updates.active_team, status: 'active' });
+          }
+        }
+      }
+
+      // Re-fetch all players to ensure local state matches DB (including team links)
+      await fetchPlayers();
 
       setSuccess('Player updated successfully!');
       setTimeout(() => setSuccess(''), 3000);
@@ -189,6 +242,7 @@ export const PlayerManagement = () => {
             <tr>
               <th>Name</th>
               <th>Email</th>
+              <th>Team</th>
               <th>Ranking</th>
               <th>Captain</th>
               <th>Active</th>
@@ -196,13 +250,18 @@ export const PlayerManagement = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredPlayers.map(player => (
-              <tr key={player.id}>
-                <td>{player.last_name}, {player.first_name}</td>
-                <td>{player.email}</td>
-                <td>{player.ranking}</td>
-                <td>{player.is_captain ? '✅' : '❌'}</td>
-                <td>{player.is_active ? '✅' : '❌'}</td>
+            {filteredPlayers.map(player => {
+              const activeTeamLink = player.player_to_team?.find(pt => pt.status === 'active');
+              const teamName = activeTeamLink ? teams.find(t => t.id === activeTeamLink.team)?.name || 'Loading...' : 'None';
+              
+              return (
+                <tr key={player.id}>
+                  <td>{player.last_name}, {player.first_name}</td>
+                  <td>{player.email}</td>
+                  <td>{teamName}</td>
+                  <td>{player.ranking}</td>
+                  <td>{player.is_captain ? '✅' : '❌'}</td>
+                  <td>{player.is_active ? '✅' : '❌'}</td>
                 <td>
                   <button
                     className="edit-btn"
@@ -214,7 +273,8 @@ export const PlayerManagement = () => {
                   </button>
                 </td>
               </tr>
-            ))}
+            );
+          })}
             {filteredPlayers.length === 0 && (
               <tr>
                 <td colSpan="6" style={{ textAlign: 'center' }}>No players found</td>
@@ -286,6 +346,20 @@ export const PlayerManagement = () => {
                   <option value={3}>3 - Intermediate</option>
                   <option value={4}>4 - Advanced</option>
                   <option value={5}>5 - Expert</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="edit-team">Team Assignment</label>
+                <select
+                  id="edit-team"
+                  value={selectedPlayer.active_team || ''}
+                  onChange={(e) => handleInputChange('active_team', e.target.value)}
+                >
+                  <option value="">None (Free Agent)</option>
+                  {teams.map(t => (
+                    <option key={t.id} value={t.id}>{t.name} ({t.play_night})</option>
+                  ))}
                 </select>
               </div>
 

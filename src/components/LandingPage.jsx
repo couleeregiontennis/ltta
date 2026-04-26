@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../scripts/supabaseClient';
 import { MatchSchedule } from './MatchSchedule';
-import { PlayerProfile } from './PlayerProfile';
+import { OnboardingWizard } from './OnboardingWizard';
 import { useAuth } from '../context/AuthProvider';
 import '../styles/LandingPage.css';
 
@@ -84,11 +84,7 @@ export const LandingPage = () => {
   if (session && hasProfile === false) {
     return (
       <div className="landing-page onboarding-container">
-        <div className="onboarding-header" style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h2>Welcome to LTTA!</h2>
-          <p>Please complete your player profile to continue to your dashboard.</p>
-        </div>
-        <PlayerProfile />
+        <OnboardingWizard />
       </div>
     );
   }

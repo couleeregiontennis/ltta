@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../scripts/supabaseClient';
 import { useTeamStatsData } from '../hooks/useTeamStatsData';
+import { useAuth } from '../context/AuthProvider';
 import '../styles/CaptainDashboard.css';
 
 export const CaptainDashboard = () => {
+  const { currentPlayerData } = useAuth();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [team, setTeam] = useState(null);
@@ -16,6 +18,8 @@ export const CaptainDashboard = () => {
   const [rosterManagerOpen, setRosterManagerOpen] = useState(false);
   const [rosterManagerLoading, setRosterManagerLoading] = useState(false);
   const [availablePlayers, setAvailablePlayers] = useState([]);
+  const [pendingRoster, setPendingRoster] = useState([]);
+  const [invitedRoster, setInvitedRoster] = useState([]);
   const [lineupManagerOpen, setLineupManagerOpen] = useState(false);
   const [lineupManagerLoading, setLineupManagerLoading] = useState(false);
   const [selectedMatchForLineup, setSelectedMatchForLineup] = useState(null);
@@ -47,17 +51,24 @@ export const CaptainDashboard = () => {
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) throw new Error('Not authenticated');
-      setUser(currentUser);
+      if (!currentPlayerData) {
+        setLoading(false);
+        return;
+      }
 
       const { data: teamLink, error: teamLinkError } = await supabase
         .from('player_to_team')
         .select('team')
-        .eq('player', currentUser.id)
-        .single();
+        .eq('player', currentPlayerData.id)
+        .eq('status', 'active')
+        .maybeSingle();
 
       if (teamLinkError) throw teamLinkError;
+      
+      if (!teamLink) {
+        setLoading(false);
+        return;
+      }
 
       const { data: teamData, error: teamError } = await supabase
         .from('team')
@@ -81,6 +92,56 @@ export const CaptainDashboard = () => {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApproveRequest = async (playerId) => {
+    try {
+      setError('');
+      const { error } = await supabase
+        .from('player_to_team')
+        .update({ status: 'active' })
+        .eq('player', playerId)
+        .eq('team', team.id);
+      
+      if (error) throw error;
+      setSuccess('Player request approved.');
+      loadTeamRoster(team.id);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleDenyRequest = async (playerId) => {
+    try {
+      setError('');
+      const { error } = await supabase
+        .from('player_to_team')
+        .delete()
+        .eq('player', playerId)
+        .eq('team', team.id);
+      
+      if (error) throw error;
+      setSuccess('Player request denied.');
+      loadTeamRoster(team.id);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleInvitePlayer = async (playerId) => {
+    try {
+      setError('');
+      const { error } = await supabase
+        .from('player_to_team')
+        .insert({ player: playerId, team: team.id, status: 'invited' });
+      
+      if (error) throw error;
+      setSuccess('Player invited.');
+      loadTeamRoster(team.id);
+      setAvailablePlayers(prev => prev.filter(p => p.id !== playerId));
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -207,16 +268,32 @@ export const CaptainDashboard = () => {
       const { data: teamPlayers, error: rosterError } = await supabase
         .from('player_to_team')
         .select(`
+          status,
           player:player(*)
         `)
         .eq('team', teamId);
 
       if (rosterError) throw rosterError;
 
-      const rosterData = (teamPlayers || []).map(tp => tp.player).sort((a, b) => a.ranking - b.ranking);
-      setRoster(rosterData);
+      const activePlayers = [];
+      const pending = [];
+      const invited = [];
 
-      const activeCount = rosterData.filter(p => p.is_active).length;
+      (teamPlayers || []).forEach(tp => {
+        if (!tp.player) return;
+        const p = { ...tp.player, teamStatus: tp.status || 'active' };
+        if (p.teamStatus === 'pending') pending.push(p);
+        else if (p.teamStatus === 'invited') invited.push(p);
+        else activePlayers.push(p);
+      });
+
+      activePlayers.sort((a, b) => a.ranking - b.ranking);
+      
+      setRoster(activePlayers);
+      setPendingRoster(pending);
+      setInvitedRoster(invited);
+
+      const activeCount = activePlayers.filter(p => p.is_active).length;
       setPlayersAvailable(activeCount);
     } catch (err) {
       console.error('Error loading roster:', err);
@@ -395,6 +472,36 @@ export const CaptainDashboard = () => {
               <button type="button" className="section-action">Export Roster</button>
             </div>
           </div>
+          {pendingRoster.length > 0 && (
+            <div style={{ marginBottom: '2rem', padding: '1rem', border: '1px solid var(--color-warning)', borderRadius: 'var(--radius-md)' }}>
+              <h3 style={{ color: 'var(--color-warning)', marginBottom: '1rem' }}>Pending Join Requests</h3>
+              <div className="roster-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Ranking</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingRoster.map((player) => (
+                      <tr key={player.id}>
+                        <td>{player.first_name} {player.last_name}</td>
+                        <td>{player.email}</td>
+                        <td>{player.ranking}</td>
+                        <td>
+                          <button className="btn-small" onClick={() => handleApproveRequest(player.id)}>Approve</button>
+                          <button className="btn-small btn-text-danger" style={{ marginLeft: '0.5rem' }} onClick={() => handleDenyRequest(player.id)}>Deny</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
           <div className="roster-table">
             <table>
               <thead>
@@ -661,7 +768,7 @@ export const CaptainDashboard = () => {
                     {availablePlayers.map(p => (
                       <div key={p.id} className="mini-player-card">
                         <span>{p.first_name} {p.last_name} (Rank: {p.ranking})</span>
-                        <button className="btn-text-primary">Add to Team</button>
+                        <button className="btn-text-primary" onClick={() => handleInvitePlayer(p.id)}>Invite to Team</button>
                       </div>
                     ))}
                   </div>
