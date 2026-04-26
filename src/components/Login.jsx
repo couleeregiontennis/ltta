@@ -188,15 +188,6 @@ export const Login = () => {
                 <span className="oauth-icon" aria-hidden>🔵</span>
                 Google
               </button>
-              <button
-                type="button"
-                className="oauth-button apple"
-                onClick={() => handleOAuth('apple')}
-                disabled={loading}
-              >
-                <span className="oauth-icon" aria-hidden></span>
-                Apple
-              </button>
             </div>
           </div>
 
