@@ -6,6 +6,22 @@ import { useSeason } from '../hooks/useSeason';
 import { LoadingSpinner } from './LoadingSpinner';
 import { EmptyState } from './EmptyState';
 import '../styles/MatchSchedule.css';
+import '../styles/Skeleton.css';
+
+const ScheduleSkeleton = () => (
+  <div className="matches-container">
+    {[1, 2].map((day) => (
+      <div key={day} className="day-section">
+        <div className="skeleton-row skeleton" style={{ height: '3rem', borderRadius: 0 }} />
+        <div className="day-matches" style={{ padding: '1rem' }}>
+          {[1, 2, 3].map((match) => (
+            <div key={match} className="skeleton skeleton-card" style={{ height: '120px', marginBottom: '1rem', opacity: 0.8 / match }} />
+          ))}
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 // OPTIMIZATION: Move static helpers outside component to avoid recreation
 const formatDate = (dateString) => {
@@ -234,7 +250,15 @@ export const MatchSchedule = () => {
     return 'All Matches';
   };
 
-  if (loading) return <div className="match-schedule"><div className="loading"><LoadingSpinner size="md" /></div></div>;
+  if (loading) return (
+    <div className="match-schedule">
+      <div className="schedule-header">
+        <h1>Match Schedule</h1>
+        <p>Loading the latest match activity...</p>
+      </div>
+      <ScheduleSkeleton />
+    </div>
+  );
 
   return (
     <div className="match-schedule">

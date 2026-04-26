@@ -301,6 +301,9 @@ CREATE TABLE IF NOT EXISTS "public"."player" (
     "is_active" boolean DEFAULT true NOT NULL,
     "is_admin" boolean DEFAULT false,
     "notes" "text",
+    "day_availability" jsonb DEFAULT '{}'::jsonb,
+    "emergency_contact" "text",
+    "emergency_phone" "text",
     "created_at" timestamp with time zone DEFAULT "now"()
 );
 

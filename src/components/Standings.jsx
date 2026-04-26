@@ -5,6 +5,16 @@ import { useSeason } from '../hooks/useSeason';
 import { EmptyState } from './EmptyState';
 import '../styles/Style.css';
 import '../styles/Standings.css';
+import '../styles/Skeleton.css';
+
+const StandingsSkeleton = () => (
+  <div className="standings-table-card card">
+    <div className="skeleton skeleton-row" style={{ height: '3.5rem', marginBottom: '1rem' }} />
+    {[1, 2, 3, 4, 5].map((i) => (
+      <div key={i} className="skeleton skeleton-row" style={{ opacity: 1 - i * 0.15 }} />
+    ))}
+  </div>
+);
 
 const StandingsCard = memo(({ team, index }) => {
   if (!team) return null;
@@ -407,9 +417,7 @@ const Standings = () => {
       </div>
 
       {loading ? (
-        <div className="loading-state card card--interactive">
-          <p>Loading standings...</p>
-        </div>
+        <StandingsSkeleton />
       ) : error ? (
         <div className="error-state card card--interactive">
           <p>{error}</p>
