@@ -5,6 +5,7 @@ import { AnnouncementBar } from './components/AnnouncementBar';
 import { Team } from './components/Team';
 import { Rules } from './components/Rules';
 import { Login } from './components/Login';
+import { UpdatePassword } from './components/UpdatePassword';
 import { ProtectedRoute } from './scripts/ProtectedRoute';
 import { AddScore } from './components/AddScore';
 import { Standings } from './components/Standings';
@@ -101,6 +102,7 @@ function App() {
                 />
                 <Route path="/courts-locations" element={<CourtsLocations />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/update-password" element={<UpdatePassword />} />
                 <Route
                   path="/pay-dues"
                   element={

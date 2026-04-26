@@ -17,29 +17,40 @@ export const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+
   useEffect(() => {
-    if (session) {
+    if (session && !isForgotPassword) {
       if (hasProfile === false) {
         navigate('/welcome');
       } else {
         navigate('/');
       }
     }
-  }, [session, hasProfile, navigate]);
+  }, [session, hasProfile, navigate, isForgotPassword]);
 
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     let result;
-    if (isSignUp) {
+    if (isForgotPassword) {
+      result = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/update-password`,
+      });
+      if (!result.error) {
+        setError('Password reset instructions sent. Please check your email.');
+      }
+    } else if (isSignUp) {
       result = await supabase.auth.signUp({ email, password });
+      if (!result.error && !result.data?.session) {
+        setError('Please check your email for a confirmation link to complete your signup.');
+      }
     } else {
       result = await supabase.auth.signInWithPassword({ email, password });
     }
     setLoading(false);
     if (result.error) setError(result.error.message);
-    // Let the useEffect handle the navigation based on session and hasProfile
   };
 
   const handleOAuth = async (provider) => {
@@ -113,37 +124,50 @@ export const Login = () => {
                   autoComplete="email"
                 />
               </div>
-              <div className="form-group">
-                <label htmlFor="password">Password</label>
-                <div className="password-input-wrapper">
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    required
-                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                  />
-                  <button
-                    type="button"
-                    className="password-toggle-btn"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? 'Hide' : 'Show'}
-                  </button>
+              {!isForgotPassword && (
+                <div className="form-group">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label htmlFor="password">Password</label>
+                    {!isSignUp && (
+                      <button 
+                        type="button" 
+                        onClick={() => setIsForgotPassword(true)}
+                        style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '0.875rem' }}
+                      >
+                        Forgot password?
+                      </button>
+                    )}
+                  </div>
+                  <div className="password-input-wrapper">
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      required
+                      autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle-btn"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
               {error && <div className="form-error">{error}</div>}
               <button className="primary-action" type="submit" disabled={loading}>
                 {loading ? (
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                     <LoadingSpinner size="sm" />
-                    {isSignUp ? 'Creating account…' : 'Signing in…'}
+                    {isForgotPassword ? 'Sending...' : isSignUp ? 'Creating account…' : 'Signing in…'}
                   </span>
                 ) : (
-                  isSignUp ? 'Create account' : 'Sign in'
+                  isForgotPassword ? 'Send reset link' : isSignUp ? 'Create account' : 'Sign in'
                 )}
               </button>
             </form>
