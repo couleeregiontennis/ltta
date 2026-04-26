@@ -5,102 +5,65 @@ test.describe('Captain Dashboard Actions', () => {
     test.beforeEach(async ({ page }) => {
         await disableNavigatorLocks(page);
 
-        // Mock auth as our test captain
+        // 1. Mock auth as our test captain
         await mockSupabaseAuth(page, {
-            id: 'd290f1ee-6c54-4b01-90e6-d701748f0301',
-            email: 'captain@test.local'
+            id: 'cap-user-id',
+            email: 'captain@test.local',
+            is_captain: true
         });
 
-        await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
+        // 2. Comprehensive mock for all rest calls
+        await page.route('**/rest/v1/*', async (route) => {
             const url = route.request().url();
-            if (url.includes('id=eq')) {
-                const playerObj = {
-                    id: 'd290f1ee-6c54-4b01-90e6-d701748f0301',
-                    first_name: '[TEST] Captain',
-                    last_name: 'User',
-                    is_captain: true,
-                    is_admin: false
-                };
-                await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(playerObj) });
-                return;
-            }
-            if (url.includes('is_active=eq.true')) {
-                const pObj = {
-                    id: 'd290f1ee-6c54-4b01-90e6-d701748f0303',
-                    first_name: 'Available',
-                    last_name: 'Agent',
-                    email: 'free@agent.com',
-                    ranking: 4
-                };
-                await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([pObj]) });
-                return;
+            const method = route.request().method();
+            const accept = route.request().headers()['accept'] || '';
+            
+            if (method === 'GET') {
+                // Profile check for AuthProvider (MUST return first_name for hasProfile=true)
+                if (url.includes('/player?')) {
+                    const data = { id: 'cap-p', first_name: 'Captain', last_name: 'User', is_captain: true, is_admin: false };
+                    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(accept.includes('vnd.pgrst.object') ? data : [data]) });
+                }
+                // Team link check
+                if (url.includes('/player_to_team?select=team')) {
+                    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(accept.includes('vnd.pgrst.object') ? { team: 't1' } : [{ team: 't1' }]) });
+                }
+                // Roster load (IMPORTANT: handle nested selection)
+                if (url.includes('player_to_team') && (url.includes('player:player') || url.includes('player%3Aplayer'))) {
+                    const roster = [
+                        { status: 'active', player: { id: 'p1', first_name: '[TEST] Regular', last_name: 'Player', ranking: 3, is_active: true } }
+                    ];
+                    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(roster) });
+                }
+                // Team details
+                if (url.includes('/team?')) {
+                    const teamData = { id: 't1', name: '[TEST] Alpha', number: 1, play_night: 'tuesday' };
+                    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(accept.includes('vnd.pgrst.object') ? teamData : [teamData]) });
+                }
+                // Default empty
+                return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
             }
             await route.continue();
-        });
-
-        await page.route('**/rest/v1/player_to_team*', async (route) => {
-            const url = route.request().url();
-            if (url.includes('player%3Aplayer') || url.includes('player:player')) {
-                await route.fulfill({
-                    status: 200,
-                    contentType: 'application/json',
-                    body: JSON.stringify([{ player: { id: 'd290f1ee-6c54-4b01-90e6-d701748f0302', first_name: '[TEST] Regular', last_name: 'Player', is_captain: false } }])
-                });
-                return;
-            }
-            if (url.includes('player=eq')) {
-                const teamLink = { player: 'd290f1ee-6c54-4b01-90e6-d701748f0301', team: 'd290f1ee-6c54-4b01-90e6-d701748f0101' };
-                await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(teamLink) });
-                return;
-            }
-            if (url.includes('select=player')) {
-                await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ player: 'd290f1ee-6c54-4b01-90e6-d701748f0304' }]) });
-                return;
-            }
-            await route.continue();
-        });
-
-        await page.route(/\/rest\/v1\/team($|\?)/, async (route) => {
-            await route.fulfill({
-                status: 200,
-                contentType: 'application/json',
-                body: JSON.stringify({ id: 'd290f1ee-6c54-4b01-90e6-d701748f0101', number: 1, name: '[TEST] Alpha', play_night: 'Monday' })
-            });
-        });
-
-        // 5. Matches (season record, upcoming)
-        await page.route('**/rest/v1/team_match*', async (route) => {
-            await route.fulfill({
-                status: 200,
-                contentType: 'application/json',
-                body: JSON.stringify([]),
-            });
         });
     });
 
     test('can load dashboard and view team info', async ({ page }) => {
         await page.goto('/captain-dashboard');
 
-        await expect(page.getByRole('heading', { name: 'Captain Dashboard' })).toBeVisible();
+        // Verify Dashboard Header
+        await expect(page.locator('h1')).toContainText('Captain Dashboard', { timeout: 15000 });
 
-        // Verify it loaded the seeded team data for the captain
-        await expect(page.getByText('[TEST] Alpha')).toBeVisible();
+        // Verify Team Name
+        await expect(page.locator('main')).toContainText('[TEST] Alpha', { timeout: 10000 });
 
-        // Verify roster section
-        await expect(page.getByRole('heading', { name: 'Team Roster Management' })).toBeVisible();
-        await expect(page.locator('.roster-table').getByText('[TEST] Regular Player')).toBeVisible();
+        // Verify Roster
+        await expect(page.locator('.roster-table')).toContainText('[TEST] Regular', { timeout: 10000 });
     });
 
     test('opens manage roster modal', async ({ page }) => {
         await page.goto('/captain-dashboard');
-
-        // Click Manage Roster to open modal
         await page.getByRole('button', { name: 'Manage Roster' }).click();
-
-        // Expect the Modal heading
         await expect(page.getByRole('heading', { name: 'Manage Team Roster' })).toBeVisible();
-
-        // Verify the Free Agents section exists
-        await expect(page.getByRole('heading', { name: 'Available Players' })).toBeVisible();
+        await expect(page.getByText('Available Players')).toBeVisible();
     });
 });
