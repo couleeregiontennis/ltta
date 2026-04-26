@@ -4,6 +4,8 @@ ADD COLUMN IF NOT EXISTS status text DEFAULT 'verified' CHECK (status IN ('pendi
 
 -- Update existing policy or add a new one for users to self-report
 -- They can only insert payments where player_id matches their own player record
+DROP POLICY IF EXISTS "Allow users to insert their own payments" ON public.season_payments;
+
 CREATE POLICY "Allow users to insert their own payments"
 ON public.season_payments
 FOR INSERT TO authenticated
