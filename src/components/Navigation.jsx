@@ -93,7 +93,7 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
                 <ul className={`dropdown-menu ${openDropdown === 'league' ? 'show' : ''}`} role="menu">
                   <li><Link to="/standings" onClick={closeMenu}>Standings</Link></li>
                   <li><Link to="/player-rankings" onClick={closeMenu}>Player Rankings</Link></li>
-                  <li><Link to="/sub-board" onClick={closeMenu}>Sub Board</Link></li>
+                  {user && <li><Link to="/sub-board" onClick={closeMenu}>Sub Board</Link></li>}
                   <li>
                     <a
                       href="http://www.couleeregiontennis.com"
@@ -147,8 +147,12 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
                 <ul className={`dropdown-menu ${openDropdown === 'resources' ? 'show' : ''}`} role="menu">
                   <li><Link to="/courts-locations" onClick={closeMenu}>Courts & Locations</Link></li>
                   <li><Link to="/player-resources" onClick={closeMenu}>Player Resources</Link></li>
-                  <li><Link to="/pay-dues" onClick={closeMenu}>Pay Dues</Link></li>
-                  <li><Link to="/feedback" onClick={closeMenu}>Feedback</Link></li>
+                  {user && (
+                    <>
+                      <li><Link to="/pay-dues" onClick={closeMenu}>Pay Dues</Link></li>
+                      <li><Link to="/feedback" onClick={closeMenu}>Feedback</Link></li>
+                    </>
+                  )}
                 </ul>
               </li>
 
