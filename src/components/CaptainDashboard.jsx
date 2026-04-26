@@ -805,8 +805,8 @@ export const CaptainDashboard = () => {
           <div className={`confirm-dialog card card--interactive ${pendingAction.intent === 'danger' ? 'confirm-danger' : ''}`}>
             <div className="confirm-header">
               <h3>{pendingAction.title}</h3>
-              <button type="button" className="btn-icon" onClick={closeConfirmation} aria-label="Close confirmation" disabled={confirmLoading}>
-                ✕
+              <button type="button" className="btn-icon-labeled" onClick={closeConfirmation} aria-label="Close confirmation" disabled={confirmLoading}>
+                ✕ <span className="btn-label-text">Close</span>
               </button>
             </div>
             <p className="confirm-message">{pendingAction.message}</p>

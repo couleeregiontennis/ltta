@@ -209,18 +209,28 @@ export const OnboardingWizard = () => {
           <p className="text-muted" style={{ marginBottom: '1.5rem' }}>What are you looking to do this season?</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <label className={`card card--interactive ${formData.intent === 'team' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', padding: '1rem', border: formData.intent === 'team' ? '2px solid var(--color-primary)' : '1px solid var(--border-color)' }}>
+            <label className={`card card--interactive ${formData.intent === 'team' ? 'active' : ''}`} style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '1rem', 
+              cursor: 'pointer', 
+              padding: '1.25rem', 
+              border: formData.intent === 'team' ? '2px solid var(--color-primary)' : '1px solid var(--border-color)',
+              backgroundColor: formData.intent === 'team' ? 'rgba(var(--color-primary-rgb), 0.05)' : 'var(--bg-primary)',
+              borderRadius: 'var(--radius-lg)',
+              transition: 'all var(--transition-fast)'
+            }}>
               <input type="radio" name="intent" value="team" checked={formData.intent === 'team'} onChange={() => handleInputChange('intent', 'team')} />
               <div>
-                <strong>Join a specific team</strong>
-                <p className="text-sm text-muted" style={{ margin: 0 }}>I know which team I am playing for and want to request a roster spot.</p>
+                <strong style={{ fontSize: 'var(--font-size-base)' }}>Join a specific team</strong>
+                <p className="text-sm text-muted" style={{ margin: '0.25rem 0 0 0' }}>I know which team I am playing for and want to request a roster spot.</p>
               </div>
             </label>
 
             {formData.intent === 'team' && (
-              <div className="form-group" style={{ marginLeft: '2.5rem' }}>
-                <label>Select Team</label>
-                <select value={formData.selectedTeamId} onChange={e => handleInputChange('selectedTeamId', e.target.value)}>
+              <div className="form-group" style={{ marginLeft: '2.5rem', animation: 'fadeIn var(--transition-normal)' }}>
+                <label htmlFor="select-team">Select Team</label>
+                <select id="select-team" value={formData.selectedTeamId} onChange={e => handleInputChange('selectedTeamId', e.target.value)}>
                   <option value="">-- Choose a team --</option>
                   {teams.map(t => (
                     <option key={t.id} value={t.id}>{t.name} ({t.play_night})</option>
@@ -229,19 +239,39 @@ export const OnboardingWizard = () => {
               </div>
             )}
 
-            <label className={`card card--interactive ${formData.intent === 'sub' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', padding: '1rem', border: formData.intent === 'sub' ? '2px solid var(--color-primary)' : '1px solid var(--border-color)' }}>
+            <label className={`card card--interactive ${formData.intent === 'sub' ? 'active' : ''}`} style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '1rem', 
+              cursor: 'pointer', 
+              padding: '1.25rem', 
+              border: formData.intent === 'sub' ? '2px solid var(--color-primary)' : '1px solid var(--border-color)',
+              backgroundColor: formData.intent === 'sub' ? 'rgba(var(--color-primary-rgb), 0.05)' : 'var(--bg-primary)',
+              borderRadius: 'var(--radius-lg)',
+              transition: 'all var(--transition-fast)'
+            }}>
               <input type="radio" name="intent" value="sub" checked={formData.intent === 'sub'} onChange={() => handleInputChange('intent', 'sub')} />
               <div>
-                <strong>I want to be a Substitute</strong>
-                <p className="text-sm text-muted" style={{ margin: 0 }}>I don't have a primary team but want to be contacted when teams need players.</p>
+                <strong style={{ fontSize: 'var(--font-size-base)' }}>I want to be a Substitute</strong>
+                <p className="text-sm text-muted" style={{ margin: '0.25rem 0 0 0' }}>I don't have a primary team but want to be contacted when teams need players.</p>
               </div>
             </label>
 
-            <label className={`card card--interactive ${formData.intent === 'none' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', padding: '1rem', border: formData.intent === 'none' ? '2px solid var(--color-primary)' : '1px solid var(--border-color)' }}>
+            <label className={`card card--interactive ${formData.intent === 'none' ? 'active' : ''}`} style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '1rem', 
+              cursor: 'pointer', 
+              padding: '1.25rem', 
+              border: formData.intent === 'none' ? '2px solid var(--color-primary)' : '1px solid var(--border-color)',
+              backgroundColor: formData.intent === 'none' ? 'rgba(var(--color-primary-rgb), 0.05)' : 'var(--bg-primary)',
+              borderRadius: 'var(--radius-lg)',
+              transition: 'all var(--transition-fast)'
+            }}>
               <input type="radio" name="intent" value="none" checked={formData.intent === 'none'} onChange={() => handleInputChange('intent', 'none')} />
               <div>
-                <strong>Just exploring for now</strong>
-                <p className="text-sm text-muted" style={{ margin: 0 }}>I will look around and figure it out later.</p>
+                <strong style={{ fontSize: 'var(--font-size-base)' }}>Just exploring for now</strong>
+                <p className="text-sm text-muted" style={{ margin: '0.25rem 0 0 0' }}>I will look around and figure it out later.</p>
               </div>
             </label>
           </div>

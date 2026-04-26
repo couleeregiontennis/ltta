@@ -322,6 +322,31 @@
   padding: var(--space-xs);
 }
 
+.btn-icon-labeled {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: rgba(var(--color-secondary-rgb), 0.08);
+  border: 1px solid var(--captain-card-border);
+  color: var(--captain-card-muted);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.btn-icon-labeled:hover {
+  background: rgba(var(--color-secondary-rgb), 0.15);
+  color: var(--captain-card-text);
+}
+
+.btn-label-text {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .btn-icon:disabled {
   cursor: not-allowed;
   opacity: 0.6;
