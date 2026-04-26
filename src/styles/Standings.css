@@ -292,32 +292,18 @@
 
 .standings-table th,
 .standings-table td {
-  padding: calc(var(--space-sm) + 2px) var(--space-md);
+  padding: var(--space-md) var(--space-lg);
   text-align: left;
   border-bottom: 1px solid var(--standings-border);
-  font-size: var(--font-size-sm);
-}
-
-.standings-table th:nth-child(2),
-.standings-table td:nth-child(2) {
-  min-width: 220px;
-  width: 26%;
-}
-
-.standings-table th:nth-child(1),
-.standings-table td:nth-child(1) {
-  width: 6%;
-}
-
-.standings-table th:nth-child(3),
-.standings-table td:nth-child(3) {
-  width: 10%;
+  font-size: var(--font-size-base);
 }
 
 .standings-table th {
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 700;
+  letter-spacing: 0.1em;
+  font-weight: 800;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .standings-table tbody tr {
@@ -325,12 +311,18 @@
 }
 
 .standings-table tbody tr:nth-child(even) td {
-  background: var(--standings-stripe);
+  background: rgba(var(--color-surface-alt-rgb), 0.5);
+}
+
+.standings-table tbody tr:hover td {
+  background: var(--bg-tertiary) !important;
+  color: var(--secondary);
 }
 
 .standings-table tbody tr.leader td {
-  background: rgba(var(--color-primary-rgb), 0.12);
+  background: rgba(var(--color-primary-rgb), 0.08);
   font-weight: 700;
+  border-left: 4px solid var(--primary);
 }
 
 .standings-table tbody tr.top-three td:first-child {

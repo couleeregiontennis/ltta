@@ -754,12 +754,12 @@ export const AddScore = () => {
 
       <div className="score-overview">
         <div className="overview-card card card--interactive card--overlay">
-          <div className="card-label">Match Progress</div>
+          <div className="card-label">Current Completion</div>
           <div className="card-value">{hasMatchSelected ? `${Math.round(matchProgress)}%` : 'Select match'}</div>
-          <div className="card-subtitle">{linesRecorded} of 4 lines recorded</div>
+          <div className="card-subtitle">{linesRecorded} of 4 lines saved</div>
         </div>
         <div className="overview-card card card--interactive card--overlay">
-          <div className="card-label">Current Focus</div>
+          <div className="card-label">Step 2: Line Scores</div>
           <div className="card-value">Line {activeLineNumber}</div>
         </div>
       </div>
@@ -773,14 +773,14 @@ export const AddScore = () => {
 
       <form onSubmit={handleSubmit} className="score-form" noValidate>
         <div className="score-section card card--interactive">
-          <h2>Select Match</h2>
+          <h2>Step 1: Select Your Match</h2>
           <select
             name="matchId"
             value={formData.matchId}
             onChange={(e) => handleMatchSelect(e.target.value)}
             required
           >
-            <option value="">Select a match...</option>
+            <option value="">Choose a match from the list...</option>
             {availableMatches.map(match => (
               <option key={match.id} value={match.id}>
                 {match.home_team_name} vs {match.away_team_name} - {match.date}
@@ -790,7 +790,7 @@ export const AddScore = () => {
         </div>
 
         <div className="score-section card card--interactive">
-          <h2>Line & Roster Status</h2>
+          <h2>Step 2: Line & Roster Status</h2>
           <div className="participation-bonus">
              <label className="checkbox-label">
                 <input 
