@@ -34,6 +34,9 @@ export const Login = () => {
     let result;
     if (isSignUp) {
       result = await supabase.auth.signUp({ email, password });
+      if (!result.error && !result.data?.session) {
+        setError('Please check your email for a confirmation link to complete your signup.');
+      }
     } else {
       result = await supabase.auth.signInWithPassword({ email, password });
     }
@@ -163,15 +166,6 @@ export const Login = () => {
               >
                 <span className="oauth-icon" aria-hidden>🔵</span>
                 Google
-              </button>
-              <button
-                type="button"
-                className="oauth-button apple"
-                onClick={() => handleOAuth('apple')}
-                disabled={loading}
-              >
-                <span className="oauth-icon" aria-hidden></span>
-                Apple
               </button>
             </div>
           </div>
