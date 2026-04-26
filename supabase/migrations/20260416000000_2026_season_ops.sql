@@ -28,7 +28,7 @@ CREATE OR REPLACE VIEW public.standings_2026_view WITH (security_invoker='on') A
     SELECT
         m.id as match_id,
         m.season_id,
-        m.play_night,
+        t.play_night,
         t.id as team_id,
         t.number as team_number,
         t.name as team_name,
