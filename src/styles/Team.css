@@ -120,7 +120,8 @@
 
 .schedule-table th,
 .roster-table th {
-  background: var(--bg-secondary);
+  background: var(--table-header-bg);
+  color: var(--table-header-text);
   font-weight: 600;
   text-align: left;
 }
@@ -327,8 +328,8 @@
 }
 
 .results-table th {
-  background: var(--secondary);
-  color: white;
+  background: var(--table-header-bg);
+  color: var(--table-header-text);
   padding: 12px;
   text-align: left;
   font-weight: 600;

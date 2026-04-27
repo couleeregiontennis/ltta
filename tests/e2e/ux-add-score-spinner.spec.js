@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mockSupabaseAuth } from '../utils/auth-mock';
 
-test.describe('UX: Add Score Spinner', () => {
+test.describe('UX: Add Score Spinner @live', () => {
   test.beforeEach(async ({ page }) => {
     page.on('console', msg => console.log('PAGE LOG:', msg.text()));
     await mockSupabaseAuth(page);

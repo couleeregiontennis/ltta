@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mockSupabaseAuth } from '../utils/auth-mock';
 
-test.describe('Protected Pages', () => {
+test.describe('Protected Pages @live', () => {
 
   test.beforeEach(async ({ page }) => {
     await mockSupabaseAuth(page);

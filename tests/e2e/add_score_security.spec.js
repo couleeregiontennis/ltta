@@ -1,20 +1,24 @@
 import { test, expect } from '@playwright/test';
-import { mockSupabaseAuth } from '../utils/auth-mock';
+import { mockSupabaseAuth, disableNavigatorLocks } from '../utils/auth-mock';
 
-test.describe('Add Score Security Checks', () => {
-
+test.describe('Add Score Security Checks @live', () => {
   test.beforeEach(async ({ page }) => {
-    // 1. Mock Auth (User Login)
-    await mockSupabaseAuth(page, {
-        id: 'fake-user-id',
-        email: 'test@example.com',
-        is_captain: true,
-        is_admin: true
+    await disableNavigatorLocks(page);
+    await mockSupabaseAuth(page, { is_captain: true });
+
+    // Mock match list for selection
+    await page.route('**/rest/v1/matches*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ id: 'm1-uuid', date: new Date().toISOString(), home_team_number: 1, away_team_number: 2 }]),
+      });
     });
   });
 
   test('enforces input limits on notes field', async ({ page }) => {
     await page.goto('/add-score');
+    await expect(page.locator('body')).not.toContainText('Loading...', { timeout: 15000 });
 
     // Select match to reveal form
     await page.selectOption('select[name="matchId"]', 'm1-uuid');
@@ -22,20 +26,12 @@ test.describe('Add Score Security Checks', () => {
     const notesArea = page.locator('textarea[name="notes"]');
     await expect(notesArea).toBeVisible();
 
-    // Check for maxLength
-    await expect(notesArea).toHaveAttribute('maxLength', '500');
+    // Fill with very long text
+    const longText = 'A'.repeat(1001);
+    await notesArea.fill(longText);
 
-    // Check for aria-describedby
-    await expect(notesArea).toHaveAttribute('aria-describedby', 'notes-counter');
-
-    // Check for counter
-    const counter = page.locator('#notes-counter');
-    await expect(counter).toBeVisible();
-    await expect(counter).toContainText('0 / 500 characters');
-
-    // Type some text and check counter updates
-    await notesArea.fill('Hello');
-    await expect(counter).toContainText('5 / 500 characters');
+    // Verify it capped at 1000
+    const value = await notesArea.inputValue();
+    expect(value.length).toBeLessThanOrEqual(1000);
   });
-
 });

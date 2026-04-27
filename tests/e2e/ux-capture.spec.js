@@ -8,15 +8,22 @@ const ROUTES = [
   { name: 'captain-dashboard', path: '/captain-dashboard', role: 'captain' },
   { name: 'add-score', path: '/add-score', role: 'captain' },
   { name: 'player-resources', path: '/player-resources' },
+  { name: 'onboarding-wizard', path: '/welcome', role: 'new-user' },
+  { name: 'update-password', path: '/update-password', role: 'player' },
 ];
 
 test.describe('UX Audit Capture', () => {
   for (const route of ROUTES) {
     test(`capture ${route.name}`, async ({ page }) => {
       // Mock auth based on required role
-      const userDetails = route.role === 'captain' 
-        ? { id: 'captain-user-id', email: 'captain@ltta.com' } 
-        : { id: 'player-user-id', email: 'player@ltta.com' };
+      let userDetails;
+      if (route.role === 'captain') {
+        userDetails = { id: 'captain-user-id', email: 'captain@ltta.com' };
+      } else if (route.role === 'new-user') {
+        userDetails = { id: 'new-user-id', email: 'new@ltta.com' };
+      } else {
+        userDetails = { id: 'player-user-id', email: 'player@ltta.com' };
+      }
       
       await mockSupabaseAuth(page, userDetails);
       
@@ -60,6 +67,27 @@ test.describe('UX Audit Capture', () => {
               play_night: 'Tuesday'
             }]),
           });
+        });
+      }
+
+      if (route.role === 'new-user') {
+        await page.route(/\/rest\/v1\/player($|\?)/, async (r) => {
+          const method = r.request().method();
+          const accept = r.request().headers()['accept'] || '';
+          
+          if (method === 'GET') {
+            if (accept.includes('vnd.pgrst.object')) {
+              await r.fulfill({
+                status: 406,
+                contentType: 'application/json',
+                body: JSON.stringify({ code: "PGRST116", message: "Not Found" }),
+              });
+            } else {
+              await r.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+            }
+          } else {
+            await r.continue();
+          }
         });
       }
 

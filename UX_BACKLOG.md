@@ -8,7 +8,7 @@ This document tracks identified UX and UI issues for future remediation, as iden
 - [x] **Mobile Standings Card Proportions:** Reduced rank box width (40px) to provide more space for team names.
 - [x] **Toast Overlap on Mobile:** Added `bottom: 80px` offset to clear floating action buttons.
 - [x] **Overview Card Alignment:** Standardized on center-alignment for summary cards.
-- [ ] **Table Header Contrast:** Dark mode standings headers still need a contrast boost for better accessibility.
+- [x] **Table Header Contrast:** Dark mode standings headers still need a contrast boost for better accessibility. (Standardized globally via --table-header-bg)
 
 ## Completed (April 2026 Audit)
 

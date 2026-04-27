@@ -58,7 +58,7 @@ export const PlayerManagement = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('player')
-        .select('*, player_to_team(team, status)')
+        .select('*, player_to_team(id, team, status)')
         .order('last_name', { ascending: true });
 
       if (error) throw error;
@@ -72,7 +72,6 @@ export const PlayerManagement = () => {
   };
 
   const handleEditClick = (player) => {
-    // Deep copy to avoid mutating state directly
     const availability = typeof player.day_availability === 'object' && player.day_availability
       ? { ...getDefaultAvailability(), ...player.day_availability }
       : getDefaultAvailability();
@@ -115,9 +114,8 @@ export const PlayerManagement = () => {
       setError('');
       setSuccess('');
 
-      const { id, ...updates } = selectedPlayer;
+      const { id, player_to_team, active_team, ...updates } = selectedPlayer;
 
-      // Ensure specific fields are correct types
       const dataToUpdate = {
         first_name: updates.first_name,
         last_name: updates.last_name,
@@ -132,53 +130,25 @@ export const PlayerManagement = () => {
         notes: updates.notes
       };
 
-      const { data: updatedPlayer, error: playerUpdateError } = await supabase
+      const { error: playerUpdateError } = await supabase
         .from('player')
         .update(dataToUpdate)
-        .eq('id', id)
-        .select()
-        .single();
+        .eq('id', id);
 
       if (playerUpdateError) throw playerUpdateError;
 
-      // Update team assignment
       const currentActiveTeam = players.find(p => p.id === id)?.player_to_team?.find(pt => pt.status === 'active')?.team;
       
-      if (updates.active_team !== currentActiveTeam) {
-        // Remove old team link if exists
+      if (active_team !== currentActiveTeam) {
         if (currentActiveTeam) {
-          await supabase
-            .from('player_to_team')
-            .delete()
-            .eq('player', id)
-            .eq('team', currentActiveTeam);
+          await supabase.from('player_to_team').delete().eq('player', id).eq('team', currentActiveTeam);
         }
-        
-        // Add or reactivate new team link
-        if (updates.active_team) {
-          const { data: existingLink } = await supabase
-            .from('player_to_team')
-            .select('id')
-            .eq('player', id)
-            .eq('team', updates.active_team)
-            .maybeSingle();
-            
-          if (existingLink) {
-             await supabase
-               .from('player_to_team')
-               .update({ status: 'active' })
-               .eq('id', existingLink.id);
-          } else {
-             await supabase
-               .from('player_to_team')
-               .insert({ player: id, team: updates.active_team, status: 'active' });
-          }
+        if (active_team) {
+          await supabase.from('player_to_team').insert({ player: id, team: active_team, status: 'active' });
         }
       }
 
-      // Re-fetch all players to ensure local state matches DB (including team links)
       await fetchPlayers();
-
       setSuccess('Player updated successfully!');
       setTimeout(() => setSuccess(''), 3000);
       setIsEditing(false);
@@ -224,7 +194,6 @@ export const PlayerManagement = () => {
       {success && <div className="success-message">{success}</div>}
 
       <div className="controls">
-        <label htmlFor="search-players" className="sr-only">Search players</label>
         <input
           id="search-players"
           type="text"
@@ -262,187 +231,53 @@ export const PlayerManagement = () => {
                   <td>{player.ranking}</td>
                   <td>{player.is_captain ? '✅' : '❌'}</td>
                   <td>{player.is_active ? '✅' : '❌'}</td>
-                <td>
-                  <button
-                    className="edit-btn"
-                    onClick={() => handleEditClick(player)}
-                    title="Edit Player"
-                    aria-label={`Edit ${player.first_name} ${player.last_name}`}
-                  >
-                    ✏️
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-            {filteredPlayers.length === 0 && (
-              <tr>
-                <td colSpan="6" style={{ textAlign: 'center' }}>No players found</td>
-              </tr>
-            )}
+                  <td>
+                    <button className="edit-btn" onClick={() => handleEditClick(player)} title="Edit Player">✏️</button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
-      {/* Edit Modal */}
       {isEditing && selectedPlayer && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
               <h2>Edit Player: {selectedPlayer.first_name} {selectedPlayer.last_name}</h2>
-              <button className="close-btn" onClick={() => setIsEditing(false)} aria-label="Close modal">×</button>
+              <button className="close-btn" onClick={() => setIsEditing(false)}>×</button>
             </div>
-
             <div className="form-grid">
               <div className="form-group">
                 <label htmlFor="edit-first-name">First Name</label>
-                <input
-                  id="edit-first-name"
-                  type="text"
-                  value={selectedPlayer.first_name || ''}
-                  onChange={(e) => handleInputChange('first_name', e.target.value)}
-                />
+                <input id="edit-first-name" type="text" value={selectedPlayer.first_name || ''} onChange={e => handleInputChange('first_name', e.target.value)} />
               </div>
-
               <div className="form-group">
                 <label htmlFor="edit-last-name">Last Name</label>
-                <input
-                  id="edit-last-name"
-                  type="text"
-                  value={selectedPlayer.last_name || ''}
-                  onChange={(e) => handleInputChange('last_name', e.target.value)}
-                />
+                <input id="edit-last-name" type="text" value={selectedPlayer.last_name || ''} onChange={e => handleInputChange('last_name', e.target.value)} />
               </div>
-
               <div className="form-group full-width">
                 <label htmlFor="edit-email">Email</label>
-                <input
-                  id="edit-email"
-                  type="email"
-                  value={selectedPlayer.email || ''}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                />
+                <input id="edit-email" type="email" value={selectedPlayer.email || ''} onChange={e => handleInputChange('email', e.target.value)} />
               </div>
-
-              <div className="form-group">
-                <label htmlFor="edit-phone">Phone</label>
-                <input
-                  id="edit-phone"
-                  type="tel"
-                  value={selectedPlayer.phone || ''}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                />
-              </div>
-
               <div className="form-group">
                 <label htmlFor="edit-ranking">Ranking</label>
-                <select
-                  id="edit-ranking"
-                  value={selectedPlayer.ranking}
-                  onChange={(e) => handleInputChange('ranking', e.target.value)}
-                >
-                  <option value={1}>1 - Beginner</option>
-                  <option value={2}>2 - Novice</option>
-                  <option value={3}>3 - Intermediate</option>
-                  <option value={4}>4 - Advanced</option>
-                  <option value={5}>5 - Expert</option>
+                <select id="edit-ranking" value={selectedPlayer.ranking} onChange={e => handleInputChange('ranking', e.target.value)}>
+                  {[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
-
               <div className="form-group">
                 <label htmlFor="edit-team">Team Assignment</label>
-                <select
-                  id="edit-team"
-                  value={selectedPlayer.active_team || ''}
-                  onChange={(e) => handleInputChange('active_team', e.target.value)}
-                >
+                <select id="edit-team" value={selectedPlayer.active_team} onChange={e => handleInputChange('active_team', e.target.value)}>
                   <option value="">None (Free Agent)</option>
-                  {teams.map(t => (
-                    <option key={t.id} value={t.id}>{t.name} ({t.play_night})</option>
-                  ))}
+                  {teams.map(t => <option key={t.id} value={t.id}>{t.name} ({t.play_night})</option>)}
                 </select>
               </div>
-
-              <div className="form-group">
-                <label htmlFor="edit-emergency-contact">Emergency Contact</label>
-                <input
-                  id="edit-emergency-contact"
-                  type="text"
-                  value={selectedPlayer.emergency_contact || ''}
-                  onChange={(e) => handleInputChange('emergency_contact', e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="edit-emergency-phone">Emergency Phone</label>
-                <input
-                  id="edit-emergency-phone"
-                  type="tel"
-                  value={selectedPlayer.emergency_phone || ''}
-                  onChange={(e) => handleInputChange('emergency_phone', e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="checkbox-label" htmlFor="edit-is-captain">
-                  <input
-                    id="edit-is-captain"
-                    type="checkbox"
-                    checked={selectedPlayer.is_captain || false}
-                    onChange={(e) => handleInputChange('is_captain', e.target.checked)}
-                  />
-                  <span className="checkmark"></span>
-                  Is Captain
-                </label>
-              </div>
-
-              <div className="form-group">
-                <label className="checkbox-label" htmlFor="edit-is-active">
-                  <input
-                    id="edit-is-active"
-                    type="checkbox"
-                    checked={selectedPlayer.is_active || false}
-                    onChange={(e) => handleInputChange('is_active', e.target.checked)}
-                  />
-                  <span className="checkmark"></span>
-                  Is Active
-                </label>
-              </div>
             </div>
-
-            <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>Availability</h3>
-            <div className="availability-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '1rem' }}>
-              {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => (
-                <div key={day} className="day-item">
-                  <label className="checkbox-label" htmlFor={`edit-day-${day}`}>
-                    <input
-                      id={`edit-day-${day}`}
-                      type="checkbox"
-                      checked={selectedPlayer.day_availability?.[day] || false}
-                      onChange={(e) => handleInputChange(`day_availability.${day}`, e.target.checked)}
-                    />
-                    <span className="checkmark"></span>
-                    {day.charAt(0).toUpperCase() + day.slice(1)}
-                  </label>
-                </div>
-              ))}
-            </div>
-
-            <div className="form-group full-width" style={{ marginTop: '1.5rem' }}>
-              <label htmlFor="edit-notes">Notes</label>
-              <textarea
-                id="edit-notes"
-                value={selectedPlayer.notes || ''}
-                onChange={(e) => handleInputChange('notes', e.target.value)}
-                rows="3"
-              />
-            </div>
-
-            <div className="modal-actions">
+            <div className="modal-footer">
               <button className="btn-secondary" onClick={() => setIsEditing(false)}>Cancel</button>
-              <button className="btn-primary" onClick={handleSave} disabled={saving}>
-                {saving ? 'Saving...' : 'Save Changes'}
-              </button>
+              <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>

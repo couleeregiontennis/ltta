@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Playoff Scenarios UI', () => {
+test.describe('Playoff Scenarios UI @live', () => {
     test.beforeEach(async ({ page }) => {
         page.on('console', msg => console.log('PAGE LOG:', msg.text()));
         await page.setViewportSize({ width: 1280, height: 720 });

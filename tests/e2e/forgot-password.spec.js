@@ -17,7 +17,7 @@ test.describe('Forgot Password Flow', () => {
 
         // UI should change to reset mode
         await expect(page.getByRole('button', { name: /send reset link/i })).toBeVisible();
-        await expect(page.getByLabel(/password/i)).toBeHidden();
+        await expect(page.locator('input#password')).toBeHidden();
 
         // Fill email and submit
         await page.getByLabel(/email/i).fill('reset-test@example.com');

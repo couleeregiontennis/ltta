@@ -13,8 +13,6 @@ export const UpdatePassword = () => {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    // Supabase will automatically handle the hash in the URL and set the session
-    // We just need to check if there is an active session
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -58,6 +56,14 @@ export const UpdatePassword = () => {
       <div className="login-layout" style={{ justifyContent: 'center' }}>
         <div className="login-panel">
           <div className="login-tab-content">
+            {error && (
+              <div className="form-error" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+                {error}
+                <div style={{ marginTop: '1rem' }}>
+                  <a href="/login" className="btn-link">Back to Login</a>
+                </div>
+              </div>
+            )}
             {success ? (
               <div className="success-message" style={{ textAlign: 'center', padding: '2rem' }}>
                 <h3 style={{ color: 'var(--color-success)', marginBottom: '1rem' }}>Password Updated!</h3>

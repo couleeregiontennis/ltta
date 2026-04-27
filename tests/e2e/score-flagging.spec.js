@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mockSupabaseAuth } from '../utils/auth-mock.js';
 
-test.describe('Score Flagging Feature', () => {
+test.describe('Score Flagging Feature @live', () => {
 
     test.describe('As a standard Player', () => {
         test.beforeEach(async ({ page }) => {
