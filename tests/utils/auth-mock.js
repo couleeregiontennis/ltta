@@ -7,25 +7,9 @@ export async function disableNavigatorLocks(page) {
         navigator.locks.query = () => Promise.resolve({ held: [], pending: [] });
         navigator.locks.request = () => new Promise(() => {});
       } catch (e) {
-        console.warn('Failed to mock navigator.locks', e);
+        console.error('Failed to mock navigator.locks:', e);
       }
     }
-  });
-}
-
-/**
- * Legacy mock for data tables. 
- * Better to use mockSupabaseAuth for full system mocks.
- */
-export async function mockSupabaseData(page, table, data) {
-  await page.route(new RegExp(`/rest/v1/${table}(\\?|$)`), async (route) => {
-    const accept = route.request().headers()['accept'] || '';
-    const isSingle = accept.includes('vnd.pgrst.object');
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(isSingle ? (Array.isArray(data) ? data[0] : data) : (Array.isArray(data) ? data : [data])),
-    });
   });
 }
 
@@ -39,40 +23,107 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
     last_name = 'User'
   } = userDetails;
 
-  await page.route(url => url.href.includes('.supabase.co'), async (route) => {
+  // Inject session into localStorage for immediate auth recognition
+  await page.addInitScript(({ id, email }) => {
+    const mockSession = {
+      access_token: 'mock-token',
+      token_type: 'bearer',
+      expires_in: 3600,
+      refresh_token: 'mock-refresh',
+      user: {
+        id,
+        email,
+        aud: 'authenticated',
+        role: 'authenticated',
+        app_metadata: { provider: 'email' },
+        user_metadata: {},
+        created_at: new Date().toISOString()
+      },
+      expires_at: Math.floor(Date.now() / 1000) + 3600
+    };
+    
+    // Standard Supabase localStorage key format: sb-[PROJECT_REF]-auth-token
+    // Using current project ref: shlcqztfdhfwkhijwgue
+    const projectRef = 'shlcqztfdhfwkhijwgue';
+    window.localStorage.setItem(`sb-${projectRef}-auth-token`, JSON.stringify(mockSession));
+    // Also set generic key as fallback
+    window.localStorage.setItem('supabase.auth.token', JSON.stringify(mockSession));
+  }, { id, email });
+
+  await page.route('**/*.supabase.co/**', async (route) => {
     const url = route.request().url();
     const method = route.request().method();
     const accept = route.request().headers()['accept'] || '';
     const isSingle = accept.includes('vnd.pgrst.object');
-    
+
+    console.log(`[MOCK] ${method} ${url}`);
+
     // 1. Auth Service
     if (url.includes('/auth/v1/')) {
-        return route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-                access_token: 'mock-t',
-                user: { id, email, aud: 'authenticated', app_metadata: {}, user_metadata: {} }
-            })
-        });
+        const mockUser = { 
+            id, 
+            email, 
+            aud: 'authenticated', 
+            role: 'authenticated',
+            app_metadata: { provider: 'email' }, 
+            user_metadata: {},
+            created_at: new Date().toISOString()
+        };
+        
+        const mockSession = {
+            access_token: 'mock-t',
+            token_type: 'bearer',
+            expires_in: 3600,
+            refresh_token: 'mock-r',
+            user: mockUser,
+            expires_at: Math.floor(Date.now() / 1000) + 3600
+        };
+
+        if (url.includes('/user')) {
+             return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockUser) });
+        }
+        
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockSession) });
     }
 
-    // 2. Data Service
+    // 2. Data Service (Default fallbacks for common tables)
     if (url.includes('/rest/v1/')) {
         let data = [];
         
         if (url.includes('/player_to_team')) {
             data = [{ team: 't1', status: 'active', player: id }];
         } else if (url.includes('/player')) {
-            data = { id: 'p1', user_id: id, email, first_name, last_name, is_captain, is_admin, is_active: true };
+            data = [{ id: 'p1', user_id: id, email, first_name, last_name, is_captain, is_admin, is_active: true }];
         } else if (url.includes('/season')) {
-            data = { id: 's1', number: 1, is_active: true, is_current: true };
+            data = [{ id: 's1', number: 1, is_active: true, is_current: true }];
         } else if (url.includes('/team_match')) {
-            data = [{ id: 'm1', home_team_number: 1, away_team_number: 2, date: '2023-01-01', home_team: { name: 'Home' }, away_team: { name: 'Away' } }];
+            data = [];
         } else if (url.includes('/team')) {
             data = [{ id: 't1', name: 'Test Team', number: 1 }];
+        } else if (url.includes('/line_results')) {
+            data = [];
         }
         
+        const responseBody = isSingle ? (data.length > 0 ? data[0] : null) : data;
+        
+        return route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(responseBody)
+        });
+    }
+
+    // Fallback for any other Supabase call
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+  });
+}
+
+export async function mockSupabaseData(page, table, data) {
+  await page.route(`**/rest/v1/${table}*`, async (route) => {
+    const accept = route.request().headers()['accept'] || '';
+    const isSingle = accept.includes('vnd.pgrst.object');
+    
+    if (route.request().method() === 'GET') {
         return route.fulfill({
             status: 200,
             contentType: 'application/json',

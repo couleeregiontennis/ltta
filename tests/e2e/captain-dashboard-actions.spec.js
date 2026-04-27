@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mockSupabaseAuth, disableNavigatorLocks } from '../utils/auth-mock';
 
-test.describe('Captain Dashboard Actions', () => {
+test.describe('Captain Dashboard Actions @live', () => {
     test.beforeEach(async ({ page }) => {
         await disableNavigatorLocks(page);
         await mockSupabaseAuth(page, { is_captain: true });

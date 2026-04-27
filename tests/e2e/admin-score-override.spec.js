@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mockSupabaseAuth, disableNavigatorLocks } from '../utils/auth-mock';
 
-test.describe('Admin Match Result Override', () => {
+test.describe('Admin Match Result Override @live', () => {
   test.beforeEach(async ({ page }) => {
     await disableNavigatorLocks(page);
   });

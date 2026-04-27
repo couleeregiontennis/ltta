@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { mockSupabaseAuth, mockSupabaseData } from '../utils/auth-mock';
+import { mockSupabaseAuth, mockSupabaseData, disableNavigatorLocks } from '../utils/auth-mock';
 
 test.describe('Access Control Verification', () => {
 
   test.beforeEach(async ({ page }) => {
+    await disableNavigatorLocks(page);
     page.on('console', msg => console.log('PAGE LOG:', msg.text()));
     page.on('pageerror', exception => console.log(`PAGE ERROR: ${exception}`));
 
@@ -14,7 +15,8 @@ test.describe('Access Control Verification', () => {
     // Default: Mock generic user data - NOT admin, NOT captain
     await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
         const data = {
-          id: 'fake-user-id',
+          id: 'p1',
+          user_id: 'test-user-id',
           first_name: 'Regular',
           last_name: 'User',
           is_captain: false,
@@ -45,7 +47,8 @@ test.describe('Access Control Verification', () => {
     // Override player mock
     await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
         const data = {
-          id: 'fake-user-id',
+          id: 'p-admin',
+          user_id: 'test-user-id',
           first_name: 'Admin',
           last_name: 'User',
           is_captain: true,
@@ -70,7 +73,8 @@ test.describe('Access Control Verification', () => {
      // Override player mock
     await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
         const data = {
-          id: 'fake-user-id',
+          id: 'p-captain',
+          user_id: 'test-user-id',
           first_name: 'Captain',
           last_name: 'User',
           is_captain: true,
@@ -86,7 +90,7 @@ test.describe('Access Control Verification', () => {
 
     // Mock specific dashboard data to avoid errors
     await page.route('**/rest/v1/player_to_team*', async route => {
-      const data = [{ team: 'team-1', player: { id: 'fake-user-id', first_name: 'Captain', last_name: 'User', ranking: 1, is_active: true } }];
+      const data = [{ team: 'team-1', player: { id: 'p-captain', first_name: 'Captain', last_name: 'User', ranking: 1, is_active: true } }];
       const isSingle = route.request().headers()['accept']?.includes('vnd.pgrst.object');
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(isSingle ? data[0] : data) });
     });
