@@ -6,8 +6,8 @@
   --standings-muted: var(--text-muted);
   --standings-heading: var(--primary-green-dark);
   --standings-accent: var(--primary-green);
-  --standings-header-bg: rgba(var(--color-primary-rgb), 0.12);
-  --standings-header-text: var(--text-primary);
+  --standings-header-bg: var(--table-header-bg);
+  --standings-header-text: var(--table-header-text);
   --standings-stripe: rgba(var(--color-primary-rgb), 0.06);
   --standings-row-hover: rgba(var(--color-primary-rgb), 0.14);
   background: var(--standings-page-bg);
@@ -25,8 +25,8 @@
   --standings-muted: var(--text-secondary);
   --standings-heading: var(--secondary-light);
   --standings-accent: var(--secondary-light);
-  --standings-header-bg: rgba(var(--color-secondary-rgb), 0.45);
-  --standings-header-text: var(--text-primary);
+  --standings-header-bg: var(--table-header-bg);
+  --standings-header-text: var(--table-header-text);
   --standings-stripe: rgba(var(--color-secondary-rgb), 0.18);
   --standings-row-hover: rgba(var(--color-secondary-rgb), 0.28);
 }
@@ -302,8 +302,8 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 800;
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
+  background: var(--standings-header-bg);
+  color: var(--standings-header-text);
 }
 
 .standings-table tbody tr {

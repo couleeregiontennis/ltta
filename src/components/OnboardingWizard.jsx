@@ -58,7 +58,6 @@ export const OnboardingWizard = () => {
     try {
       setSaving(true);
       
-      // 1. Create Player Profile
       const profileData = {
         user_id: user.id,
         first_name: formData.firstName.trim(),
@@ -81,7 +80,6 @@ export const OnboardingWizard = () => {
 
       if (profileError) throw profileError;
 
-      // 2. Handle Intent
       if (formData.intent === 'team' && formData.selectedTeamId) {
         const { error: teamError } = await supabase
           .from('player_to_team')
@@ -91,14 +89,10 @@ export const OnboardingWizard = () => {
             status: 'pending'
           });
         if (teamError) throw teamError;
-      } else if (formData.intent === 'sub') {
-        // Just add a note to sub board or rely on is_active / day_availability
-        // Let's create a sub board post if sub board exists, or just leave it since they have day_availability set.
-        // For now, day_availability makes them eligible.
       }
 
       addToast('Profile completed successfully!', 'success');
-      window.location.href = '/'; // Hard reload to update AuthProvider state
+      window.location.href = '/'; 
     } catch (error) {
       console.error('Error in onboarding:', error);
       addToast(error.message || 'Failed to save profile', 'error');

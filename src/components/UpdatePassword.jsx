@@ -13,8 +13,6 @@ export const UpdatePassword = () => {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    // Supabase will automatically handle the hash in the URL and set the session
-    // We just need to check if there is an active session
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {

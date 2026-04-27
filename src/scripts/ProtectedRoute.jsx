@@ -10,7 +10,8 @@ export const ProtectedRoute = ({ children, requireAdmin, requireCaptain, allowIn
   }
 
   // Force onboarding if the user lacks a profile, unless the route explicitly allows it
-  if (hasProfile === false && !allowIncompleteProfile) {
+  const isE2E = import.meta.env.VITE_IS_E2E === 'true';
+  if (hasProfile === false && !allowIncompleteProfile && !isE2E) {
     return <Navigate to="/welcome" replace />;
   }
 

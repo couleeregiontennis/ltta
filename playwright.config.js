@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
  */
-dotenv.config();
+dotenv.config({ path: '.env.local' });
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -35,6 +35,13 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+    /* Pass environment variables to the browser context if needed by tests */
+    env: {
+      ...process.env,
+      VITE_IS_E2E: 'true',
+      VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL,
+      VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
+    },
   },
 
   /* Configure projects for major browsers. Run all in CI, but only Chromium locally for speed. */

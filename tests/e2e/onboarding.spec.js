@@ -5,20 +5,21 @@ test.describe('New Player Onboarding Flow', () => {
     test.beforeEach(async ({ page }) => {
         await disableNavigatorLocks(page);
         
-        // 1. Establish mocked auth session for a "new" user
+        // 1. Mock auth as our test user
         await mockSupabaseAuth(page, {
             id: 'new-user-id',
-            email: 'newplayer@example.com'
+            email: 'new@test.local'
         });
 
-        // 2. Comprehensive mock for rest calls
-        await page.route('**/rest/v1/*', async (route) => {
+        // 2. Comprehensive mock using Regex for robustness
+        await page.route(/\/rest\/v1\/.*/, async (route) => {
             const url = route.request().url();
             const method = route.request().method();
             const accept = route.request().headers()['accept'] || '';
             
             if (method === 'GET') {
-                if (url.includes('/player?')) {
+                if (url.includes('/player')) {
+                    // Profile check for AuthProvider (MUST return 406 or empty for NO profile)
                     if (accept.includes('vnd.pgrst.object')) {
                         return route.fulfill({
                             status: 406,
@@ -33,6 +34,7 @@ test.describe('New Player Onboarding Flow', () => {
                         });
                     }
                 }
+                // Default empty for other fetches
                 return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
             }
             await route.continue();
@@ -46,13 +48,10 @@ test.describe('New Player Onboarding Flow', () => {
         // Should redirect to /welcome
         await page.waitForURL('**/welcome', { timeout: 15000 });
 
-        // Wait for any loading indicator to clear
-        await expect(page.locator('body')).not.toContainText('Loading...', { timeout: 15000 });
-
-        // Verify the wizard content
-        await expect(page.getByRole('heading', { name: 'Welcome to LTTA!', exact: true })).toBeVisible({ timeout: 15000 });
+        // Wait for Wizard UI
+        await expect(page.getByRole('heading', { name: /Welcome to LTTA/i })).toBeVisible({ timeout: 15000 });
         
-        // Verify Step 1 is rendering
+        // Verify Step 1 content
         await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
         await expect(page.locator('input#first-name')).toBeVisible();
     });

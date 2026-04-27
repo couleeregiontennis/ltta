@@ -151,8 +151,8 @@ td,
 
 th,
 .schedule-table th {
-    background: var(--layout-accent);
-    color: var(--text-inverse);
+    background: var(--table-header-bg);
+    color: var(--table-header-text);
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -401,9 +401,15 @@ body[data-theme="dark"] .schedule-table th,
 body[data-theme="dark"] .schedule-table td,
 body[data-theme="dark"] th,
 body[data-theme="dark"] td {
-    border-color: var(--text-secondary);
+    border-color: var(--border-primary);
     background: var(--bg-dark);
     color: var(--text-primary);
+}
+
+body[data-theme="dark"] .schedule-table th,
+body[data-theme="dark"] th {
+    background: var(--table-header-bg);
+    color: var(--table-header-text);
 }
 
 body[data-theme="dark"] .date-row {
