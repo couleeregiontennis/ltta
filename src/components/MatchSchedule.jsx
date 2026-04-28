@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../scripts/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
 import { useSeason } from '../hooks/useSeason';
+import { useToast } from '../context/ToastContext';
 import { LoadingSpinner } from './LoadingSpinner';
 import { EmptyState } from './EmptyState';
 import '../styles/MatchSchedule.css';
@@ -38,6 +39,12 @@ const formatTime = (timeString) => {
 };
 
 const getMatchStatus = (match) => {
+  if (match.status === 'verified') {
+    return 'verified';
+  }
+  if (match.status === 'disputed' || match.is_disputed) {
+    return 'disputed';
+  }
   if (match.status === 'rain_cancellation') {
     return 'rain-canceled';
   }
@@ -63,7 +70,9 @@ const getMatchStatus = (match) => {
 const getStatusBadge = (status) => {
   const badges = {
     'upcoming': { text: 'Upcoming', class: 'status-upcoming' },
-    'completed': { text: 'Completed', class: 'status-completed' },
+    'completed': { text: 'Awaiting Verification', class: 'status-pending' },
+    'verified': { text: 'Verified', class: 'status-completed' },
+    'disputed': { text: 'Disputed ⚠️', class: 'status-warning' },
     'pending-result': { text: 'Pending Result', class: 'status-pending' },
     'canceled': { text: 'Cancelled', class: 'status-canceled' },
     'rain-canceled': { text: 'Rained Out', class: 'status-canceled' },
@@ -87,6 +96,8 @@ const groupMatchesByDate = (matches) => {
 export const MatchSchedule = () => {
   const navigate = useNavigate();
   const { user, userRole } = useAuth();
+  const { currentSeason, loading: seasonLoading } = useSeason();
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [matches, setMatches] = useState([]);
@@ -94,8 +105,6 @@ export const MatchSchedule = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('list');
   const [selectedTeam, setSelectedTeam] = useState('all');
-
-  const { currentSeason, loading: seasonLoading } = useSeason();
 
   const fetchAllData = async () => {
     if (!currentSeason) return;
@@ -112,6 +121,8 @@ export const MatchSchedule = () => {
           status, 
           courts, 
           is_disputed,
+          submitted_by,
+          verified_by,
           home_team:home_team_id (id, name, number), 
           away_team:away_team_id (id, name, number),
           line_results (
@@ -179,12 +190,30 @@ export const MatchSchedule = () => {
     try {
       const { error } = await supabase.rpc('flag_match_score', { match_id: matchId });
       if (error) throw error;
-
+      
+      // Update local state to show disputed immediately
       setMatches(prevMatches => prevMatches.map(m =>
-        m.id === matchId ? { ...m, is_disputed: true } : m
+        m.id === matchId ? { ...m, is_disputed: true, status: 'disputed' } : m
       ));
+      addToast('Score flagged as disputed', 'info');
     } catch (err) {
       console.error('Error flagging match score:', err);
+      addToast('Failed to flag score', 'error');
+    }
+  };
+
+  const handleConfirmScore = async (matchId) => {
+    try {
+      const { error } = await supabase.rpc('confirm_match_score', { match_id: matchId });
+      if (error) throw error;
+      
+      setMatches(prevMatches => prevMatches.map(m =>
+        m.id === matchId ? { ...m, status: 'verified', is_disputed: false } : m
+      ));
+      addToast('Score confirmed successfully', 'success');
+    } catch (err) {
+      console.error('Error confirming match score:', err);
+      addToast('Failed to confirm score: ' + err.message, 'error');
     }
   };
 
@@ -322,17 +351,64 @@ export const MatchSchedule = () => {
                           {status === 'completed' && (
                             <div className="match-score-summary" style={{ textAlign: 'center', margin: '1rem 0', padding: '0.5rem', backgroundColor: 'var(--bg-card)', borderRadius: '6px' }}>
                               <div>Points Won: {match.home_points} - {match.away_points}</div>
-                              {match.is_disputed ? (
-                                <div className="dispute-badge" style={{ marginTop: '0.5rem', color: 'var(--warning)', fontWeight: 'bold' }}>
-                                  Score Disputed ⚠️
-                                </div>
-                              ) : (
-                                <button
-                                  className="flag-score-btn"
-                                  onClick={(e) => { e.stopPropagation(); handleFlagScore(match.id); }}
-                                  style={{ marginTop: '0.5rem', padding: '0.25rem 0.75rem', fontSize: '0.8rem', backgroundColor: 'transparent', border: '1px solid var(--warning)', color: 'var(--warning)', borderRadius: '4px', cursor: 'pointer' }}
+                              
+                              {/* Verification Workflow */}
+                              <div className="verification-actions" style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                                {user?.id === match.submitted_by ? (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+                                    <span className="pending-notice" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                      Pending Verification
+                                    </span>
+                                    <button 
+                                      className="btn-icon-text"
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/add-score?matchId=${match.id}`); }}
+                                      style={{ padding: '2px 8px', fontSize: '0.75rem', border: '1px solid var(--primary-green)', color: 'var(--primary-green)', background: 'transparent', borderRadius: '4px', cursor: 'pointer' }}
+                                    >
+                                      Edit Score
+                                    </button>
+                                  </div>
+                                ) : (userRole?.isCaptain && (match.home_team?.id === currentPlayerData?.id || match.away_team?.id === currentPlayerData?.id)) || userRole?.isAdmin ? (
+                                  <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button
+                                      className="confirm-score-btn"
+                                      onClick={(e) => { e.stopPropagation(); handleConfirmScore(match.id); }}
+                                      style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', backgroundColor: 'var(--primary-green)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                    >
+                                      Confirm Score
+                                    </button>
+                                    <button
+                                      className="flag-score-btn"
+                                      onClick={(e) => { e.stopPropagation(); handleFlagScore(match.id); }}
+                                      style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', backgroundColor: 'transparent', border: '1px solid var(--warning)', color: 'var(--warning)', borderRadius: '4px', cursor: 'pointer' }}
+                                    >
+                                      Dispute
+                                    </button>
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {status === 'verified' && (
+                            <div className="match-score-summary verified" style={{ textAlign: 'center', margin: '1rem 0', padding: '0.5rem', backgroundColor: 'rgba(var(--color-primary-rgb), 0.1)', borderRadius: '6px', border: '1px solid var(--primary-green)' }}>
+                              <div style={{ fontWeight: 'bold', color: 'var(--primary-green)' }}>Final Score: {match.home_points} - {match.away_points}</div>
+                              <div style={{ fontSize: '0.8rem', marginTop: '0.25rem', color: 'var(--text-secondary)' }}>✓ Verified</div>
+                            </div>
+                          )}
+
+                          {status === 'disputed' && (
+                            <div className="match-score-summary disputed" style={{ textAlign: 'center', margin: '1rem 0', padding: '0.5rem', backgroundColor: 'rgba(var(--color-warning-rgb), 0.1)', borderRadius: '6px', border: '1px solid var(--warning)' }}>
+                              <div>Reported Score: {match.home_points} - {match.away_points}</div>
+                              <div className="dispute-badge" style={{ marginTop: '0.5rem', color: 'var(--warning)', fontWeight: 'bold' }}>
+                                Score Disputed ⚠️
+                              </div>
+                              {userRole?.isAdmin && (
+                                <button 
+                                  className="admin-resolve-btn"
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/add-score?matchId=${match.id}`); }}
+                                  style={{ marginTop: '0.5rem', padding: '0.25rem 0.75rem', fontSize: '0.8rem', backgroundColor: 'var(--warning)', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                                 >
-                                  Flag Score
+                                  Resolve (Admin)
                                 </button>
                               )}
                             </div>
