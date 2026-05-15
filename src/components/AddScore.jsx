@@ -155,7 +155,7 @@ const isPayloadUnchanged = (existing, payload) => {
 
 export const AddScore = () => {
   const { addToast } = useToast();
-  const { user, currentPlayerData, currentSeason, loading: authLoading } = useAuth();
+  const { user, userRole, currentPlayerData, currentSeason, loading: authLoading } = useAuth();
   
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -668,11 +668,23 @@ export const AddScore = () => {
         if (lineError) throw lineError;
       }
 
-      // Update participation bonus and resolve dispute
-      const isHome = selectedMatch.home_team_number === userTeam.number;
-      const updateData = { is_disputed: false };
+      // Update participation bonus and record submission status
+      const isHome = selectedMatch.home_team_number === userTeam?.number;
+      const isAdmin = userRole?.isAdmin;
+      
+      const updateData = { 
+        is_disputed: false,
+        status: isAdmin ? 'verified' : 'completed'
+      };
+
+      if (isAdmin) {
+        updateData.verified_by = user.id;
+      } else {
+        updateData.submitted_by = user.id;
+      }
+
       if (isHome) updateData.home_full_roster = formData.fullRosterPresent;
-      else updateData.away_full_roster = formData.fullRosterPresent;
+      else if (userTeam) updateData.away_full_roster = formData.fullRosterPresent;
 
       await supabase
         .from('team_match')
