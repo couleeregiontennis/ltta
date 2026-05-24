@@ -6,12 +6,13 @@ import { useAuth } from '../context/AuthProvider';
 import '../styles/CaptainDashboard.css';
 
 export const CaptainDashboard = () => {
-  const { currentPlayerData } = useAuth();
+  const { currentPlayerData, userRole } = useAuth();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [team, setTeam] = useState(null);
   const [roster, setRoster] = useState([]);
   const [upcomingMatches, setUpcomingMatches] = useState([]);
+  const [disputedMatches, setDisputedMatches] = useState([]);
   const [seasonWins, setSeasonWins] = useState(0);
   const [seasonLosses, setSeasonLosses] = useState(0);
   const [playersAvailable, setPlayersAvailable] = useState(0);
@@ -87,6 +88,11 @@ export const CaptainDashboard = () => {
 
       // Load upcoming matches
       await loadUpcomingMatches(teamData.number, teamData.play_night);
+
+      // Load disputed matches if Admin
+      if (userRole?.isAdmin) {
+        await loadDisputedMatches();
+      }
 
     } catch (err) {
       setError(err.message);
@@ -316,6 +322,27 @@ export const CaptainDashboard = () => {
       setUpcomingMatches(matches || []);
     } catch (err) {
       console.error('Error loading matches:', err);
+    }
+  };
+
+  const loadDisputedMatches = async () => {
+    try {
+      const { data, error: disputedError } = await supabase
+        .from('team_match')
+        .select(`
+          id,
+          date,
+          status,
+          is_disputed,
+          home_team:home_team_id (name, number),
+          away_team:away_team_id (name, number)
+        `)
+        .or('status.eq.disputed,is_disputed.eq.true');
+
+      if (disputedError) throw disputedError;
+      setDisputedMatches(data || []);
+    } catch (err) {
+      console.error('Error loading disputed matches:', err);
     }
   };
 
@@ -679,6 +706,43 @@ export const CaptainDashboard = () => {
           </div>
         )}
       </section>
+
+      {userRole?.isAdmin && disputedMatches.length > 0 && (
+        <section className="captain-section card card--interactive disputed-matches-section" style={{ borderLeft: '4px solid var(--warning)' }}>
+          <div className="section-header">
+            <div>
+              <h2>Disputed Matches (Admin)</h2>
+              <p>Resolve scores that have been flagged as incorrect by captains.</p>
+            </div>
+          </div>
+          <div className="matches-timeline">
+            {disputedMatches.map((match) => (
+              <div key={match.id} className="match-card card card--flat" style={{ border: '1px solid var(--warning-bg)' }}>
+                <div className="match-card-header">
+                  <div className="match-date">
+                    {new Date(match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  </div>
+                  <span className="match-tag" style={{ color: 'var(--warning)', fontWeight: 'bold' }}>DISPUTED ⚠️</span>
+                </div>
+                <div className="match-teams">
+                  <span className="team-home">{match.home_team?.name}</span>
+                  <span className="vs-label">vs</span>
+                  <span className="team-away">{match.away_team?.name}</span>
+                </div>
+                <div className="match-actions" style={{ marginTop: '0.5rem' }}>
+                  <Link 
+                    to={`/add-score?matchId=${match.id}`}
+                    className="btn-small"
+                    style={{ backgroundColor: 'var(--warning)', color: 'black', textDecoration: 'none', display: 'inline-block' }}
+                  >
+                    Resolve Dispute
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="captain-section card card--interactive">
         <div className="section-header">

@@ -2,8 +2,8 @@ name: Keep Supabase Active (Prod)
 
 on:
   schedule:
-    # Run once a week, every Sunday at midnight (UTC)
-    - cron: "0 0 * * 0"
+    # Run every 3 days at midnight (UTC) to ensure it stays active
+    - cron: "0 0 */3 * *"
   # Allow running manually from the Actions tab
   workflow_dispatch:
 
@@ -13,28 +13,44 @@ jobs:
     environment: production
     
     # We use environment variables to hold Supabase credentials if available as secrets
-    # Otherwise, it falls back to hardcoded public ANON key which is safe to expose
     env:
       SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
     steps:
+      - name: Verify Secrets
+        run: |
+          if [ -z "${SUPABASE_URL}" ]; then
+            echo "Error: VITE_SUPABASE_URL is not set in GitHub Secrets for 'production' environment."
+            exit 1
+          fi
+          if [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "Error: VITE_SUPABASE_ANON_KEY is not set in GitHub Secrets for 'production' environment."
+            exit 1
+          fi
+          echo "Secrets are configured."
+
       - name: Ping Production Supabase Database
         run: |
-          echo "Pinging Production Supabase REST API to prevent pausing..."
+          echo "Pinging Production Supabase 'location' table to ensure database activity..."
           
-          # Fetch a single row from a known table or the root OpenAPI spec
-          # Using the base REST endpoint provides the OpenAPI schema and counts as database activity
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+          # Fetch a single row from the location table
+          # This requires actual database interaction and counts as activity
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
             -H "apikey: ${SUPABASE_ANON_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
-            "${SUPABASE_URL}/rest/v1/")
+            "${SUPABASE_URL}/rest/v1/location?select=id&limit=1")
+            
+          STATUS_CODE=$(echo "$RESPONSE" | tail -n 1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
             
           echo "Production Supabase responded with status code: $STATUS_CODE"
           
-          if [ "$STATUS_CODE" -eq 200 ] || [ "$STATUS_CODE" -eq 400 ] || [ "$STATUS_CODE" -eq 401 ] || [ "$STATUS_CODE" -eq 404 ]; then
-            echo "Successfully connected to Production Supabase."
+          if [ "$STATUS_CODE" -eq 200 ]; then
+            echo "Successfully queried Production Supabase database."
           else
-            echo "Failed to connect to Production Supabase, status: $STATUS_CODE"
+            echo "Failed to query Production Supabase database."
+            echo "Status Code: $STATUS_CODE"
+            echo "Response Body: $BODY"
             exit 1
           fi
