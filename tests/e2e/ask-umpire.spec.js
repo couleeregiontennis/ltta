@@ -54,4 +54,58 @@ test.describe('Ask the Umpire Security', () => {
     await input.fill('Hello');
     await expect(counter).toContainText('5 / 300');
   });
+
+  test('should submit question and render AI response', async ({ page }) => {
+    // Intercept Edge Function call for Ask Umpire
+    await page.route('**/functions/v1/ask-umpire', async (route) => {
+        await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ answer: 'Mock Umpire: That is a serve fault.' })
+        });
+    });
+
+    // Ensure trigger is visible and click it
+    await page.evaluate(() => {
+        const btn = document.querySelector('.umpire-trigger');
+        if (btn) btn.style.display = 'block';
+    });
+    await page.locator('.umpire-trigger').click();
+
+    const input = page.getByPlaceholder('e.g., Can I play down a level?');
+    await input.fill('What is a serve fault?');
+
+    // Click Send
+    await page.getByRole('button', { name: 'Send' }).click();
+
+    // Verify loading state then response rendering
+    await expect(page.locator('.umpire-response')).toContainText('Mock Umpire: That is a serve fault.');
+  });
+
+  test('should handle edge function error gracefully', async ({ page }) => {
+    // Intercept and fail the Edge Function
+    await page.route('**/functions/v1/ask-umpire', async (route) => {
+        await route.fulfill({
+            status: 500,
+            contentType: 'application/json',
+            body: JSON.stringify({ error: 'Internal Server Error' })
+        });
+    });
+
+    // Ensure trigger is visible and click it
+    await page.evaluate(() => {
+        const btn = document.querySelector('.umpire-trigger');
+        if (btn) btn.style.display = 'block';
+    });
+    await page.locator('.umpire-trigger').click();
+
+    const input = page.getByPlaceholder('e.g., Can I play down a level?');
+    await input.fill('How does the scoring system work?');
+
+    // Click Send
+    await page.getByRole('button', { name: 'Send' }).click();
+
+    // Verify error is shown
+    await expect(page.locator('.umpire-error')).toContainText('Sorry, something went wrong.');
+  });
 });

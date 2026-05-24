@@ -175,8 +175,14 @@ export const ScheduleGenerator = () => {
       setSaving(true);
       setError('');
 
-      if (!preview || !confirmReplace) {
-        throw new Error('Please confirm you want to replace the existing schedule');
+      if (!preview) {
+        throw new Error('No preview generated');
+      }
+
+      if (checkScheduleExists() && !confirmReplace) {
+        setConfirmReplace(true);
+        setSaving(false);
+        return;
       }
 
       // Save the schedule
