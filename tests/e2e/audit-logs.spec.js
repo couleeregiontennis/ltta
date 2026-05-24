@@ -4,7 +4,7 @@ import { mockSupabaseAuth } from '../utils/auth-mock';
 test.describe('Admin Audit Log Viewer', () => {
 
   test.beforeEach(async ({ page }) => {
-    await mockSupabaseAuth(page, { email: 'admin@example.com' });
+    await mockSupabaseAuth(page, { id: 'fake-user-id', email: 'admin@example.com', is_admin: true });
   });
 
   test('Loads correctly for admin user', async ({ page }) => {

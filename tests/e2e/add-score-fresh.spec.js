@@ -17,7 +17,7 @@ test.describe('Add Score Page (New)', () => {
     await expect(page.locator('body')).not.toContainText('Loading...', { timeout: 20000 });
     
     // Check for correct heading
-    await expect(page.locator('h1')).toContainText('Add Match Score');
+    await expect(page.locator('h1')).toContainText('Submit Match Scores');
     
     const matchSelect = page.locator('select[name="matchId"]');
     await expect(matchSelect).toBeVisible({ timeout: 10000 });

@@ -219,24 +219,32 @@ export const PlayerManagement = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredPlayers.map(player => {
-              const activeTeamLink = player.player_to_team?.find(pt => pt.status === 'active');
-              const teamName = activeTeamLink ? teams.find(t => t.id === activeTeamLink.team)?.name || 'Loading...' : 'None';
-              
-              return (
-                <tr key={player.id}>
-                  <td>{player.last_name}, {player.first_name}</td>
-                  <td>{player.email}</td>
-                  <td>{teamName}</td>
-                  <td>{player.ranking}</td>
-                  <td>{player.is_captain ? '✅' : '❌'}</td>
-                  <td>{player.is_active ? '✅' : '❌'}</td>
-                  <td>
-                    <button className="edit-btn" onClick={() => handleEditClick(player)} title="Edit Player">✏️</button>
-                  </td>
-                </tr>
-              );
-            })}
+            {filteredPlayers.length === 0 ? (
+              <tr>
+                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  No players found
+                </td>
+              </tr>
+            ) : (
+              filteredPlayers.map(player => {
+                const activeTeamLink = player.player_to_team?.find(pt => pt.status === 'active');
+                const teamName = activeTeamLink ? teams.find(t => t.id === activeTeamLink.team)?.name || 'Loading...' : 'None';
+                
+                return (
+                  <tr key={player.id}>
+                    <td>{player.last_name}, {player.first_name}</td>
+                    <td>{player.email}</td>
+                    <td>{teamName}</td>
+                    <td>{player.ranking}</td>
+                    <td>{player.is_captain ? '✅' : '❌'}</td>
+                    <td>{player.is_active ? '✅' : '❌'}</td>
+                    <td>
+                      <button className="edit-btn" onClick={() => handleEditClick(player)} title="Edit Player">✏️</button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>

@@ -111,6 +111,11 @@ test.describe('Payment Management', () => {
     });
 
     await page.goto('/admin/payment-management');
+    // Hide floating Umpire button to prevent click interception on mobile viewports
+    await page.evaluate(() => {
+      const el = document.querySelector('.umpire-trigger');
+      if (el) el.style.display = 'none';
+    });
   });
 
   test('should display payment list and summary', async ({ page }) => {
@@ -133,13 +138,13 @@ test.describe('Payment Management', () => {
     await expect(page.getByRole('heading', { name: 'Record New Payment' })).toBeVisible();
 
     // Fill the form
-    await page.getByLabel('Select Player').selectOption({ label: 'Smith, Jane' });
+    await page.getByLabel('Select Player').selectOption('player-2');
     await page.getByLabel('Amount ($)').fill('75.00');
     await page.getByLabel('Method').selectOption('cash');
     await page.getByLabel('Notes').fill('Paid at courts');
 
     // Record it - use exact: true or specific selector to avoid ambiguity
-    await page.getByRole('button', { name: 'Record Payment', exact: true }).click();
+    await page.getByRole('button', { name: 'Record Payment', exact: true }).click({ force: true });
 
     // Verify success
     await expect(page.getByText('Payment recorded successfully!')).toBeVisible();
@@ -158,6 +163,6 @@ test.describe('Payment Management', () => {
     await expect(page.getByLabel('Select Player')).not.toBeVisible();
     await expect(page.getByLabel('Select Team')).toBeVisible();
     
-    await page.getByLabel('Select Team').selectOption({ label: 'Aces (#101)' });
+    await page.getByLabel('Select Team').selectOption('team-1');
   });
 });

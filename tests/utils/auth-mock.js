@@ -24,6 +24,9 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
     autoLogin = true
   } = userDetails;
 
+  // Automatically disable navigator locks to prevent hangs in headless browsers
+  await disableNavigatorLocks(page);
+
   if (autoLogin) {
     // Inject session into localStorage for immediate auth recognition
     await page.addInitScript(({ id, email }) => {
@@ -98,15 +101,56 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
         let data = [];
         
         if (url.includes('/player_to_team')) {
-            data = [{ team: 't1', status: 'active', player: id }];
+            const hasTeamSelect = url.includes('select=team%28') || url.includes('select=team(');
+            data = [{ 
+                team: hasTeamSelect ? { id: 't1', number: 1, name: 'Home Team' } : 't1',
+                status: 'active', 
+                player: { id: 'p1', user_id: 'regular-user-id', email: 'regular@example.com', first_name: 'Regular', last_name: 'Player', is_captain: false, is_admin: false, ranking: 3, is_active: true }
+            }];
         } else if (url.includes('/player')) {
-            data = [{ id: 'p1', user_id: id, email, first_name, last_name, is_captain, is_admin, is_active: true }];
+            data = [{ 
+                id: 'p1', 
+                user_id: id, 
+                email, 
+                first_name, 
+                last_name, 
+                is_captain, 
+                is_admin, 
+                is_active: true,
+                player_to_team: [{ id: 'pt-1', team: 't1', status: 'active' }]
+            }];
         } else if (url.includes('/season')) {
             data = [{ id: 's1', number: 1, is_active: true, is_current: true }];
         } else if (url.includes('/team_match')) {
-            data = [];
+            data = [{
+                id: 'match-1',
+                home_team_id: 't1',
+                away_team_id: 't2',
+                home_team: { id: 't1', name: 'Home Team', number: 1 },
+                away_team: { id: 't2', name: 'Away Team', number: 2 },
+                date: new Date().toISOString().split('T')[0],
+                time: '18:00',
+                status: 'scheduled',
+                courts: '1, 2',
+                is_rained_out: false,
+                is_disputed: false,
+                line_results: []
+            }];
         } else if (url.includes('/team')) {
-            data = [{ id: 't1', name: 'Test Team', number: 1 }];
+            data = [{ id: 't1', name: 'Home Team', number: 1 }];
+        } else if (url.includes('/matches')) {
+            data = [{
+                id: 'match-1',
+                home_team_name: 'Home Team',
+                home_team_number: 1,
+                away_team_name: 'Away Team',
+                away_team_number: 2,
+                date: new Date().toISOString().split('T')[0],
+                time: '18:00',
+                status: 'scheduled',
+                courts: '1, 2',
+                is_rained_out: false
+            }];
         } else if (url.includes('/line_results')) {
             data = [];
         }

@@ -8,7 +8,7 @@ test.describe('Player Management @live', () => {
   });
 
   test('should display list of players', async ({ page }) => {
-    await page.goto('/admin/players');
+    await page.goto('/admin/player-management');
     await expect(page.getByText(/Loading player management/i)).toBeHidden({ timeout: 15000 });
     
     // Auth-mock.js returns "User, Test" format (last_name, first_name)
@@ -16,7 +16,7 @@ test.describe('Player Management @live', () => {
   });
 
   test('should filter players', async ({ page }) => {
-    await page.goto('/admin/players');
+    await page.goto('/admin/player-management');
     await expect(page.getByText(/Loading player management/i)).toBeHidden({ timeout: 15000 });
 
     const searchInput = page.locator('input#search-players');

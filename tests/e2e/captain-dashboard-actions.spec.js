@@ -12,7 +12,7 @@ test.describe('Captain Dashboard Actions @live', () => {
         await expect(page.locator('body')).not.toContainText('Loading...', { timeout: 15000 });
 
         await expect(page.locator('h1')).toContainText('Captain Dashboard');
-        await expect(page.locator('body')).toContainText('Test Team');
+        await expect(page.locator('body')).toContainText('Home Team');
         await expect(page.getByText('Team Roster Management')).toBeVisible();
     });
 
@@ -22,6 +22,6 @@ test.describe('Captain Dashboard Actions @live', () => {
 
         await page.getByRole('button', { name: 'Manage Roster' }).click();
         await expect(page.getByRole('heading', { name: 'Manage Team Roster' })).toBeVisible();
-        await expect(page.getByText('Available Players')).toBeVisible();
+        await expect(page.getByText('Available Players', { exact: true })).toBeVisible();
     });
 });

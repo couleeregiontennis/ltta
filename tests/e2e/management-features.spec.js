@@ -29,15 +29,15 @@ test.describe('Management Features (Captain & Admin) @live', () => {
             first_name: 'Admin'
         });
 
-        await page.goto('/admin/players');
+        await page.goto('/admin/player-management');
         await expect(page.getByText(/Loading player management/i)).toBeHidden({ timeout: 15000 });
 
         // Verify Team column (added in recent rewrite)
         await expect(page.getByRole('columnheader', { name: 'Team' })).toBeVisible();
-        await expect(page.getByText('Test Team')).toBeVisible();
+        await expect(page.getByText('Home Team')).toBeVisible();
 
         // Open Edit Modal
-        await page.getByRole('button', { name: /Edit Player/i }).first().click();
+        await page.locator('.edit-btn').first().click();
 
         // Verify Team Dropdown exists
         await expect(page.getByLabel('Team Assignment')).toBeVisible();

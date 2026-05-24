@@ -133,12 +133,28 @@ test.describe('Score Flagging Feature @live', () => {
                 });
             });
             
-            // Mock player count
+            // Mock player count and profile fetch
             await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
               if (route.request().method() === 'HEAD') {
                 await route.fulfill({ status: 200, headers: { 'Content-Range': '0-10/10' } });
               } else {
-                await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+                const url = route.request().url();
+                if (url.includes('select=*') || url.includes('is_captain')) {
+                  const data = {
+                    id: 'team-1',
+                    first_name: 'Regular',
+                    last_name: 'Player',
+                    is_captain: true,
+                    is_admin: false
+                  };
+                  await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify(data)
+                  });
+                } else {
+                  await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+                }
               }
             });
 

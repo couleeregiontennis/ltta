@@ -95,7 +95,7 @@ const groupMatchesByDate = (matches) => {
 
 export const MatchSchedule = () => {
   const navigate = useNavigate();
-  const { user, userRole } = useAuth();
+  const { user, userRole, currentPlayerData } = useAuth();
   const { currentSeason, loading: seasonLoading } = useSeason();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
