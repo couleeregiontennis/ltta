@@ -21,6 +21,7 @@ export const Login = () => {
 
   useEffect(() => {
     if (session && !isForgotPassword) {
+      if (hasProfile === null) return;
       if (hasProfile === false) {
         navigate('/welcome');
       } else {

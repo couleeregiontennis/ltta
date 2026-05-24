@@ -37,9 +37,14 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
   };
 
   const handleLogout = async () => {
-    await signOut();
-    navigate('/login');
-    closeMenu();
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Error during signOut:', err);
+    } finally {
+      navigate('/login');
+      closeMenu();
+    }
   };
 
   return (

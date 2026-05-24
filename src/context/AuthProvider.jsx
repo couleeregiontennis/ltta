@@ -17,6 +17,7 @@ export const AuthProvider = ({ children }) => {
   const prefetchCoreData = async (userId) => {
     try {
       console.log('[AuthProvider] prefetchCoreData started for:', userId);
+      setHasProfile(null);
       
       const isE2E = window._env_?.VITE_IS_E2E === 'true' || import.meta.env.VITE_IS_E2E === 'true';
       if (isE2E) {
@@ -34,7 +35,8 @@ export const AuthProvider = ({ children }) => {
         supabase
           .from('season')
           .select('*')
-          .eq('is_active', true)
+          .order('end_date', { ascending: false })
+          .limit(1)
           .maybeSingle()
       ]);
 
@@ -115,7 +117,7 @@ export const AuthProvider = ({ children }) => {
             // Only set hasProfile and currentSeason if NOT E2E bypass (which already set them)
             console.log('[AuthProvider] No user in getSession, finishing init');
             setHasProfile(false);
-            const { data } = await supabase.from('season').select('*').eq('is_active', true).maybeSingle();
+            const { data } = await supabase.from('season').select('*').order('end_date', { ascending: false }).limit(1).maybeSingle();
             if (mounted && data) setCurrentSeason(data);
             setLoading(false);
           }
@@ -158,7 +160,35 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  const signOut = useCallback(() => supabase.auth.signOut(), []);
+  const signOut = useCallback(async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.warn('[AuthProvider] Supabase signOut returned an error, forcing local cleanup:', error);
+      }
+    } catch (err) {
+      console.error('[AuthProvider] Supabase signOut threw an exception, forcing local cleanup:', err);
+    } finally {
+      // Forcefully clear all Supabase local storage keys to ensure the local user is logged out
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const keysToRemove = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const key = window.localStorage.key(i);
+          if (key && (key.startsWith('sb-') || key === 'supabase.auth.token')) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => window.localStorage.removeItem(key));
+      }
+      
+      // Clear local React states
+      setSession(null);
+      setUser(null);
+      setUserRole({ isCaptain: false, isAdmin: false });
+      setHasProfile(false);
+      setCurrentPlayerData(null);
+    }
+  }, []);
 
   const value = useMemo(() => ({
     session,
