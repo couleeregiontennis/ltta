@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { disableNavigatorLocks, mockSupabaseAuth } from '../utils/auth-mock';
 
-test.describe('Add Score Page (New)', () => {
+test.describe('Add Score Page (New) @live', () => {
   test('loads and allows match selection', async ({ page }) => {
     await disableNavigatorLocks(page);
     await mockSupabaseAuth(page, { 
