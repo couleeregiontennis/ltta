@@ -47,20 +47,23 @@ test.describe('Payment Management', () => {
     await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
       const url = route.request().url();
       const method = route.request().method();
+      const accept = route.request().headers()['accept'] || '';
+      const isSingle = accept.includes('vnd.pgrst.object') || url.includes('limit=1');
 
       if (method === 'GET') {
         if (url.includes(`user_id=eq.${adminUser.id}`)) {
+          const data = { 
+            id: 'admin-p-id', 
+            user_id: adminUser.id, 
+            is_admin: true,
+            is_captain: false,
+            first_name: 'Admin',
+            last_name: 'User'
+          };
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify({ 
-              id: 'admin-p-id', 
-              user_id: adminUser.id, 
-              is_admin: true,
-              is_captain: false,
-              first_name: 'Admin',
-              last_name: 'User'
-            }),
+            body: JSON.stringify(isSingle ? data : [data]),
           });
         } else {
           await route.fulfill({

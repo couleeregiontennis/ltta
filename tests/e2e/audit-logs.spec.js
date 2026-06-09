@@ -9,26 +9,30 @@ test.describe('Admin Audit Log Viewer', () => {
 
   test('Loads correctly for admin user', async ({ page }) => {
      // Mock player requests (both single user check and list)
-     await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
-        const url = route.request().url();
-        if (url.includes('id=eq.fake-user-id') || url.includes('limit=1')) {
-            await route.fulfill({
-                status: 200,
-                contentType: 'application/json',
-                body: JSON.stringify({ id: 'fake-user-id', is_captain: true, is_admin: true, first_name: 'Admin', last_name: 'User', email: 'admin@example.com' }),
-            });
-        } else {
-            // List of players
-            await route.fulfill({
-                status: 200,
-                contentType: 'application/json',
-                body: JSON.stringify([
-                    { id: 'fake-user-id', first_name: 'Admin', last_name: 'User', email: 'admin@example.com' },
-                    { id: 'user-2', first_name: 'Regular', last_name: 'Player', email: 'player@example.com' }
-                ]),
-            });
-        }
-    });
+      await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
+         const url = route.request().url();
+         const accept = route.request().headers()['accept'] || '';
+         const isSingle = accept.includes('vnd.pgrst.object') || url.includes('limit=1');
+         
+         if (url.includes('id=eq.fake-user-id') || url.includes('limit=1') || url.includes('user_id=eq.')) {
+             const data = { id: 'fake-user-id', is_captain: true, is_admin: true, first_name: 'Admin', last_name: 'User', email: 'admin@example.com' };
+             await route.fulfill({
+                 status: 200,
+                 contentType: 'application/json',
+                 body: JSON.stringify(isSingle ? data : [data]),
+             });
+         } else {
+             // List of players
+             await route.fulfill({
+                 status: 200,
+                 contentType: 'application/json',
+                 body: JSON.stringify([
+                     { id: 'fake-user-id', first_name: 'Admin', last_name: 'User', email: 'admin@example.com' },
+                     { id: 'user-2', first_name: 'Regular', last_name: 'Player', email: 'player@example.com' }
+                 ]),
+             });
+         }
+     });
 
     // Mock audit logs
     await page.route('**/rest/v1/audit_logs*', async (route) => {
@@ -64,13 +68,17 @@ test.describe('Admin Audit Log Viewer', () => {
 
   test('Access denied for non-admin user', async ({ page }) => {
      // Mock non-admin user
-     await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
-        await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ id: 'fake-user-id', is_captain: false, first_name: 'Regular', last_name: 'User' }),
-        });
-    });
+      await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
+         const url = route.request().url();
+         const accept = route.request().headers()['accept'] || '';
+         const isSingle = accept.includes('vnd.pgrst.object') || url.includes('limit=1');
+         const data = { id: 'fake-user-id', is_captain: false, is_admin: false, first_name: 'Regular', last_name: 'User' };
+         await route.fulfill({
+             status: 200,
+             contentType: 'application/json',
+             body: JSON.stringify(isSingle ? data : [data]),
+         });
+     });
 
     await page.goto('/admin/audit-logs');
     await expect(page).toHaveURL('/');
@@ -78,18 +86,22 @@ test.describe('Admin Audit Log Viewer', () => {
 
   test('Can filter logs', async ({ page }) => {
        // Mock admin user
-     await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
-        const url = route.request().url();
-        if (url.includes('id=eq.fake-user-id') || url.includes('limit=1')) {
-            await route.fulfill({
-                status: 200,
-                contentType: 'application/json',
-                body: JSON.stringify({ id: 'fake-user-id', is_captain: true, is_admin: true, first_name: 'Admin', last_name: 'User' }),
-            });
-        } else {
-             await route.fulfill({ status: 200, body: '[]' });
-        }
-    });
+      await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
+         const url = route.request().url();
+         const accept = route.request().headers()['accept'] || '';
+         const isSingle = accept.includes('vnd.pgrst.object') || url.includes('limit=1');
+         
+         if (url.includes('id=eq.fake-user-id') || url.includes('limit=1') || url.includes('user_id=eq.')) {
+             const data = { id: 'fake-user-id', is_captain: true, is_admin: true, first_name: 'Admin', last_name: 'User' };
+             await route.fulfill({
+                 status: 200,
+                 contentType: 'application/json',
+                 body: JSON.stringify(isSingle ? data : [data]),
+             });
+         } else {
+              await route.fulfill({ status: 200, body: '[]' });
+         }
+     });
 
     // Mock audit logs with filter
     let filtered = false;

@@ -53,14 +53,7 @@ export const AuthProvider = ({ children }) => {
         setHasProfile(!!playerData.first_name);
         console.log('[AuthProvider] User roles set from prefetch:', { isCaptain: !!playerData.is_captain, isAdmin: !!playerData.is_admin });
       } else {
-        // Fallback for E2E if we are logged in but player record missing
-        if (userId && (window._env_?.VITE_IS_E2E === 'true' || import.meta.env.VITE_IS_E2E === 'true')) {
-          console.log('[AuthProvider] E2E Fallback in prefetch');
-          setUserRole(prev => prev || { isCaptain: false, isAdmin: false });
-          setHasProfile(prev => prev !== null ? prev : true); 
-        } else {
-          setHasProfile(false);
-        }
+        setHasProfile(false);
       }
 
       if (seasonRes.status === 'fulfilled' && seasonRes.value.data) {
@@ -81,22 +74,6 @@ export const AuthProvider = ({ children }) => {
     const getSession = async () => {
       try {
         console.log('[AuthProvider] getSession started');
-        
-        // E2E Bypass: Don't let initialization hangs block testing
-        const isE2E = window._env_?.VITE_IS_E2E === 'true' || import.meta.env.VITE_IS_E2E === 'true';
-        if (isE2E && mounted) {
-           console.log('[AuthProvider] E2E Bypass active at start of getSession');
-           const mockSession = { 
-             user: { id: 'test-user-id', email: 'test@example.com' },
-             access_token: 'mock-token' 
-           };
-           // Only set if not already present
-           setSession(prev => prev || mockSession);
-           setUser(prev => prev || mockSession.user);
-           setUserRole(prev => prev || { isCaptain: false, isAdmin: false });
-           setHasProfile(prev => prev !== null ? prev : true);
-           setLoading(false);
-        }
 
         console.log('[AuthProvider] Calling supabase.auth.getSession()...');
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
@@ -111,8 +88,7 @@ export const AuthProvider = ({ children }) => {
           if (initialSession?.user) {
             console.log('[AuthProvider] User found in getSession, prefetching core data...');
             await prefetchCoreData(initialSession.user.id);
-          } else if (!isE2E) {
-            // Only set hasProfile and currentSeason if NOT E2E bypass (which already set them)
+          } else {
             console.log('[AuthProvider] No user in getSession, finishing init');
             setHasProfile(false);
             const { data } = await supabase.from('season').select('*').eq('is_active', true).maybeSingle();
@@ -132,12 +108,12 @@ export const AuthProvider = ({ children }) => {
       if (mounted) {
         try {
           const newUserId = session?.user?.id;
-          const isE2E = window._env_?.VITE_IS_E2E === 'true' || import.meta.env.VITE_IS_E2E === 'true';
 
           setSession(session);
           setUser(session?.user ?? null);
 
           if (newUserId) {
+            setHasProfile(null);
             await prefetchCoreData(newUserId);
           } else {
             setUserRole({ isCaptain: false, isAdmin: false });
