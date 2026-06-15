@@ -2,8 +2,8 @@ name: Keep Supabase Active (Prod)
 
 on:
   schedule:
-    # Run once a week, every Sunday at midnight (UTC)
-    - cron: "0 0 * * 0"
+    # Run every 3 days at midnight (UTC) to safely stay within the 7-day activity window
+    - cron: "0 0 */3 * *"
   # Allow running manually from the Actions tab
   workflow_dispatch:
 
@@ -21,14 +21,13 @@ jobs:
     steps:
       - name: Ping Production Supabase Database
         run: |
-          echo "Pinging Production Supabase REST API to prevent pausing..."
+          echo "Pinging Production Supabase REST API (season table) to prevent pausing..."
           
-          # Fetch a single row from a known table or the root OpenAPI spec
-          # Using the base REST endpoint provides the OpenAPI schema and counts as database activity
+          # Fetch a single row from the season table to generate actual database query activity
           STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "apikey: ${SUPABASE_ANON_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
-            "${SUPABASE_URL}/rest/v1/")
+            "${SUPABASE_URL}/rest/v1/season?select=*&limit=1")
             
           echo "Production Supabase responded with status code: $STATUS_CODE"
           
