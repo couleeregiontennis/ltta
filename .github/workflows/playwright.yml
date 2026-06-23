@@ -20,6 +20,11 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2]
+        shardTotal: [2]
     container:
       image: mcr.microsoft.com/playwright:v1.57.0-jammy # Matches package.json
       options: --ipc=host
@@ -40,25 +45,33 @@ jobs:
       run: npx playwright install --with-deps
 
     - name: Run Functional Tests (Exclude Visual)
-      run: npx playwright test --grep-invert visual
+      run: npx playwright test --grep-invert visual --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
 
     - name: Run Visual Tests
       if: ${{ !inputs.update_snapshots }}
       id: visual-tests
-      run: npx playwright test --grep visual
+      run: npx playwright test --grep visual --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
       continue-on-error: true
 
     - name: Update Snapshots (if visual failed)
       if: ${{ !inputs.update_snapshots && steps.visual-tests.outcome == 'failure' }}
       id: auto-update
-      run: npx playwright test --grep visual --update-snapshots
+      run: npx playwright test --grep visual --update-snapshots --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
 
     - name: Manual Update Snapshots
       if: ${{ inputs.update_snapshots }}
-      run: npx playwright test --update-snapshots
+      run: npx playwright test --update-snapshots --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
 
     - name: Fix Dubious Ownership
       run: git config --global --add safe.directory /__w/ltta/ltta
+
+    - name: Sync branch for concurrent commits
+      if: always()
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git fetch origin
+        git pull --rebase origin ${{ github.head_ref || github.ref_name }} || true
 
     - name: Commit updated snapshots
       if: always()
