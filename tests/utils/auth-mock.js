@@ -14,7 +14,17 @@ export async function disableNavigatorLocks(page) {
       } catch (e) {
         console.error('Failed to mock navigator.locks:', e);
       }
-    }
+    // Hide umpire trigger in E2E tests to avoid intercepting clicks on other elements
+    const style = document.createElement('style');
+    style.innerHTML = '.umpire-trigger { display: none !important; }';
+    const insertStyle = () => {
+      if (document.head) {
+        document.head.appendChild(style);
+      } else {
+        setTimeout(insertStyle, 1);
+      }
+    };
+    insertStyle();
   });
 }
 
@@ -26,36 +36,40 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
     is_captain = false, 
     is_admin = false,
     first_name = 'Test',
-    last_name = 'User'
+    last_name = 'User',
+    startLoggedOut = false
   } = userDetails;
 
-  // Inject session into localStorage for immediate auth recognition
-  await page.addInitScript(({ id, email }) => {
-    const mockSession = {
-      access_token: 'mock-token',
-      token_type: 'bearer',
-      expires_in: 3600,
-      refresh_token: 'mock-refresh',
-      user: {
-        id,
-        email,
-        aud: 'authenticated',
-        role: 'authenticated',
-        app_metadata: { provider: 'email' },
-        user_metadata: {},
-        created_at: new Date().toISOString()
-      },
-      expires_at: Math.floor(Date.now() / 1000) + 3600
-    };
-    
-    // Standard Supabase localStorage key format: sb-[PROJECT_REF]-auth-token
-    // Using current project ref: shlcqztfdhfwkhijwgue
-    const projectRef = 'shlcqztfdhfwkhijwgue';
-    window.localStorage.setItem(`sb-${projectRef}-auth-token`, JSON.stringify(mockSession));
-    // Also set generic key as fallback
-    window.localStorage.setItem('supabase.auth.token', JSON.stringify(mockSession));
-  }, { id, email });
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://shlcqztfdhfwkhijwgue.supabase.co';
+  const match = supabaseUrl.match(/https?:\/\/([^.]+)/);
+  const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
 
+  // Inject session into localStorage for immediate auth recognition
+  if (!startLoggedOut) {
+    await page.addInitScript(({ id, email, projectRef }) => {
+      const mockSession = {
+        access_token: 'mock-token',
+        token_type: 'bearer',
+        expires_in: 3600,
+        refresh_token: 'mock-refresh',
+        user: {
+          id,
+          email,
+          aud: 'authenticated',
+          role: 'authenticated',
+          app_metadata: { provider: 'email' },
+          user_metadata: {},
+          created_at: new Date().toISOString()
+        },
+        expires_at: Math.floor(Date.now() / 1000) + 3600
+      };
+      
+      // Standard Supabase localStorage key format: sb-[PROJECT_REF]-auth-token
+      window.localStorage.setItem(`sb-${projectRef}-auth-token`, JSON.stringify(mockSession));
+      // Also set generic key as fallback
+      window.localStorage.setItem('supabase.auth.token', JSON.stringify(mockSession));
+    }, { id, email, projectRef });
+  }
   await page.route('**/*.supabase.co/**', async (route) => {
     const url = route.request().url();
     const method = route.request().method();

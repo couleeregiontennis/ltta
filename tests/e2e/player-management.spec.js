@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+<<<<<<< HEAD
 import { mockSupabaseAuth } from '../utils/auth-mock';
 
 test.describe('Player Management', () => {
