@@ -67,6 +67,7 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
       
       // Standard Supabase localStorage key format: sb-[PROJECT_REF]-auth-token
       window.localStorage.setItem(`sb-${projectRef}-auth-token`, JSON.stringify(mockSession));
+      window.localStorage.setItem(`sb-shlcqztfdhfwkhijwgue-auth-token`, JSON.stringify(mockSession));
       // Also set generic key as fallback
       window.localStorage.setItem('supabase.auth.token', JSON.stringify(mockSession));
     }, { id, email, projectRef });
