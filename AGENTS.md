@@ -10,4 +10,5 @@
 *   **Signatures**: Do not include agent signatures (e.g., "🛡️ Sentinel:", "🤖 Bot:") in code comments.
 
 ## Testing
-*   **Environment**: Running Playwright tests locally (`pnpm run test:e2e`) requires a `.env` file with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` defined (dummy values are sufficient for mocked tests).
+*   **Environment**: Running Playwright tests locally requires a `.env` file with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` defined (dummy values are sufficient for mocked tests).
+*   **Local Runs**: Use the fast execution command (`npm run test:e2e:fast` or `pnpm run test:e2e:fast`) locally by default to leverage 100% of local CPU threads and target Chromium.
