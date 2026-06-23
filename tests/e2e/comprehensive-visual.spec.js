@@ -35,6 +35,8 @@ const ROUTES = [
 ];
 
 test.describe('Comprehensive Visual Regression Suite', () => {
+  test.describe.configure({ retries: 0 });
+
   for (const route of ROUTES) {
     test(`visual check: ${route.name}`, async ({ page }) => {
       // Setup auth and mocks
