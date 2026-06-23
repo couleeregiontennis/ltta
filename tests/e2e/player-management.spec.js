@@ -165,6 +165,10 @@ test.describe('Player Management', () => {
         const id = match ? match[1] : null;
 
         if (id) {
+          const idx = players.findIndex(p => p.id === id);
+          if (idx !== -1) {
+            players[idx] = { ...players[idx], ...body };
+          }
           const original = players.find(p => p.id === id) || {};
           await route.fulfill({
             status: 200,
@@ -188,13 +192,13 @@ test.describe('Player Management', () => {
 
     const rows = page.locator('table.player-table tbody tr');
     
-    // First row John Doe: should show ❌ for payment in column 5 (0-indexed)
+    // First row John Doe: should show ❌ for payment in column 6 (0-indexed)
     const johnRow = rows.first();
-    await expect(johnRow.locator('td').nth(5)).toHaveText('❌');
+    await expect(johnRow.locator('td').nth(6)).toHaveText('❌');
 
-    // Second row Jane Smith: should show ✅ for payment in column 5 (0-indexed)
+    // Second row Jane Smith: should show ✅ for payment in column 6 (0-indexed)
     const janeRow = rows.nth(1);
-    await expect(janeRow.locator('td').nth(5)).toHaveText('✅');
+    await expect(janeRow.locator('td').nth(6)).toHaveText('✅');
   });
 
   test('should edit a player and toggle payment status', async ({ page }) => {
@@ -223,7 +227,7 @@ test.describe('Player Management', () => {
 
     // Verify list is updated (UI updates first name to Johnny, and Paid status to check)
     await expect(page.getByText('Doe, Johnny')).toBeVisible();
-    await expect(johnRow.locator('td').nth(5)).toHaveText('✅');
+    await expect(johnRow.locator('td').nth(6)).toHaveText('✅');
   });
 
   test('should filter players', async ({ page }) => {

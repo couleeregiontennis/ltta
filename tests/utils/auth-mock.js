@@ -5,7 +5,12 @@ export async function disableNavigatorLocks(page) {
     if (navigator.locks) {
       try {
         navigator.locks.query = () => Promise.resolve({ held: [], pending: [] });
-        navigator.locks.request = () => new Promise(() => {});
+        navigator.locks.request = async (name, options, callback) => {
+          const cb = typeof options === 'function' ? options : callback;
+          if (cb) {
+            return await cb();
+          }
+        };
       } catch (e) {
         console.error('Failed to mock navigator.locks:', e);
       }
@@ -14,6 +19,7 @@ export async function disableNavigatorLocks(page) {
 }
 
 export async function mockSupabaseAuth(page, userDetails = {}) {
+  await disableNavigatorLocks(page);
   const { 
     id = 'test-user-id', 
     email = 'test@example.com', 
