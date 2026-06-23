@@ -14,6 +14,7 @@ export async function disableNavigatorLocks(page) {
       } catch (e) {
         console.error('Failed to mock navigator.locks:', e);
       }
+    }
     // Hide umpire trigger in E2E tests to avoid intercepting clicks on other elements
     const style = document.createElement('style');
     style.innerHTML = '.umpire-trigger { display: none !important; }';
