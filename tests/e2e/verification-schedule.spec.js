@@ -12,7 +12,7 @@ test('schedule screenshot', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // Mock season data
-  await page.route('**/rest/v1/season*', async (route) => {
+  await page.route(/\/rest\/v1\/season($|\?)/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -26,7 +26,7 @@ test('schedule screenshot', async ({ page }) => {
   });
 
   // Mock data to ensure consistent screenshots
-  await page.route('**/rest/v1/team*', async (route) => {
+  await page.route(/\/rest\/v1\/team($|\?)/, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -66,10 +66,11 @@ test('schedule screenshot', async ({ page }) => {
       });
   });
 
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'networkidle' });
   await expect(page.locator('h1')).toHaveText('Match Schedule');
-  // Wait for content to load
-  await expect(page.locator('.match-card').first()).toBeVisible();
+  // Wait for content to load and animations to settle
+  await expect(page.locator('.match-card').first()).toBeVisible({ timeout: 10000 });
+  await page.waitForTimeout(1000);
 
   // Take screenshot
   await page.screenshot({ path: 'verification/schedule-after.png', fullPage: true });

@@ -1,0 +1,64 @@
+name: Keep Supabase Active (Prod)
+
+on:
+  schedule:
+    # Run daily at midnight (UTC) to ensure it stays active
+    - cron: "0 0 * * *"
+  # Allow running manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  ping-supabase-prod:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    # We use environment variables to hold Supabase credentials if available as secrets
+    # Otherwise, it falls back to hardcoded public ANON key which is safe to expose
+    env:
+      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://mzheoplkuuzsegpetukq.supabase.co' }}
+      SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16aGVvcGxrdXV6c2VncGV0dWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA5NDc2MzksImV4cCI6MjA2NjUyMzYzOX0.5zh2Q9UqTbPxPEGDyNuZsLFMQ5KeIeOB3t2wPS-cGaE' }}
+
+    steps:
+      - name: Verify Secrets
+        run: |
+          if [ -z "${SUPABASE_URL}" ]; then
+            echo "Error: SUPABASE_URL is not set."
+            exit 1
+          fi
+          if [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "Error: SUPABASE_ANON_KEY is not set."
+            exit 1
+          fi
+          echo "Secrets are configured."
+
+      - name: Ping Production Supabase Database
+        run: |
+          echo "Pinging Production Supabase 'location' table to ensure database activity..."
+          
+          # Retry up to 3 times with a 10-second delay if it fails due to network issues
+          for i in {1..3}; do
+            echo "Attempt $i..."
+            RESPONSE=$(curl -s -w "\n%{http_code}" \
+              -H "apikey: ${SUPABASE_ANON_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+              "${SUPABASE_URL}/rest/v1/location?select=id&limit=1") || true
+            
+            STATUS_CODE=$(echo "$RESPONSE" | tail -n 1)
+            BODY=$(echo "$RESPONSE" | head -n -1)
+            
+            echo "Production Supabase responded with status code: $STATUS_CODE"
+            
+            if [ "$STATUS_CODE" -eq 200 ]; then
+              echo "Successfully queried Production Supabase database."
+              exit 0
+            fi
+            
+            echo "Attempt $i failed. Status: $STATUS_CODE, Body: $BODY"
+            if [ $i -lt 3 ]; then
+              echo "Waiting 10 seconds before next attempt..."
+              sleep 10
+            fi
+          done
+          
+          echo "Error: Failed to query Production Supabase database after 3 attempts."
+          exit 1

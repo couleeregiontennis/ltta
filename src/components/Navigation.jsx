@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
+import { ZeffyModal } from './ZeffyModal';
 import '../styles/Navigation.css';
 
 export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
   const { user, userRole, signOut } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showZeffyModal, setShowZeffyModal] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
   const navigate = useNavigate();
   const navRef = useRef(null);
@@ -91,7 +93,7 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
                 <ul className={`dropdown-menu ${openDropdown === 'league' ? 'show' : ''}`} role="menu">
                   <li><Link to="/standings" onClick={closeMenu}>Standings</Link></li>
                   <li><Link to="/player-rankings" onClick={closeMenu}>Player Rankings</Link></li>
-                  <li><Link to="/sub-board" onClick={closeMenu}>Sub Board</Link></li>
+                  {user && <li><Link to="/sub-board" onClick={closeMenu}>Sub Board</Link></li>}
                   <li>
                     <a
                       href="http://www.couleeregiontennis.com"
@@ -145,7 +147,12 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
                 <ul className={`dropdown-menu ${openDropdown === 'resources' ? 'show' : ''}`} role="menu">
                   <li><Link to="/courts-locations" onClick={closeMenu}>Courts & Locations</Link></li>
                   <li><Link to="/player-resources" onClick={closeMenu}>Player Resources</Link></li>
-                  <li><Link to="/feedback" onClick={closeMenu}>Feedback</Link></li>
+                  {user && (
+                    <>
+                      <li><Link to="/pay-dues" onClick={closeMenu}>Pay Dues</Link></li>
+                      <li><Link to="/feedback" onClick={closeMenu}>Feedback</Link></li>
+                    </>
+                  )}
                 </ul>
               </li>
 
@@ -165,10 +172,32 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
                     <li><Link to="/admin/schedule-generator" onClick={closeMenu}>Schedule Generator</Link></li>
                     <li><Link to="/admin/audit-logs" onClick={closeMenu}>Audit Logs</Link></li>
                     <li><Link to="/admin/player-management" onClick={closeMenu}>Player Management</Link></li>
+                    <li><Link to="/admin/payment-management" onClick={closeMenu}>Payment Management</Link></li>
                     <li><Link to="/admin/team-management" onClick={closeMenu}>Team Management</Link></li>
                   </ul>
                 </li>
               )}
+
+              <li>
+                <button
+                  className="nav-btn-zeffy registration"
+                  onClick={() => {
+                    setShowZeffyModal(true);
+                    closeMenu();
+                  }}
+                >
+                  Pay Registration Online
+                </button>
+              </li>
+              <li>
+                <button
+                  zeffy-form-link="https://www.zeffy.com/en-US/donation-form/donate-to-coulee-region-tennis-association"
+                  className="nav-btn-zeffy donate"
+                  onClick={closeMenu}
+                >
+                  Donate ❤️
+                </button>
+              </li>
 
               {/* Authentication */}
               {user ? (
@@ -189,6 +218,7 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
           </div>
         </div>
       </nav>
+      <ZeffyModal isOpen={showZeffyModal} onClose={() => setShowZeffyModal(false)} />
     </header>
   );
 };

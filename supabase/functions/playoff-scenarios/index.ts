@@ -79,7 +79,7 @@ serve(async (req) => {
         const maxWinsOtherTeams = otherTeams.length > 0
             ? Math.max(...otherTeams.map(o => o.wins + (totalMatchesByTeam[o.team_number] || o.matches_played) - o.matches_played))
             : 0;
-            
+
         // To clinch, t.wins + additional_wins > maxWinsOtherTeams
         // So additional_wins_needed = maxWinsOtherTeams - t.wins + 1 (assuming tie is not a clinch)
         // Actually, let's keep it simple. If we need a tie-breaker, it's complex. Let's say + 1 to outright win.

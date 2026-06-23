@@ -5,7 +5,7 @@ test.describe('Player Rankings', () => {
     test.beforeEach(async ({ page }) => {
         await disableNavigatorLocks(page);
 
-        await page.route('**/rest/v1/player*', async (route) => {
+        await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',

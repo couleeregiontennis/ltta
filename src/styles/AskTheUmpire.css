@@ -5,7 +5,7 @@
   background-color: var(--primary-green);
   color: white;
   border: none;
-  border-radius: 50px;
+  border-radius: var(--radius-full);
   padding: 15px 25px;
   font-weight: bold;
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
@@ -31,7 +31,7 @@
   width: 350px;
   max-width: 90vw;
   background-color: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 8px 24px rgba(0,0,0,0.2);
   z-index: 1001;
   display: flex;
@@ -82,7 +82,7 @@
 .umpire-response {
   background-color: var(--bg-secondary);
   padding: 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-primary);
   margin-bottom: 10px;
   font-size: 0.95rem;

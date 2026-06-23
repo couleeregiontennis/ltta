@@ -4,8 +4,8 @@ import { disableNavigatorLocks } from '../utils/auth-mock';
 test('dump network', async ({ page }) => {
   await disableNavigatorLocks(page);
 
-  // 1. Mock team details
-  await page.route('**/rest/v1/team*', async (route) => {
+  // 1. Mock team details - use regex to avoid matching team_match
+  await page.route(/\/rest\/v1\/team($|\?)/, async (route) => {
       await route.fulfill({
           status: 200,
           contentType: 'application/json',

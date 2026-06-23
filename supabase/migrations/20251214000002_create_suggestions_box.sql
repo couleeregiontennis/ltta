@@ -13,21 +13,54 @@ ALTER TABLE public.suggestions ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Anyone (Anon or Auth) can INSERT a suggestion
 -- We restrict what columns they can set to prevent tampering (e.g., setting their own status to 'reviewed')
-CREATE POLICY "Public can submit suggestions" ON public.suggestions
-    FOR INSERT
-    TO public
-    WITH CHECK (true);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_policy
+        WHERE polname = 'Public can submit suggestions'
+        AND polrelid = 'public.suggestions'::regclass
+    ) THEN
+        CREATE POLICY "Public can submit suggestions" ON public.suggestions
+            FOR INSERT
+            TO public
+            WITH CHECK (true);
+    END IF;
+END
+$$;
 
 -- Policy: Only Authenticated users (Admins) can SELECT/VIEW suggestions
 -- (You can refine this later to only allow specific admin UUIDs or roles)
-CREATE POLICY "Admins can view suggestions" ON public.suggestions
-    FOR SELECT
-    TO authenticated
-    USING (true);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_policy
+        WHERE polname = 'Admins can view suggestions'
+        AND polrelid = 'public.suggestions'::regclass
+    ) THEN
+        CREATE POLICY "Admins can view suggestions" ON public.suggestions
+            FOR SELECT
+            TO authenticated
+            USING (true);
+    END IF;
+END
+$$;
 
 -- Policy: Only Authenticated users (Admins) can UPDATE suggestions (e.g. change status)
-CREATE POLICY "Admins can update suggestions" ON public.suggestions
-    FOR UPDATE
-    TO authenticated
-    USING (true)
-    WITH CHECK (true);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_policy
+        WHERE polname = 'Admins can update suggestions'
+        AND polrelid = 'public.suggestions'::regclass
+    ) THEN
+        CREATE POLICY "Admins can update suggestions" ON public.suggestions
+            FOR UPDATE
+            TO authenticated
+            USING (true)
+            WITH CHECK (true);
+    END IF;
+END
+$$;

@@ -36,15 +36,29 @@ export const Team = () => {
         setTeamName(teamDetails.name);
         setTeamUUID(teamDetails.id);
 
-        // 2. Fetch schedule from matches table
+        // 2. Fetch schedule from team_match table
         const { data: scheduleData, error: scheduleError } = await supabase
-          .from('matches')
-          .select('*')
-          .or(`home_team_number.eq.${teamId},away_team_number.eq.${teamId}`)
-          .order('week', { ascending: true });
+          .from('team_match')
+          .select(`
+            id, date, time, status, courts,
+            home_team:home_team_id (id, name, number, play_night),
+            away_team:away_team_id (id, name, number, play_night)
+          `)
+          .or(`home_team_id.eq.${teamDetails.id},away_team_id.eq.${teamDetails.id}`)
+          .order('date', { ascending: true });
 
         if (scheduleError) throw scheduleError;
-        setSchedule(scheduleData || []);
+
+        // Flatten data for compatibility with existing render logic
+        const flattenedSchedule = (scheduleData || []).map(m => ({
+          ...m,
+          home_team_name: m.home_team?.name,
+          home_team_number: m.home_team?.number,
+          away_team_name: m.away_team?.name,
+          away_team_number: m.away_team?.number
+        }));
+
+        setSchedule(flattenedSchedule || []);
 
         // 3. Fetch player IDs from the junction table
         const { data: playerLinks, error: linksError } = await supabase
@@ -225,7 +239,7 @@ export const Team = () => {
                 }
 
                 return (
-                  <tr key={match.week}>
+                  <tr key={match.id}>
                     <td>
                       <div className="date-time">
                         <div className="date">{formatDateUS(match.date)}</div>

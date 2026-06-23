@@ -3,7 +3,7 @@ import '../styles/PlayerResources.css';
 
 const carouselImages = [
     { src: '/images/sub-1.jpeg', alt: 'Captains coordinating subs courtside' },
-    { src: '/images/sub-2.jpeg', alt: 'Players celebrating after a win' },
+    { src: '/images/groupme-qr-example.png', alt: 'Example GroupMe QR Code for Team Chat' },
     { src: '/images/sub-3.jpeg', alt: 'Courtside view of doubles match' },
     { src: '/images/sub-4-5.jpeg', alt: 'Team photo at Green Island courts' }
 ];
@@ -123,7 +123,7 @@ export const PlayerResources = () => {
                 </div>
             </section>
 
-            <section className="card card--interactive">
+            <section className="snapshot-section">
                 <div className="section-header compact">
                     <div>
                         <h2>Project Snapshot</h2>
@@ -140,7 +140,7 @@ export const PlayerResources = () => {
                 </div>
             </section>
 
-            <section className="card card--interactive">
+            <section className="links-section">
                 <div className="section-header compact">
                     <div>
                         <h2>Quick Contacts & Links</h2>

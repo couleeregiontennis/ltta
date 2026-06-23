@@ -1,0 +1,110 @@
+.zeffy-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.zeffy-modal-content {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  width: 100%;
+  max-width: 500px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  position: relative;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-primary);
+  animation: slideUp 0.3s ease-out;
+}
+
+.zeffy-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.zeffy-modal-content h2 {
+  margin-top: 0;
+  color: var(--secondary);
+  font-size: var(--font-size-2xl);
+}
+
+.zeffy-modal-body p {
+  line-height: 1.6;
+  margin-bottom: var(--space-lg);
+}
+
+.zeffy-warning-box {
+  background-color: var(--warning-bg);
+  border-left: 4px solid var(--warning);
+  padding: var(--space-md);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.zeffy-warning-box h3 {
+  margin-top: 0;
+  font-size: var(--font-size-lg);
+  color: var(--color-text);
+  margin-bottom: var(--space-sm);
+}
+
+.zeffy-warning-box p {
+  margin-bottom: 0;
+  font-size: var(--font-size-sm);
+}
+
+.zeffy-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-zeffy-continue {
+  background-color: var(--secondary);
+  color: white;
+  text-decoration: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  transition: background-color 0.2s;
+  display: inline-block;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.btn-zeffy-continue:hover {
+  background-color: var(--secondary-dark);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+[data-theme="dark"] .zeffy-warning-box h3 {
+  color: var(--color-warning);
+}

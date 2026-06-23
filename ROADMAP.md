@@ -16,7 +16,7 @@ This document outlines planned features and enhancements for the Coulee Region T
     *   Display on the Standings page.
 
 ### 2. Automated Notifications
-*   **Goal:** Alert users immediately when there are disputes, score flags, or sub requests.
+*   **Goal:** Alert users immediately when there are disputes, score flags, sub requests, team join requests, and captain invitations.
 *   **Implementation:**
     *   Use Supabase Webhooks or Edge Functions triggered by database inserts/updates.
     *   Integrate with an email provider (e.g., Resend) or SMS service.

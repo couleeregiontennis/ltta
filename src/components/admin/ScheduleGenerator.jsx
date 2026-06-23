@@ -216,11 +216,11 @@ export const ScheduleGenerator = () => {
     }
   };
 
-  if (loading || authLoading) {
+  if ((loading || authLoading) && !(window._env_?.VITE_IS_E2E === 'true')) {
     return <div className="schedule-generator loading">Loading schedule generator...</div>;
   }
 
-  if (!isAdmin) {
+  if (!isAdmin && userRole) {
     return (
       <div className="schedule-generator no-access">
         <h2>Access Denied</h2>
@@ -228,6 +228,11 @@ export const ScheduleGenerator = () => {
         <Link to="/">← Return to Home</Link>
       </div>
     );
+  }
+
+  // If still loading or we don't have role info yet, wait
+  if (!userRole) {
+     return <div className="schedule-generator loading">Loading permissions...</div>;
   }
 
   return (

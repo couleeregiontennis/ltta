@@ -9,7 +9,7 @@ test.describe('Admin Audit Log Viewer', () => {
 
   test('Loads correctly for admin user', async ({ page }) => {
      // Mock player requests (both single user check and list)
-     await page.route('**/rest/v1/player*', async (route) => {
+     await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
         const url = route.request().url();
         if (url.includes('id=eq.fake-user-id') || url.includes('limit=1')) {
             await route.fulfill({
@@ -64,7 +64,7 @@ test.describe('Admin Audit Log Viewer', () => {
 
   test('Access denied for non-admin user', async ({ page }) => {
      // Mock non-admin user
-     await page.route('**/rest/v1/player*', async (route) => {
+     await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
         await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -78,7 +78,7 @@ test.describe('Admin Audit Log Viewer', () => {
 
   test('Can filter logs', async ({ page }) => {
        // Mock admin user
-     await page.route('**/rest/v1/player*', async (route) => {
+     await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
         const url = route.request().url();
         if (url.includes('id=eq.fake-user-id') || url.includes('limit=1')) {
             await route.fulfill({

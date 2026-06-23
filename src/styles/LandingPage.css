@@ -24,7 +24,7 @@
   border: 1px solid var(--error-border, #fcc);
   color: var(--error-text, #c00);
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   margin-bottom: 1rem;
 }
 
@@ -33,7 +33,7 @@
   color: white;
   border: none;
   padding: 0.5rem 1rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.2s ease;
