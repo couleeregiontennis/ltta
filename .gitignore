@@ -25,5 +25,9 @@ yarn-error.log*
 dist/
 .mcp.json
 
+
 # superpowers workspaces
 .worktrees/
+
+# verification files
+/verification/

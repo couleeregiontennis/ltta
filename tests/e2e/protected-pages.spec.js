@@ -4,6 +4,13 @@ import { mockSupabaseAuth } from '../utils/auth-mock';
 test.describe('Protected Pages @live', () => {
 
   test.beforeEach(async ({ page }) => {
+    page.on('console', msg => {
+      console.log(`BROWSER LOG [${msg.type()}]: ${msg.text()}`);
+    });
+    page.on('pageerror', err => {
+      console.error(`BROWSER EXCEPTION: ${err.message}\nStack: ${err.stack}`);
+    });
+
     await mockSupabaseAuth(page);
 
     // Mock generic user data calls that might happen on any protected page load

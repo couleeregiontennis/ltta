@@ -3,6 +3,13 @@ import { mockSupabaseAuth, disableNavigatorLocks } from '../utils/auth-mock';
 
 test.describe('Add Score Security Checks @live', () => {
   test.beforeEach(async ({ page }) => {
+    page.on('console', msg => {
+      console.log(`BROWSER LOG [${msg.type()}]: ${msg.text()}`);
+    });
+    page.on('pageerror', err => {
+      console.error(`BROWSER EXCEPTION: ${err.message}\nStack: ${err.stack}`);
+      throw err;
+    });
     await disableNavigatorLocks(page);
     await mockSupabaseAuth(page, { is_captain: true });
 

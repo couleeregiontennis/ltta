@@ -113,13 +113,55 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
         let data = [];
         
         if (url.includes('/player_to_team')) {
-            data = [{ team: 't1', status: 'active', player: id }];
+            data = [{ 
+                team: 't1', 
+                status: 'active', 
+                player: { 
+                    id: 'p1', 
+                    user_id: id, 
+                    email, 
+                    first_name, 
+                    last_name, 
+                    is_captain, 
+                    is_admin, 
+                    is_active: true 
+                } 
+            }];
         } else if (url.includes('/player')) {
-            data = [{ id: 'p1', user_id: id, email, first_name, last_name, is_captain, is_admin, is_active: true }];
+            data = [{ 
+                id: 'p1', 
+                user_id: id, 
+                email, 
+                first_name, 
+                last_name, 
+                is_captain, 
+                is_admin, 
+                is_active: true,
+                player_to_team: [{ id: 'p1-t1', team: 't1', status: 'active' }]
+            }];
         } else if (url.includes('/season')) {
             data = [{ id: 's1', number: 1, is_active: true, is_current: true }];
         } else if (url.includes('/team_match')) {
-            data = [];
+            data = [
+                { 
+                    id: 'match-1', 
+                    home_team_number: 1, 
+                    away_team_number: 2, 
+                    date: '2023-01-01', 
+                    status: 'scheduled',
+                    home_team: { id: 't1', name: 'Home Team', number: 1 }, 
+                    away_team: { id: 't2', name: 'Away Team', number: 2 }
+                },
+                { 
+                    id: 'm1-uuid', 
+                    home_team_number: 1, 
+                    away_team_number: 2, 
+                    date: '2023-01-01', 
+                    status: 'scheduled',
+                    home_team: { id: 't1', name: 'Home Team', number: 1 }, 
+                    away_team: { id: 't2', name: 'Away Team', number: 2 }
+                }
+            ];
         } else if (url.includes('/team')) {
             data = [{ id: 't1', name: 'Test Team', number: 1 }];
         } else if (url.includes('/line_results')) {
