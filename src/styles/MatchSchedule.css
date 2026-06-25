@@ -25,19 +25,19 @@
 
 .schedule-header {
   text-align: center;
-  margin-bottom: var(--space-lg);
+  margin-bottom: var(--space-sm);
 }
 
 .schedule-header h1 {
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-2xl);
   font-weight: 800;
   color: var(--schedule-accent);
-  margin-bottom: var(--space-xs);
+  margin-bottom: var(--space-xxs);
 }
 
 .schedule-header p {
   color: var(--schedule-card-muted);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   margin: 0;
 }
 
@@ -45,7 +45,7 @@
   background: var(--schedule-card-bg);
   border: 1px solid var(--schedule-card-border);
   border-radius: var(--card-radius-lg);
-  padding: var(--space-lg);
+  padding: var(--space-md);
   box-shadow: var(--schedule-card-shadow);
   text-align: center;
   position: relative;
@@ -71,13 +71,13 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--space-md);
-  margin-bottom: var(--space-xl);
+  margin-bottom: var(--space-lg);
 }
 
 .overview-card {
   position: relative;
   overflow: hidden;
-  padding: var(--space-md);
+  padding: var(--space-sm);
 }
 
 .overview-card::after {
@@ -97,7 +97,7 @@
 }
 
 .card-value {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-xl);
   font-weight: 700;
   color: var(--schedule-accent);
 }
@@ -108,8 +108,8 @@
 }
 
 .schedule-controls {
-  padding: var(--space-md);
-  margin-bottom: var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-md);
   position: relative;
   overflow: hidden;
 }
@@ -126,7 +126,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-sm);
   justify-content: space-between;
 }
 
@@ -144,7 +144,7 @@
   background: transparent;
   color: var(--schedule-card-muted);
   font-weight: 600;
-  padding: var(--space-sm) var(--space-lg);
+  padding: var(--space-xs) var(--space-md);
   border-radius: var(--radius-full);
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
@@ -158,14 +158,14 @@
 .date-navigation {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-sm);
 }
 
 .nav-btn {
   background: var(--schedule-card-bg);
   border: 1px solid var(--schedule-card-border);
   color: var(--schedule-card-text);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-xs) var(--space-sm);
   border-radius: var(--radius-full);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -177,7 +177,7 @@
 }
 
 .date-range {
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-sm);
   font-weight: 700;
   color: var(--schedule-card-text);
 }
@@ -185,7 +185,7 @@
 .filter-controls {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
 }
 
 .filter-label {
@@ -197,16 +197,16 @@
 
 .team-filter {
   appearance: none;
-  padding: var(--space-sm) var(--space-xl) var(--space-sm) var(--space-md);
+  padding: var(--space-xs) var(--space-lg) var(--space-xs) var(--space-sm);
   border-radius: var(--radius-md);
   border: 1px solid var(--schedule-card-border);
   background: var(--schedule-page-bg);
   color: var(--schedule-card-text);
   font-weight: 600;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 12px center;
+  background-position: right 8px center;
   background-repeat: no-repeat;
-  background-size: 16px;
+  background-size: 14px;
   cursor: pointer;
 }
 
@@ -217,13 +217,13 @@
 }
 
 .schedule-content {
-  margin-bottom: var(--space-2xl);
+  margin-bottom: var(--space-lg);
 }
 
 .matches-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-sm);
 }
 
 .day-section {
@@ -234,7 +234,7 @@
 }
 
 .day-header {
-  padding: 8px 12px;
+  padding: 6px 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -243,23 +243,23 @@
 }
 
 .day-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--schedule-card-text);
   margin: 0 !important;
 }
 
 .day-count {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--schedule-card-muted);
   font-weight: 600;
 }
 
 .day-matches {
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  padding: var(--space-sm);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: var(--space-sm);
 }
 
 .match-card.card {
