@@ -35,6 +35,9 @@ try {
             urlObj.searchParams.set('options', newOptions);
         }
     }
+    
+    const redactedUrl = urlObj.toString().replace(urlObj.password, 'REDACTED');
+    console.log("Connecting with database URL:", redactedUrl);
     DB_URL = urlObj.toString();
 } catch (e) {
     console.error("Invalid database URL provided.");
