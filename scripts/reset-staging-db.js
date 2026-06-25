@@ -158,6 +158,20 @@ async function run() {
         await client.query('GRANT ALL ON SCHEMA public TO postgres; GRANT ALL ON SCHEMA public TO public;');
         console.log("Public schema wiped and recreated.");
 
+        console.log("Clearing auth.users table...");
+        try {
+            await client.query('TRUNCATE auth.users CASCADE;');
+            console.log("auth.users table truncated.");
+        } catch (authErr) {
+            console.warn("Truncate failed, trying delete:", authErr.message);
+            try {
+                await client.query('DELETE FROM auth.users;');
+                console.log("auth.users table deleted.");
+            } catch (deleteErr) {
+                console.warn("Could not clear auth.users table:", deleteErr.message);
+            }
+        }
+
         console.log("Applying schema...");
         const schema = fs.readFileSync('supabase/staging/schema.sql', 'utf8');
         await client.query(schema);
