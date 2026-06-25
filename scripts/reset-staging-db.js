@@ -34,8 +34,15 @@ async function run() {
         const u = new URL(DB_URL);
         password = u.password;
         originalHost = u.hostname;
+        console.log("Parsed DB_URL details (password masked):");
+        console.log(`- protocol: ${u.protocol}`);
+        console.log(`- username: ${u.username}`);
+        console.log(`- hostname: ${u.hostname}`);
+        console.log(`- port: ${u.port}`);
+        console.log(`- pathname: ${u.pathname}`);
+        console.log(`- search: ${u.search}`);
     } catch (e) {
-        console.error("Invalid database URL provided in environment.");
+        console.error("Invalid database URL provided in environment:", e.message);
         process.exit(1);
     }
 
@@ -60,7 +67,9 @@ async function run() {
             urlObj.username = 'postgres';
             urlObj.searchParams.set('options', `reference=${PROJECT_REF}`);
             
+            const safeUrl = urlObj.toString().replace(password, '****');
             console.log(`Connecting to ${host} (Format A: postgres user + reference option)...`);
+            console.log(`URL: ${safeUrl}`);
             client = await tryConnect(urlObj.toString());
             console.log(`Connected successfully to ${host} (Format A)!`);
             connected = true;
@@ -77,7 +86,9 @@ async function run() {
             urlObj.username = `postgres.${PROJECT_REF}`;
             urlObj.searchParams.delete('options');
             
+            const safeUrl = urlObj.toString().replace(password, '****');
             console.log(`Connecting to ${host} (Format B: postgres.${PROJECT_REF} user)...`);
+            console.log(`URL: ${safeUrl}`);
             client = await tryConnect(urlObj.toString());
             console.log(`Connected successfully to ${host} (Format B)!`);
             connected = true;
