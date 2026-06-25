@@ -4073,3 +4073,6 @@ INSERT INTO "public"."matches" ("id", "week", "date", "time", "courts", "home_te
 ('94f410dd-7f64-4864-a101-e1834549631d', 11, '2026-08-12', '5:30pm', 'Courts 10–13', 6, 'Howie''s Team', 'wednesday', 9, 'Baseliners', 'wednesday', 'scheduled'),
 ('9b7b499b-4ebd-4cc4-a7e5-70e503ff6d33', 11, '2026-08-12', '7:00pm', 'Courts 10–13', 7, 'Serve Aces', 'wednesday', 8, 'Not My Fault', 'wednesday', 'scheduled')
 ON CONFLICT (id) DO NOTHING;
+
+-- 11. Custom Role Overrides
+UPDATE "public"."player" SET "is_admin" = true WHERE "email" = 'brett.meddaugh@gmail.com';
