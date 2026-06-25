@@ -43,6 +43,15 @@ async function run() {
             });
             const dbConfig = await dbConfigRes.json();
             console.log("Database Config API Response:", JSON.stringify(dbConfig, null, 2));
+
+            console.log("Fetching database pooler config for shlcqztfdhfwkhijwgue...");
+            const poolerConfigRes = await fetch('https://api.supabase.com/v1/projects/shlcqztfdhfwkhijwgue/config/database/pooler', {
+                headers: {
+                    'Authorization': `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`
+                }
+            });
+            const poolerConfig = await poolerConfigRes.json();
+            console.log("Database Pooler Config API Response:", JSON.stringify(poolerConfig, null, 2));
         } catch (e) {
             console.warn("Failed to fetch Supabase details:", e.message);
         }
