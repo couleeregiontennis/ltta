@@ -322,6 +322,22 @@ CREATE TABLE IF NOT EXISTS "public"."player_fee" (
 ALTER TABLE "public"."player_fee" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."player_payment" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "player_id" "uuid",
+    "season_id" "uuid" NOT NULL,
+    "zeffy_payment_id" "text",
+    "amount" numeric(10,2) NOT NULL,
+    "payer_email" "text" NOT NULL,
+    "raw_payload" "jsonb",
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."player_payment" OWNER TO "postgres";
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."player_to_match" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "player" "uuid",
@@ -351,6 +367,7 @@ CREATE TABLE IF NOT EXISTS "public"."season" (
     "start_date" "date" NOT NULL,
     "end_date" "date" NOT NULL,
     "location_id" "uuid",
+    "zeffy_campaign_id" "text",
     "created_at" timestamp with time zone DEFAULT "now"()
 );
 
@@ -1587,6 +1604,37 @@ GRANT ALL ON TABLE "public"."team_match" TO "service_role";
 GRANT ALL ON TABLE "public"."team_to_season" TO "anon";
 GRANT ALL ON TABLE "public"."team_to_season" TO "authenticated";
 GRANT ALL ON TABLE "public"."team_to_season" TO "service_role";
+
+
+ALTER TABLE ONLY "public"."player_payment"
+    ADD CONSTRAINT "player_payment_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."player_payment"
+    ADD CONSTRAINT "player_payment_zeffy_payment_id_key" UNIQUE ("zeffy_payment_id");
+
+ALTER TABLE ONLY "public"."player_payment"
+    ADD CONSTRAINT "player_payment_player_id_fkey" FOREIGN KEY ("player_id") REFERENCES "public"."player"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."player_payment"
+    ADD CONSTRAINT "player_payment_season_id_fkey" FOREIGN KEY ("season_id") REFERENCES "public"."season"("id") ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS "idx_player_payment_season_id" ON "public"."player_payment" USING "btree" ("season_id");
+CREATE INDEX IF NOT EXISTS "idx_player_payment_player_id" ON "public"."player_payment" USING "btree" ("player_id");
+CREATE INDEX IF NOT EXISTS "idx_season_zeffy_campaign_id" ON "public"."season" USING "btree" ("zeffy_campaign_id");
+
+ALTER TABLE "public"."player_payment" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow users to view own payments" ON "public"."player_payment" FOR SELECT TO "authenticated" USING (
+    ((SELECT "auth"."uid"() AS "uid") IN (SELECT "user_id" FROM "public"."player" WHERE "id" = "player_id"))
+);
+
+CREATE POLICY "Allow admins/captains to manage payments" ON "public"."player_payment" FOR ALL TO "authenticated" USING (
+    ((SELECT "auth"."uid"() AS "uid") IN (SELECT "user_id" FROM "public"."player" WHERE "is_admin" = true OR "is_captain" = true))
+);
+
+GRANT ALL ON TABLE "public"."player_payment" TO "anon";
+GRANT ALL ON TABLE "public"."player_payment" TO "authenticated";
+GRANT ALL ON TABLE "public"."player_payment" TO "service_role";
 
 
 

@@ -95,7 +95,7 @@ const groupMatchesByDate = (matches) => {
 
 export const MatchSchedule = () => {
   const navigate = useNavigate();
-  const { user, userRole } = useAuth();
+  const { user, userRole, currentPlayerData } = useAuth();
   const { currentSeason, loading: seasonLoading } = useSeason();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -105,6 +105,7 @@ export const MatchSchedule = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('list');
   const [selectedTeam, setSelectedTeam] = useState('all');
+  const [userTeamId, setUserTeamId] = useState(null);
 
   const fetchAllData = async () => {
     if (!currentSeason) return;
@@ -170,6 +171,27 @@ export const MatchSchedule = () => {
       }
     }
   }, [currentSeason, seasonLoading]);
+
+  useEffect(() => {
+    const fetchUserTeam = async () => {
+      if (currentPlayerData?.id) {
+        try {
+          const { data } = await supabase
+            .from('player_to_team')
+            .select('team')
+            .eq('player', currentPlayerData.id)
+            .eq('status', 'active')
+            .maybeSingle();
+          if (data) {
+            setUserTeamId(data.team);
+          }
+        } catch (e) {
+          console.error('Error fetching user team:', e);
+        }
+      }
+    };
+    fetchUserTeam();
+  }, [currentPlayerData]);
 
   const handleToggleRainout = async (matchId, currentStatus) => {
     try {
@@ -367,7 +389,7 @@ export const MatchSchedule = () => {
                                       Edit Score
                                     </button>
                                   </div>
-                                ) : (userRole?.isCaptain && (match.home_team?.id === currentPlayerData?.id || match.away_team?.id === currentPlayerData?.id)) || userRole?.isAdmin ? (
+                                ) : (userRole?.isCaptain && (match.home_team?.id === userTeamId || match.away_team?.id === userTeamId)) || userRole?.isAdmin ? (
                                   <div style={{ display: 'flex', gap: '10px' }}>
                                     <button
                                       className="confirm-score-btn"

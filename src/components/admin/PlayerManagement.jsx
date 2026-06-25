@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../scripts/supabaseClient';
 import { useAuth } from '../../context/AuthProvider';
+import { useSeason } from '../../hooks/useSeason';
 import '../../styles/PlayerManagement.css';
 
 const getDefaultAvailability = () => ({
@@ -16,9 +17,11 @@ const getDefaultAvailability = () => ({
 
 export const PlayerManagement = () => {
   const { user, userRole, loading: authLoading } = useAuth();
+  const { currentSeason, loading: seasonLoading } = useSeason();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [players, setPlayers] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [teams, setTeams] = useState([]);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -28,17 +31,38 @@ export const PlayerManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || seasonLoading) return;
 
     if (user && userRole.isAdmin) {
       setIsAdmin(true);
       fetchPlayers();
       fetchTeams();
+      if (currentSeason) {
+        fetchPayments(currentSeason.id);
+      }
     } else {
       setIsAdmin(false);
       setLoading(false);
     }
-  }, [authLoading, user, userRole]);
+  }, [authLoading, seasonLoading, user, userRole, currentSeason]);
+
+  const fetchPayments = async (seasonId) => {
+    try {
+      const { data, error } = await supabase
+        .from('player_payment')
+        .select('*')
+        .eq('season_id', seasonId);
+
+      if (error) throw error;
+      setPayments(data || []);
+    } catch (err) {
+      console.error('Error fetching payments:', err);
+    }
+  };
+
+  const isPlayerPaid = (playerId) => {
+    return payments.some(p => p.player_id === playerId);
+  };
 
   const fetchTeams = async () => {
     try {
@@ -81,7 +105,8 @@ export const PlayerManagement = () => {
     const playerToEdit = {
       ...player,
       active_team: activeTeamLink?.team || '',
-      day_availability: availability
+      day_availability: availability,
+      is_paid_current_season: isPlayerPaid(player.id)
     };
 
     setSelectedPlayer(playerToEdit);
@@ -137,6 +162,39 @@ export const PlayerManagement = () => {
 
       if (playerUpdateError) throw playerUpdateError;
 
+      // Update payment status if changed
+      const wasPaid = isPlayerPaid(id);
+      const isPaidNow = selectedPlayer.is_paid_current_season;
+
+      if (wasPaid !== isPaidNow && currentSeason) {
+        if (isPaidNow) {
+          // Add manual payment record
+          const manualPayment = {
+            player_id: id,
+            season_id: currentSeason.id,
+            zeffy_payment_id: `manual_${id}_${currentSeason.id}`,
+            amount: 0.00,
+            payer_email: updates.email || '',
+            raw_payload: { source: 'manual_override', updated_by: user.id }
+          };
+          const { error: payError } = await supabase
+            .from('player_payment')
+            .insert(manualPayment);
+          if (payError) throw payError;
+        } else {
+          // Remove payment record(s) for this player and season
+          const { error: payError } = await supabase
+            .from('player_payment')
+            .delete()
+            .eq('player_id', id)
+            .eq('season_id', currentSeason.id);
+          if (payError) throw payError;
+        }
+        // Refresh local payments state
+        await fetchPayments(currentSeason.id);
+      }
+
+      // Update team assignment
       const currentActiveTeam = players.find(p => p.id === id)?.player_to_team?.find(pt => pt.status === 'active')?.team;
       
       if (active_team !== currentActiveTeam) {
@@ -215,6 +273,7 @@ export const PlayerManagement = () => {
               <th>Ranking</th>
               <th>Captain</th>
               <th>Active</th>
+              <th>Paid</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -231,12 +290,18 @@ export const PlayerManagement = () => {
                   <td>{player.ranking}</td>
                   <td>{player.is_captain ? '✅' : '❌'}</td>
                   <td>{player.is_active ? '✅' : '❌'}</td>
+                  <td>{isPlayerPaid(player.id) ? '✅' : '❌'}</td>
                   <td>
                     <button className="edit-btn" onClick={() => handleEditClick(player)} title="Edit Player">✏️</button>
                   </td>
                 </tr>
               );
             })}
+            {filteredPlayers.length === 0 && (
+              <tr>
+                <td colSpan="8" style={{ textAlign: 'center' }}>No players found</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -273,6 +338,19 @@ export const PlayerManagement = () => {
                   <option value="">None (Free Agent)</option>
                   {teams.map(t => <option key={t.id} value={t.id}>{t.name} ({t.play_night})</option>)}
                 </select>
+              </div>
+
+              <div className="form-group">
+                <label className="checkbox-label" htmlFor="edit-is-paid">
+                  <input
+                    id="edit-is-paid"
+                    type="checkbox"
+                    checked={selectedPlayer.is_paid_current_season || false}
+                    onChange={(e) => handleInputChange('is_paid_current_season', e.target.checked)}
+                  />
+                  <span className="checkmark"></span>
+                  Paid (Current Season)
+                </label>
               </div>
             </div>
             <div className="modal-footer">
