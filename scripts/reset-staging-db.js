@@ -24,6 +24,8 @@ async function tryConnect(dbUrl) {
 }
 
 async function run() {
+    let apiPoolerHost = null;
+
     if (process.env.SUPABASE_ACCESS_TOKEN) {
         try {
             console.log("Fetching projects list from Supabase API...");
@@ -52,6 +54,11 @@ async function run() {
             });
             const poolerConfig = await poolerConfigRes.json();
             console.log("Database Pooler Config API Response:", JSON.stringify(poolerConfig, null, 2));
+
+            if (Array.isArray(poolerConfig) && poolerConfig.length > 0 && poolerConfig[0].db_host) {
+                apiPoolerHost = poolerConfig[0].db_host;
+                console.log(`Discovered pooler host from API: ${apiPoolerHost}`);
+            }
         } catch (e) {
             console.warn("Failed to fetch Supabase details:", e.message);
         }
@@ -81,9 +88,14 @@ async function run() {
 
     // List of hosts to try connection on
     const hostsToTry = [
+        'aws-1-us-east-2.pooler.supabase.com',
+        'aws-1-us-east-1.pooler.supabase.com',
         'aws-0-us-east-2.pooler.supabase.com',
         'aws-0-us-east-1.pooler.supabase.com'
     ];
+    if (apiPoolerHost && !hostsToTry.includes(apiPoolerHost)) {
+        hostsToTry.unshift(apiPoolerHost);
+    }
     if (originalHost && !hostsToTry.includes(originalHost)) {
         hostsToTry.unshift(originalHost);
     }
