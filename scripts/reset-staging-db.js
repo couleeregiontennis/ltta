@@ -11,47 +11,88 @@ if (!DB_URL) {
     process.exit(1);
 }
 
-// Supabase IPv4 Pooler REQUIRES the project reference to be passed in the connection options
-// or it will throw "Tenant or user not found".
-// GitHub Actions lacks IPv6, so we MUST use the pooler.
 const PROJECT_REF = 'shlcqztfdhfwkhijwgue';
 
-try {
-    const urlObj = new URL(DB_URL);
-    
-    // Ensure we are using the port 6543 for the pooler to avoid direct connection conflicts
-    if (urlObj.hostname.includes('pooler.supabase.com')) {
-        console.log("Pooler connection URL already configured in environment. Using as-is.");
-    } else {
-        console.log("Direct connection URL detected. Ensuring pooler settings are applied...");
-        urlObj.port = '6543';
-        // Append the options parameter. If it exists, append to it, otherwise create it.
-        const currentOptions = urlObj.searchParams.get('options');
-        if (!currentOptions || !currentOptions.includes('reference=')) {
-            const newOptions = currentOptions ? `${currentOptions}&reference=${PROJECT_REF}` : `reference=${PROJECT_REF}`;
-            urlObj.searchParams.set('options', newOptions);
-        }
-        DB_URL = urlObj.toString();
-    }
-    
-    const redactedUrl = DB_URL.replace(urlObj.password, 'REDACTED');
-    console.log("Connecting with database URL:", redactedUrl);
-} catch (e) {
-    console.error("Invalid database URL provided.");
-    process.exit(1);
+async function tryConnect(dbUrl) {
+    const client = new Client({
+        connectionString: dbUrl,
+        ssl: { rejectUnauthorized: false },
+        keepAlive: false
+    });
+    await client.connect();
+    return client;
 }
 
-const client = new Client({
-    connectionString: DB_URL,
-    keepAlive: false
-});
-
 async function run() {
-    try {
-        console.log("Connecting to Staging Database (IPv4 Pooler)...");
-        await client.connect();
-        console.log("Connected successfully!");
+    let client = null;
+    let connected = false;
 
+    // Parse the password and other details from DB_URL
+    let password = '';
+    let originalHost = '';
+    try {
+        const u = new URL(DB_URL);
+        password = u.password;
+        originalHost = u.hostname;
+    } catch (e) {
+        console.error("Invalid database URL provided in environment.");
+        process.exit(1);
+    }
+
+    // List of hosts to try connection on
+    const hostsToTry = [
+        'aws-0-us-east-2.pooler.supabase.com',
+        'aws-0-us-east-1.pooler.supabase.com'
+    ];
+    if (originalHost && !hostsToTry.includes(originalHost)) {
+        hostsToTry.unshift(originalHost);
+    }
+
+    // Try connection permutations
+    for (const host of hostsToTry) {
+        if (connected) break;
+
+        // Permutation 1: Username postgres with reference option
+        try {
+            const urlObj = new URL(DB_URL);
+            urlObj.hostname = host;
+            urlObj.port = '6543';
+            urlObj.username = 'postgres';
+            urlObj.searchParams.set('options', `reference=${PROJECT_REF}`);
+            
+            console.log(`Connecting to ${host} (Format A: postgres user + reference option)...`);
+            client = await tryConnect(urlObj.toString());
+            console.log(`Connected successfully to ${host} (Format A)!`);
+            connected = true;
+            break;
+        } catch (err) {
+            console.warn(`Format A connection to ${host} failed:`, err.message || err);
+        }
+
+        // Permutation 2: Username postgres.PROJECT_REF with no options
+        try {
+            const urlObj = new URL(DB_URL);
+            urlObj.hostname = host;
+            urlObj.port = '6543';
+            urlObj.username = `postgres.${PROJECT_REF}`;
+            urlObj.searchParams.delete('options');
+            
+            console.log(`Connecting to ${host} (Format B: postgres.${PROJECT_REF} user)...`);
+            client = await tryConnect(urlObj.toString());
+            console.log(`Connected successfully to ${host} (Format B)!`);
+            connected = true;
+            break;
+        } catch (err) {
+            console.warn(`Format B connection to ${host} failed:`, err.message || err);
+        }
+    }
+
+    if (!connected || !client) {
+        console.error("Error: Could not connect to staging database via any combination.");
+        process.exit(1);
+    }
+
+    try {
         console.log("Wiping existing public schema...");
         await client.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
         await client.query('GRANT ALL ON SCHEMA public TO postgres; GRANT ALL ON SCHEMA public TO public;');
@@ -68,7 +109,7 @@ async function run() {
         console.log("Seed data applied successfully! Staging DB is fully recreated.");
 
     } catch (err) {
-        console.error("Database connection or execution error:", err);
+        console.error("Database execution error:", err);
         process.exit(1);
     } finally {
         await client.end();
