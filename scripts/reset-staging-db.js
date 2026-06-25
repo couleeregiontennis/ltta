@@ -163,6 +163,7 @@ async function run() {
         for (const file of files) {
             console.log(`Applying migration: ${file}`);
             const migrationSql = fs.readFileSync(`${migrationsDir}/${file}`, 'utf8');
+            await client.query("SET search_path = public, pg_catalog;");
             await client.query(migrationSql);
         }
         console.log("Migrations applied.");
