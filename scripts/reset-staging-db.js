@@ -83,42 +83,46 @@ async function run() {
     for (const host of hostsToTry) {
         if (connected) break;
 
-        // Permutation 1: Username postgres with reference option
-        try {
-            const urlObj = new URL(DB_URL);
-            urlObj.hostname = host;
-            urlObj.port = '6543';
-            urlObj.username = 'postgres';
-            urlObj.searchParams.set('options', `reference=${PROJECT_REF}`);
-            
-            const safeUrl = urlObj.toString().replace(password, '****');
-            console.log(`Connecting to ${host} (Format A: postgres user + reference option)...`);
-            console.log(`URL: ${safeUrl}`);
-            client = await tryConnect(urlObj.toString());
-            console.log(`Connected successfully to ${host} (Format A)!`);
-            connected = true;
-            break;
-        } catch (err) {
-            console.warn(`Format A connection to ${host} failed:`, err.message || err);
-        }
+        for (const port of ['6543', '5432']) {
+            if (connected) break;
 
-        // Permutation 2: Username postgres.PROJECT_REF with no options
-        try {
-            const urlObj = new URL(DB_URL);
-            urlObj.hostname = host;
-            urlObj.port = '6543';
-            urlObj.username = `postgres.${PROJECT_REF}`;
-            urlObj.searchParams.delete('options');
-            
-            const safeUrl = urlObj.toString().replace(password, '****');
-            console.log(`Connecting to ${host} (Format B: postgres.${PROJECT_REF} user)...`);
-            console.log(`URL: ${safeUrl}`);
-            client = await tryConnect(urlObj.toString());
-            console.log(`Connected successfully to ${host} (Format B)!`);
-            connected = true;
-            break;
-        } catch (err) {
-            console.warn(`Format B connection to ${host} failed:`, err.message || err);
+            // Format A: postgres user + reference option
+            try {
+                const urlObj = new URL(DB_URL);
+                urlObj.hostname = host;
+                urlObj.port = port;
+                urlObj.username = 'postgres';
+                urlObj.searchParams.set('options', `reference=${PROJECT_REF}`);
+                
+                const safeUrl = urlObj.toString().replace(password, '****');
+                console.log(`Connecting to ${host}:${port} (Format A: postgres user + reference option)...`);
+                console.log(`URL: ${safeUrl}`);
+                client = await tryConnect(urlObj.toString());
+                console.log(`Connected successfully to ${host}:${port} (Format A)!`);
+                connected = true;
+                break;
+            } catch (err) {
+                console.warn(`Format A connection to ${host}:${port} failed:`, err.message || err);
+            }
+
+            // Format B: postgres.PROJECT_REF user
+            try {
+                const urlObj = new URL(DB_URL);
+                urlObj.hostname = host;
+                urlObj.port = port;
+                urlObj.username = `postgres.${PROJECT_REF}`;
+                urlObj.searchParams.delete('options');
+                
+                const safeUrl = urlObj.toString().replace(password, '****');
+                console.log(`Connecting to ${host}:${port} (Format B: postgres.${PROJECT_REF} user)...`);
+                console.log(`URL: ${safeUrl}`);
+                client = await tryConnect(urlObj.toString());
+                console.log(`Connected successfully to ${host}:${port} (Format B)!`);
+                connected = true;
+                break;
+            } catch (err) {
+                console.warn(`Format B connection to ${host}:${port} failed:`, err.message || err);
+            }
         }
     }
 
