@@ -23,6 +23,11 @@ try {
     if (urlObj.hostname.includes('pooler.supabase.com')) {
         urlObj.port = '6543';
 
+        // Strip the project reference from username when options has reference to avoid duplication
+        if (urlObj.username.includes('.')) {
+            urlObj.username = urlObj.username.split('.')[0];
+        }
+
         // Append the options parameter. If it exists, append to it, otherwise create it.
         const currentOptions = urlObj.searchParams.get('options');
         if (!currentOptions || !currentOptions.includes('reference=')) {
