@@ -153,10 +153,19 @@ async function run() {
             }
         }
 
-        console.log("Applying schema...");
-        const schema = fs.readFileSync('supabase/staging/schema.sql', 'utf8');
-        await client.query(schema);
-        console.log("Schema applied.");
+        console.log("Applying migrations...");
+        const migrationsDir = 'supabase/migrations';
+        const files = fs.readdirSync(migrationsDir)
+            .filter(f => f.endsWith('.sql'))
+            .sort();
+        
+        console.log(`Found ${files.length} migrations to apply.`);
+        for (const file of files) {
+            console.log(`Applying migration: ${file}`);
+            const migrationSql = fs.readFileSync(`${migrationsDir}/${file}`, 'utf8');
+            await client.query(migrationSql);
+        }
+        console.log("Migrations applied.");
 
         console.log("Applying seed data...");
         const seed = fs.readFileSync('supabase/staging/seed.sql', 'utf8');
