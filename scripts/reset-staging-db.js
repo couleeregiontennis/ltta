@@ -28,24 +28,6 @@ async function run() {
 
     if (process.env.SUPABASE_ACCESS_TOKEN) {
         try {
-            console.log("Fetching projects list from Supabase API...");
-            const res = await fetch('https://api.supabase.com/v1/projects', {
-                headers: {
-                    'Authorization': `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`
-                }
-            });
-            const data = await res.json();
-            console.log("Supabase Projects API Response:", JSON.stringify(data, null, 2));
-
-            console.log("Fetching database config for shlcqztfdhfwkhijwgue...");
-            const dbConfigRes = await fetch('https://api.supabase.com/v1/projects/shlcqztfdhfwkhijwgue/config/database/postgres', {
-                headers: {
-                    'Authorization': `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`
-                }
-            });
-            const dbConfig = await dbConfigRes.json();
-            console.log("Database Config API Response:", JSON.stringify(dbConfig, null, 2));
-
             console.log("Fetching database pooler config for shlcqztfdhfwkhijwgue...");
             const poolerConfigRes = await fetch('https://api.supabase.com/v1/projects/shlcqztfdhfwkhijwgue/config/database/pooler', {
                 headers: {
@@ -53,7 +35,6 @@ async function run() {
                 }
             });
             const poolerConfig = await poolerConfigRes.json();
-            console.log("Database Pooler Config API Response:", JSON.stringify(poolerConfig, null, 2));
 
             if (Array.isArray(poolerConfig) && poolerConfig.length > 0 && poolerConfig[0].db_host) {
                 apiPoolerHost = poolerConfig[0].db_host;
