@@ -25,7 +25,11 @@ try {
 
         // Strip the project reference from username when options has reference to avoid duplication
         if (urlObj.username.includes('.')) {
-            urlObj.username = urlObj.username.split('.')[0];
+            const parts = urlObj.username.split('.');
+            console.log("Parsed DB_URL username contains dot. Suffix is:", parts[1]);
+            urlObj.username = parts[0];
+        } else {
+            console.log("Parsed DB_URL username does NOT contain dot. Username is:", urlObj.username);
         }
 
         // Append the options parameter. If it exists, append to it, otherwise create it.
