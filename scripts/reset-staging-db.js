@@ -34,8 +34,17 @@ async function run() {
             });
             const data = await res.json();
             console.log("Supabase Projects API Response:", JSON.stringify(data, null, 2));
+
+            console.log("Fetching database config for shlcqztfdhfwkhijwgue...");
+            const dbConfigRes = await fetch('https://api.supabase.com/v1/projects/shlcqztfdhfwkhijwgue/config/database/postgres', {
+                headers: {
+                    'Authorization': `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`
+                }
+            });
+            const dbConfig = await dbConfigRes.json();
+            console.log("Database Config API Response:", JSON.stringify(dbConfig, null, 2));
         } catch (e) {
-            console.warn("Failed to fetch Supabase projects:", e.message);
+            console.warn("Failed to fetch Supabase details:", e.message);
         }
     }
 
