@@ -21,28 +21,21 @@ try {
     
     // Ensure we are using the port 6543 for the pooler to avoid direct connection conflicts
     if (urlObj.hostname.includes('pooler.supabase.com')) {
+        console.log("Pooler connection URL already configured in environment. Using as-is.");
+    } else {
+        console.log("Direct connection URL detected. Ensuring pooler settings are applied...");
         urlObj.port = '6543';
-
-        // Strip the project reference from username when options has reference to avoid duplication
-        if (urlObj.username.includes('.')) {
-            const parts = urlObj.username.split('.');
-            console.log("Parsed DB_URL username contains dot. Suffix is:", parts[1]);
-            urlObj.username = parts[0];
-        } else {
-            console.log("Parsed DB_URL username does NOT contain dot. Username is:", urlObj.username);
-        }
-
         // Append the options parameter. If it exists, append to it, otherwise create it.
         const currentOptions = urlObj.searchParams.get('options');
         if (!currentOptions || !currentOptions.includes('reference=')) {
             const newOptions = currentOptions ? `${currentOptions}&reference=${PROJECT_REF}` : `reference=${PROJECT_REF}`;
             urlObj.searchParams.set('options', newOptions);
         }
+        DB_URL = urlObj.toString();
     }
     
-    const redactedUrl = urlObj.toString().replace(urlObj.password, 'REDACTED');
+    const redactedUrl = DB_URL.replace(urlObj.password, 'REDACTED');
     console.log("Connecting with database URL:", redactedUrl);
-    DB_URL = urlObj.toString();
 } catch (e) {
     console.error("Invalid database URL provided.");
     process.exit(1);
