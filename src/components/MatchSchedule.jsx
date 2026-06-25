@@ -103,7 +103,7 @@ export const MatchSchedule = () => {
   const [matches, setMatches] = useState([]);
   const [teams, setTeams] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState('list');
+  const [viewMode, setViewMode] = useState('week');
   const [selectedTeam, setSelectedTeam] = useState('all');
   const [userTeamId, setUserTeamId] = useState(null);
 
