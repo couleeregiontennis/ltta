@@ -170,6 +170,11 @@ export const AddScore = () => {
   const [awayTeamRoster, setAwayTeamRoster] = useState([]);
   const [playerIdMap, setPlayerIdMap] = useState({});
   const [existingScores, setExistingScores] = useState([]);
+  const [lastTimeHomeLine2, setLastTimeHomeLine2] = useState(['', '']);
+  const [lastTimeHomeLine3, setLastTimeHomeLine3] = useState(['', '']);
+  const [lastTimeAwayLine2, setLastTimeAwayLine2] = useState(['', '']);
+  const [lastTimeAwayLine3, setLastTimeAwayLine3] = useState(['', '']);
+
   const [formData, setFormData] = useState({
     matchId: '',
     lineNumber: 1,
@@ -182,6 +187,7 @@ export const AddScore = () => {
     awaySet2: '',
     homeSet3: '',
     awaySet3: '',
+    winner: '',
     notes: '',
     fullRosterPresent: false
   });
@@ -214,6 +220,97 @@ export const AddScore = () => {
     setError('');
     addToast('Transcript parsed successfully by AI!', 'success');
   });
+
+  const loadLastTimePlayers = async (homeTeamId, awayTeamId, currentMatchId) => {
+    const fetchTeamLastLine = async (teamId, lineNumber) => {
+      if (!teamId) return ['', ''];
+      try {
+        const { data: matches, error } = await supabase
+          .from('team_match')
+          .select('id, home_team_id, away_team_id')
+          .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+          .order('date', { ascending: false });
+
+        if (error || !matches) return ['', ''];
+
+        for (const match of matches) {
+          if (match.id === currentMatchId) continue;
+
+          const { data: lineResult } = await supabase
+            .from('line_results')
+            .select(`
+              home_player_1:player!home_player_1_id(first_name, last_name),
+              home_player_2:player!home_player_2_id(first_name, last_name),
+              away_player_1:player!away_player_1_id(first_name, last_name),
+              away_player_2:player!away_player_2_id(first_name, last_name)
+            `)
+            .eq('match_id', match.id)
+            .eq('line_number', lineNumber)
+            .maybeSingle();
+
+          if (lineResult) {
+            const isHome = match.home_team_id === teamId;
+            const player1 = isHome ? lineResult.home_player_1 : lineResult.away_player_1;
+            const player2 = isHome ? lineResult.home_player_2 : lineResult.away_player_2;
+            return [
+              player1 ? `${player1.first_name} ${player1.last_name}` : '',
+              player2 ? `${player2.first_name} ${player2.last_name}` : ''
+            ];
+          }
+        }
+      } catch (err) {
+        console.error('Error loading last time players:', err);
+      }
+      return ['', ''];
+    };
+
+    const [home2, home3, away2, away3] = await Promise.all([
+      fetchTeamLastLine(homeTeamId, 2),
+      fetchTeamLastLine(homeTeamId, 3),
+      fetchTeamLastLine(awayTeamId, 2),
+      fetchTeamLastLine(awayTeamId, 3)
+    ]);
+
+    setLastTimeHomeLine2(home2);
+    setLastTimeHomeLine3(home3);
+    setLastTimeAwayLine2(away2);
+    setLastTimeAwayLine3(away3);
+
+    return { home2, home3, away2, away3 };
+  };
+
+  const applyPlayerDefaults = (lineNum, hRoster = homeTeamRoster, aRoster = awayTeamRoster, homeLast2 = lastTimeHomeLine2, homeLast3 = lastTimeHomeLine3, awayLast2 = lastTimeAwayLine2, awayLast3 = lastTimeAwayLine3) => {
+    let homeDefault = ['', ''];
+    let awayDefault = ['', ''];
+
+    if (lineNum === 1) {
+      homeDefault = [hRoster[0]?.name || '', hRoster[1]?.name || ''];
+      awayDefault = [aRoster[0]?.name || '', aRoster[1]?.name || ''];
+    } else if (lineNum === 4) {
+      homeDefault = [hRoster[6]?.name || '', hRoster[7]?.name || ''];
+      awayDefault = [aRoster[6]?.name || '', aRoster[7]?.name || ''];
+    } else if (lineNum === 2) {
+      homeDefault = homeLast2 && homeLast2.some(p => p) ? homeLast2 : [hRoster[2]?.name || '', hRoster[3]?.name || ''];
+      awayDefault = awayLast2 && awayLast2.some(p => p) ? awayLast2 : [aRoster[2]?.name || '', aRoster[3]?.name || ''];
+    } else if (lineNum === 3) {
+      homeDefault = homeLast3 && homeLast3.some(p => p) ? homeLast3 : [hRoster[4]?.name || '', hRoster[5]?.name || ''];
+      awayDefault = awayLast3 && awayLast3.some(p => p) ? awayLast3 : [aRoster[4]?.name || '', aRoster[5]?.name || ''];
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      homePlayers: homeDefault,
+      awayPlayers: awayDefault,
+      homeSet1: '',
+      awaySet1: '',
+      homeSet2: '',
+      awaySet2: '',
+      homeSet3: '',
+      awaySet3: '',
+      winner: '',
+      notes: ''
+    }));
+  };
 
   useEffect(() => {
     const isReady = !authLoading && !!currentPlayerData && !!currentSeason;
@@ -275,9 +372,11 @@ export const AddScore = () => {
           time: m.time,
           status: m.status,
           courts: m.courts,
+          home_team_id: m.home_team?.id,
           home_team_name: m.home_team?.name,
           home_team_number: m.home_team?.number,
           home_team_night: m.home_team?.play_night,
+          away_team_id: m.away_team?.id,
           away_team_name: m.away_team?.name,
           away_team_number: m.away_team?.number,
           away_team_night: m.away_team?.play_night
@@ -306,9 +405,11 @@ export const AddScore = () => {
                 time: matched.time,
                 status: matched.status,
                 courts: matched.courts,
+                home_team_id: matched.home_team?.id,
                 home_team_name: matched.home_team?.name,
                 home_team_number: matched.home_team?.number,
                 home_team_night: matched.home_team?.play_night,
+                away_team_id: matched.away_team?.id,
                 away_team_name: matched.away_team?.name,
                 away_team_number: matched.away_team?.number,
                 away_team_night: matched.away_team?.play_night
@@ -326,14 +427,15 @@ export const AddScore = () => {
               awayPlayers: ['', '']
             }));
 
-            const [homeRoster, awayRoster] = await Promise.all([
+            const [homeRoster, awayRoster, lastTimeData] = await Promise.all([
               loadTeamRoster(urlMatch.home_team_number, urlMatch.home_team_night),
-              loadTeamRoster(urlMatch.away_team_number, urlMatch.away_team_night)
+              loadTeamRoster(urlMatch.away_team_number, urlMatch.away_team_night),
+              loadLastTimePlayers(urlMatch.home_team_id, urlMatch.away_team_id, urlMatch.id)
             ]);
 
             setHomeTeamRoster(homeRoster);
             setAwayTeamRoster(awayRoster);
-            await loadExistingScores(urlMatch.id);
+            await loadExistingScores(urlMatch.id, homeRoster, awayRoster, lastTimeData);
           }
         }
 
@@ -353,7 +455,7 @@ export const AddScore = () => {
     return roster; // 2026 rule: Line 3 players can mix and match. No restrictions.
   };
 
-  const loadExistingScores = async (matchId) => {
+  const loadExistingScores = async (matchId, hRoster = homeTeamRoster, aRoster = awayTeamRoster, lastTimeData = null) => {
     try {
       const { data: scores, error } = await supabase
         .from('line_results')
@@ -389,6 +491,12 @@ export const AddScore = () => {
       const currentLineScore = scores?.find(s => s.line_number === formData.lineNumber);
       if (currentLineScore) {
         populateFormWithExistingScore(currentLineScore);
+      } else {
+        const home2 = lastTimeData ? lastTimeData.home2 : lastTimeHomeLine2;
+        const home3 = lastTimeData ? lastTimeData.home3 : lastTimeHomeLine3;
+        const away2 = lastTimeData ? lastTimeData.away2 : lastTimeAwayLine2;
+        const away3 = lastTimeData ? lastTimeData.away3 : lastTimeAwayLine3;
+        applyPlayerDefaults(formData.lineNumber, hRoster, aRoster, home2, home3, away2, away3);
       }
     } catch (err) {
       console.error('Error loading existing scores:', err);
@@ -417,6 +525,7 @@ export const AddScore = () => {
       awaySet2: score.away_set_2?.toString() || '',
       homeSet3: score.home_set_3?.toString() || '',
       awaySet3: score.away_set_3?.toString() || '',
+      winner: score.home_won ? 'home' : (score.home_won === false ? 'away' : ''),
       notes: score.notes || ''
     }));
   };
@@ -429,8 +538,6 @@ export const AddScore = () => {
   const autoSelectPlayers = (homeRoster, awayRoster, lineNumber, matchType) => {
     const existingScore = existingScores.find(s => s.line_number === parseInt(lineNumber));
     if (existingScore) return;
-
-    // No auto-select logic for now, simpler to pick
   };
 
   const setLineFocus = (lineValue, matchTypeOverride) => {
@@ -450,31 +557,7 @@ export const AddScore = () => {
         populateFormWithExistingScore(existingScore);
         return;
       }
-
-      // Auto-fill heuristic based on player rankings for the line
-      const homeIndex1 = (numericLine - 1) * 2;
-      const homeIndex2 = homeIndex1 + 1;
-      const awayIndex1 = (numericLine - 1) * 2;
-      const awayIndex2 = awayIndex1 + 1;
-
-      setFormData(prev => ({
-        ...prev,
-        homePlayers: [
-          homeTeamRoster[homeIndex1]?.name || '',
-          homeTeamRoster[homeIndex2]?.name || ''
-        ],
-        awayPlayers: [
-          awayTeamRoster[awayIndex1]?.name || '',
-          awayTeamRoster[awayIndex2]?.name || ''
-        ],
-        homeSet1: '',
-        awaySet1: '',
-        homeSet2: '',
-        awaySet2: '',
-        homeSet3: '',
-        awaySet3: '',
-        notes: ''
-      }));
+      applyPlayerDefaults(numericLine);
     }, 0);
   };
 
@@ -501,12 +584,63 @@ export const AddScore = () => {
     }));
   };
 
+  const autoCalculateWinner = (newData) => {
+    const homeSet1 = parseInt(newData.homeSet1) || 0;
+    const awaySet1 = parseInt(newData.awaySet1) || 0;
+    const homeSet2 = parseInt(newData.homeSet2) || 0;
+    const awaySet2 = parseInt(newData.awaySet2) || 0;
+    const homeSet3 = parseInt(newData.homeSet3) || 0;
+    const awaySet3 = parseInt(newData.awaySet3) || 0;
+
+    let homeSetsWon = 0;
+    let awaySetsWon = 0;
+
+    if (homeSet1 > awaySet1 && (homeSet1 >= 6 && (homeSet1 - awaySet1 >= 2 || homeSet1 === 7))) homeSetsWon++;
+    else if (awaySet1 > homeSet1 && (awaySet1 >= 6 && (awaySet1 - homeSet1 >= 2 || awaySet1 === 7))) awaySetsWon++;
+
+    if (homeSet2 > awaySet2 && (homeSet2 >= 6 && (homeSet2 - awaySet2 >= 2 || homeSet2 === 7))) homeSetsWon++;
+    else if (awaySet2 > homeSet2 && (awaySet2 >= 6 && (awaySet2 - homeSet2 >= 2 || awaySet2 === 7))) awaySetsWon++;
+
+    if (homeSet3 || awaySet3) {
+      if (homeSet3 > awaySet3 && homeSet3 >= MATCH_TIEBREAK_TARGET && homeSet3 - awaySet3 >= 2) homeSetsWon++;
+      else if (awaySet3 > homeSet3 && awaySet3 >= MATCH_TIEBREAK_TARGET && awaySet3 - homeSet3 >= 2) awaySetsWon++;
+    }
+
+    if (homeSetsWon > awaySetsWon) return 'home';
+    if (awaySetsWon > homeSetsWon) return 'away';
+    return '';
+  };
+
   const handleScoreChange = (team, set, value) => {
     const scoreValue = value === '' ? '' : value.replace(/[^0-9]/g, '');
-    setFormData(prev => ({
-      ...prev,
-      [`${team}Set${set}`]: scoreValue
-    }));
+    const otherTeam = team === 'home' ? 'away' : 'home';
+    
+    setFormData(prev => {
+      const nextData = {
+        ...prev,
+        [`${team}Set${set}`]: scoreValue
+      };
+
+      if (set === 1 || set === 2) {
+        if (scoreValue !== '') {
+          const numScore = parseInt(scoreValue, 10);
+          if (numScore < 6) {
+            nextData[`${otherTeam}Set${set}`] = '6';
+          } else if (numScore === 5) {
+            nextData[`${otherTeam}Set${set}`] = '7';
+          } else if (numScore === 7) {
+            nextData[`${otherTeam}Set${set}`] = '6';
+          }
+        }
+      }
+
+      const calcWinner = autoCalculateWinner(nextData);
+      if (calcWinner) {
+        nextData.winner = calcWinner;
+      }
+
+      return nextData;
+    });
   };
 
   const generateScoreOptions = () => {
@@ -636,14 +770,15 @@ export const AddScore = () => {
         fullRosterPresent: isHome ? (teamMatchData?.home_full_roster || false) : (teamMatchData?.away_full_roster || false)
       }));
 
-      const [homeRoster, awayRoster] = await Promise.all([
+      const [homeRoster, awayRoster, lastTimeData] = await Promise.all([
         loadTeamRoster(match.home_team_number, match.home_team_night),
-        loadTeamRoster(match.away_team_number, match.away_team_night)
+        loadTeamRoster(match.away_team_number, match.away_team_night),
+        loadLastTimePlayers(match.home_team_id, match.away_team_id, matchId)
       ]);
 
       setHomeTeamRoster(homeRoster);
       setAwayTeamRoster(awayRoster);
-      await loadExistingScores(matchId);
+      await loadExistingScores(matchId, homeRoster, awayRoster, lastTimeData);
     }
   };
 
@@ -685,6 +820,11 @@ export const AddScore = () => {
       }
     }
 
+    if (!formData.winner) {
+      setError('Please select the winning team');
+      return false;
+    }
+
     return true;
   };
 
@@ -699,11 +839,7 @@ export const AddScore = () => {
       const normalizedHomePlayers = normalizePlayerSelections(formData.matchType, formData.homePlayers);
       const normalizedAwayPlayers = normalizePlayerSelections(formData.matchType, formData.awayPlayers);
 
-      const winner = calculateMatchWinner();
-      if (!winner) {
-        setError('Unable to determine a winner from the provided scores. Check set results.');
-        return;
-      }
+      const winner = formData.winner;
 
       const payload = buildScorePayload({
         matchId: selectedMatch.id,
@@ -784,8 +920,14 @@ export const AddScore = () => {
     <div className="add-score-page">
       <div className="add-score-header">
         <h1>Submit Match Scores</h1>
-        <p>Record results for 2026 Season (4 Lines of Doubles).</p>
+        <p>Record results for 2026 Season (4 Courts of Doubles).</p>
       </div>
+
+      {urlMatchId && selectedMatch && (
+        <div className="match-prefilled-banner" style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: '8px', color: 'var(--text-primary)' }}>
+          Scores for: <strong>{selectedMatch.home_team_name} vs {selectedMatch.away_team_name}</strong> on {selectedMatch.date}
+        </div>
+      )}
 
       {submitting && (
         <div className="loading-overlay">
@@ -808,11 +950,11 @@ export const AddScore = () => {
         <div className="overview-card card card--interactive card--overlay">
           <div className="card-label">Current Completion</div>
           <div className="card-value">{hasMatchSelected ? `${Math.round(matchProgress)}%` : 'Select match'}</div>
-          <div className="card-subtitle">{linesRecorded} of 4 lines saved</div>
+          <div className="card-subtitle">{linesRecorded} of 4 courts saved</div>
         </div>
         <div className="overview-card card card--interactive card--overlay">
-          <div className="card-label">Step 2: Line Scores</div>
-          <div className="card-value">Line {activeLineNumber}</div>
+          <div className="card-label">{urlMatchId ? "Active Court" : "Step 2: Court Scores"}</div>
+          <div className="card-value">Court {activeLineNumber}</div>
         </div>
       </div>
 
@@ -824,25 +966,27 @@ export const AddScore = () => {
       )}
 
       <form onSubmit={handleSubmit} className="score-form" noValidate>
-        <div className="score-section card card--interactive">
-          <h2>Step 1: Select Your Match</h2>
-          <select
-            name="matchId"
-            value={formData.matchId}
-            onChange={(e) => handleMatchSelect(e.target.value)}
-            required
-          >
-            <option value="">Choose a match from the list...</option>
-            {availableMatches.map(match => (
-              <option key={match.id} value={match.id}>
-                {match.home_team_name} vs {match.away_team_name} - {match.date}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!urlMatchId && (
+          <div className="score-section card card--interactive">
+            <h2>Step 1: Select Your Match</h2>
+            <select
+              name="matchId"
+              value={formData.matchId}
+              onChange={(e) => handleMatchSelect(e.target.value)}
+              required
+            >
+              <option value="">Choose a match from the list...</option>
+              {availableMatches.map(match => (
+                <option key={match.id} value={match.id}>
+                  {match.home_team_name} vs {match.away_team_name} - {match.date}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="score-section card card--interactive">
-          <h2>Step 2: Line & Roster Status</h2>
+          <h2>{urlMatchId ? "Roster & Court Selector" : "Step 2: Court & Roster Status"}</h2>
           <div className="participation-bonus">
              <label className="checkbox-label">
                 <input 
@@ -865,14 +1009,14 @@ export const AddScore = () => {
                 className={`line-switcher-button${activeLineNumber === line ? ' is-active' : ''}`}
                 onClick={() => setLineFocus(line)}
               >
-                Line {line}
+                Court {line}
               </button>
             ))}
           </div>
         </div>
 
         <div className="score-section card card--interactive">
-          <h2>Line {activeLineNumber} Scores</h2>
+          <h2>Court {activeLineNumber} Scores</h2>
           <div className="form-row">
             <div className="form-group">
               <label>Match Type</label>
@@ -962,6 +1106,32 @@ export const AddScore = () => {
               </div>
             </div>
           </div>
+
+          <div className="winning-team-selection" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--score-card-border)', textAlign: 'center' }}>
+            <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 'bold', fontSize: '1.05rem', color: 'var(--text-primary)' }}>Winning Team</label>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '1rem', color: 'var(--text-primary)' }}>
+                <input
+                  type="radio"
+                  name="winner"
+                  value="home"
+                  checked={formData.winner === 'home'}
+                  onChange={() => setFormData(prev => ({ ...prev, winner: 'home' }))}
+                />
+                Home ({selectedMatch ? selectedMatch.home_team_name : 'Home'})
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '1rem', color: 'var(--text-primary)' }}>
+                <input
+                  type="radio"
+                  name="winner"
+                  value="away"
+                  checked={formData.winner === 'away'}
+                  onChange={() => setFormData(prev => ({ ...prev, winner: 'away' }))}
+                />
+                Away ({selectedMatch ? selectedMatch.away_team_name : 'Away'})
+              </label>
+            </div>
+          </div>
         </div>
 
         <div className="score-section card card--interactive">
@@ -971,7 +1141,7 @@ export const AddScore = () => {
               name="notes"
               value={formData.notes}
               onChange={handleInputChange}
-              placeholder="Add any notes about this line (e.g. sub names, tiebreak score, disputes)..."
+              placeholder="Add any notes about this court (e.g. sub names, tiebreak score, disputes)..."
               maxLength={MAX_NOTES_LENGTH}
               aria-describedby="notes-counter"
             ></textarea>
@@ -983,7 +1153,7 @@ export const AddScore = () => {
 
         {error && <div className="error-message">{error}</div>}
         <button type="submit" disabled={submitting} className="submit-button">
-          {submitting ? 'Submitting...' : 'Save Line Results'}
+          {submitting ? 'Submitting...' : 'Save Court Results'}
         </button>
       </form>
     </div>

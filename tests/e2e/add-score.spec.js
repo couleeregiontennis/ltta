@@ -28,8 +28,7 @@ test.describe('Add Score Page @live', () => {
     await mockSupabaseAuth(page, { is_captain: true });
     await page.goto('/add-score?matchId=m1-uuid');
     await expect(page.locator('body')).not.toContainText('Loading...', { timeout: 15000 });
-    const matchSelect = page.locator('select[name="matchId"]');
-    await expect(matchSelect).toHaveValue('m1-uuid');
+    await expect(page.locator('.match-prefilled-banner')).toBeVisible();
     await expect(page.locator('body')).toContainText('Home Team');
   });
 });
