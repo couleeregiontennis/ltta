@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../scripts/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
 import { useVoiceScoreInput } from '../hooks/useVoiceScoreInput';
@@ -154,6 +155,8 @@ const isPayloadUnchanged = (existing, payload) => {
 };
 
 export const AddScore = () => {
+  const [searchParams] = useSearchParams();
+  const urlMatchId = searchParams.get('matchId');
   const { addToast } = useToast();
   const { user, userRole, currentPlayerData, currentSeason, loading: authLoading } = useAuth();
   
@@ -282,6 +285,58 @@ export const AddScore = () => {
 
         setAvailableMatches(flattenedMatches);
 
+        // 3. Handle query param matchId prefill
+        if (urlMatchId) {
+          let urlMatch = flattenedMatches.find(m => m.id === urlMatchId);
+          if (!urlMatch) {
+            const { data: matched, error: matchErr } = await supabase
+              .from('team_match')
+              .select(`
+                id, date, time, courts, status,
+                home_team:home_team_id (id, name, number, play_night),
+                away_team:away_team_id (id, name, number, play_night)
+              `)
+              .eq('id', urlMatchId)
+              .single();
+            
+            if (matched && !matchErr) {
+              urlMatch = {
+                id: matched.id,
+                date: matched.date,
+                time: matched.time,
+                status: matched.status,
+                courts: matched.courts,
+                home_team_name: matched.home_team?.name,
+                home_team_number: matched.home_team?.number,
+                home_team_night: matched.home_team?.play_night,
+                away_team_name: matched.away_team?.name,
+                away_team_number: matched.away_team?.number,
+                away_team_night: matched.away_team?.play_night
+              };
+              setAvailableMatches(prev => [urlMatch, ...prev]);
+            }
+          }
+
+          if (urlMatch) {
+            setSelectedMatch(urlMatch);
+            setFormData(prev => ({
+              ...prev,
+              matchId: urlMatch.id,
+              homePlayers: ['', ''],
+              awayPlayers: ['', '']
+            }));
+
+            const [homeRoster, awayRoster] = await Promise.all([
+              loadTeamRoster(urlMatch.home_team_number, urlMatch.home_team_night),
+              loadTeamRoster(urlMatch.away_team_number, urlMatch.away_team_night)
+            ]);
+
+            setHomeTeamRoster(homeRoster);
+            setAwayTeamRoster(awayRoster);
+            await loadExistingScores(urlMatch.id);
+          }
+        }
+
       } catch (err) {
         console.error('Systematic Data Load Error:', err);
         setError('Failed to load match data. Please try again.');
@@ -291,7 +346,7 @@ export const AddScore = () => {
     };
 
     loadMatchData();
-  }, [authLoading, currentPlayerData?.id, currentSeason?.id]);
+  }, [authLoading, currentPlayerData?.id, currentSeason?.id, urlMatchId]);
 
   const getEligiblePlayers = (roster, lineNumber) => {
     if (!roster || roster.length === 0) return [];
@@ -396,10 +451,22 @@ export const AddScore = () => {
         return;
       }
 
+      // Auto-fill heuristic based on player rankings for the line
+      const homeIndex1 = (numericLine - 1) * 2;
+      const homeIndex2 = homeIndex1 + 1;
+      const awayIndex1 = (numericLine - 1) * 2;
+      const awayIndex2 = awayIndex1 + 1;
+
       setFormData(prev => ({
         ...prev,
-        homePlayers: ['', ''],
-        awayPlayers: ['', ''],
+        homePlayers: [
+          homeTeamRoster[homeIndex1]?.name || '',
+          homeTeamRoster[homeIndex2]?.name || ''
+        ],
+        awayPlayers: [
+          awayTeamRoster[awayIndex1]?.name || '',
+          awayTeamRoster[awayIndex2]?.name || ''
+        ],
         homeSet1: '',
         awaySet1: '',
         homeSet2: '',
@@ -693,6 +760,11 @@ export const AddScore = () => {
 
       addToast('Scores submitted successfully!', 'success');
       await loadExistingScores(selectedMatch.id);
+      
+      const currentLine = Number(formData.lineNumber);
+      if (currentLine < 4) {
+        setLineFocus(currentLine + 1);
+      }
     } catch (err) {
       setError('Error submitting scores: ' + err.message);
     } finally {
