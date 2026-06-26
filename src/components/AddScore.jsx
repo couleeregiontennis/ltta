@@ -327,62 +327,60 @@ export const AddScore = () => {
         setLoading(true);
         setError('');
 
+        let teamData = null;
+        let flattenedMatches = [];
+
         // 1. Get Team Assignment
-        const { data: teamLink, error: teamLinkError } = await supabase
+        const { data: teamLink } = await supabase
           .from('player_to_team')
           .select('team')
           .eq('player', currentPlayerData.id)
-          .single();
+          .maybeSingle();
 
-        if (teamLinkError || !teamLink) {
-          setLoading(false);
-          return;
+        if (teamLink) {
+          const { data: td } = await supabase
+            .from('team')
+            .select('*')
+            .eq('id', teamLink.team)
+            .maybeSingle();
+          if (td) {
+            teamData = td;
+            setUserTeam(td);
+          }
         }
-
-        const { data: teamData, error: teamError } = await supabase
-          .from('team')
-          .select('*')
-          .eq('id', teamLink.team)
-          .single();
-
-        if (teamError || !teamData) {
-          setLoading(false);
-          return;
-        }
-        
-        setUserTeam(teamData);
 
         // 2. Get Available Matches
-        const { data: matches, error: matchesError } = await supabase
-          .from('team_match')
-          .select(`
-            id, date, time, courts, status,
-            home_team:home_team_id (id, name, number, play_night),
-            away_team:away_team_id (id, name, number, play_night)
-          `)
-          .or(`home_team_id.eq.${teamData.id},away_team_id.eq.${teamData.id}`)
-          .eq('status', 'scheduled')
-          .order('date', { ascending: true });
+        if (teamData) {
+          const { data: matches, error: matchesError } = await supabase
+            .from('team_match')
+            .select(`
+              id, date, time, courts, status,
+              home_team:home_team_id (id, name, number, play_night),
+              away_team:away_team_id (id, name, number, play_night)
+            `)
+            .or(`home_team_id.eq.${teamData.id},away_team_id.eq.${teamData.id}`)
+            .eq('status', 'scheduled')
+            .order('date', { ascending: true });
 
-        if (matchesError) throw matchesError;
-        
-        const flattenedMatches = (matches || []).map(m => ({
-          id: m.id,
-          date: m.date,
-          time: m.time,
-          status: m.status,
-          courts: m.courts,
-          home_team_id: m.home_team?.id,
-          home_team_name: m.home_team?.name,
-          home_team_number: m.home_team?.number,
-          home_team_night: m.home_team?.play_night,
-          away_team_id: m.away_team?.id,
-          away_team_name: m.away_team?.name,
-          away_team_number: m.away_team?.number,
-          away_team_night: m.away_team?.play_night
-        }));
-
-        setAvailableMatches(flattenedMatches);
+          if (!matchesError && matches) {
+            flattenedMatches = matches.map(m => ({
+              id: m.id,
+              date: m.date,
+              time: m.time,
+              status: m.status,
+              courts: m.courts,
+              home_team_id: m.home_team?.id,
+              home_team_name: m.home_team?.name,
+              home_team_number: m.home_team?.number,
+              home_team_night: m.home_team?.play_night,
+              away_team_id: m.away_team?.id,
+              away_team_name: m.away_team?.name,
+              away_team_number: m.away_team?.number,
+              away_team_night: m.away_team?.play_night
+            }));
+            setAvailableMatches(flattenedMatches);
+          }
+        }
 
         // 3. Handle query param matchId prefill
         if (urlMatchId) {
@@ -761,7 +759,7 @@ export const AddScore = () => {
       
       setSelectedMatch({ ...match, is_disputed: isDisputed });
       
-      const isHome = teamMatchData?.home_team_id === userTeam.id;
+      const isHome = teamMatchData?.home_team_id === userTeam?.id;
       setFormData(prev => ({
         ...prev,
         matchId: matchId,
@@ -946,17 +944,7 @@ export const AddScore = () => {
         </div>
       )}
 
-      <div className="score-overview">
-        <div className="overview-card card card--interactive card--overlay">
-          <div className="card-label">Current Completion</div>
-          <div className="card-value">{hasMatchSelected ? `${Math.round(matchProgress)}%` : 'Select match'}</div>
-          <div className="card-subtitle">{linesRecorded} of 4 courts saved</div>
-        </div>
-        <div className="overview-card card card--interactive card--overlay">
-          <div className="card-label">{urlMatchId ? "Active Court" : "Step 2: Court Scores"}</div>
-          <div className="card-value">Court {activeLineNumber}</div>
-        </div>
-      </div>
+
 
       {selectedMatch?.is_disputed && (
         <div className="dispute-banner" style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeft: '4px solid var(--error)', borderRadius: '4px' }}>
