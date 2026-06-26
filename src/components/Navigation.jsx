@@ -37,7 +37,22 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
   };
 
   const handleLogout = async () => {
-    await signOut();
+    try {
+      await signOut();
+    } catch (e) {
+      console.error('Error during signOut:', e);
+    }
+    try {
+      // Force clear local storage to clean up any corrupt/expired session tokens
+      const supabaseUrl = window._env_?.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
+      const match = supabaseUrl?.match(/https?:\/\/([^.]+)/);
+      const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
+      localStorage.removeItem(`sb-${projectRef}-auth-token`);
+      localStorage.removeItem('sb-shlcqztfdhfwkhijwgue-auth-token');
+      localStorage.removeItem('supabase.auth.token');
+    } catch (e) {
+      console.error('Failed to clear storage:', e);
+    }
     navigate('/login');
     closeMenu();
   };
