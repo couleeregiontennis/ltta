@@ -158,13 +158,13 @@ test.describe('Tiebreak Validation @live', () => {
     // Test case 1: 5-5 (invalid, game not over)
     await set3.locator('select').nth(0).selectOption('5');
     await set3.locator('select').nth(1).selectOption('5');
-    await page.getByRole('button', { name: 'Save Line Results' }).click();
+    await page.getByRole('button', { name: 'Save Court Results' }).click();
     await expect(page.locator('.error-message')).toContainText(/Third set must be a valid tiebreak/);
 
     // Test case 2: 7-5 (valid)
     await set3.locator('select').nth(0).selectOption('7');
     await set3.locator('select').nth(1).selectOption('5');
-    await page.getByRole('button', { name: 'Save Line Results' }).click();
+    await page.getByRole('button', { name: 'Save Court Results' }).click();
     await expect(page.locator('.error-message')).toBeHidden();
     await expect(page.getByText('Scores submitted successfully!')).toBeVisible();
   });
@@ -176,7 +176,7 @@ test.describe('Tiebreak Validation @live', () => {
     // Test case: 7-6 (invalid, must win by 2)
     await set3.locator('select').nth(0).selectOption('7');
     await set3.locator('select').nth(1).selectOption('6');
-    await page.getByRole('button', { name: 'Save Line Results' }).click();
+    await page.getByRole('button', { name: 'Save Court Results' }).click();
     await expect(page.locator('.error-message')).toContainText(/Third set must be a valid tiebreak/);
   });
 
@@ -187,7 +187,7 @@ test.describe('Tiebreak Validation @live', () => {
     // Test case: 8-6 (valid)
     await set3.locator('select').nth(0).selectOption('8');
     await set3.locator('select').nth(1).selectOption('6');
-    await page.getByRole('button', { name: 'Save Line Results' }).click();
+    await page.getByRole('button', { name: 'Save Court Results' }).click();
     await expect(page.locator('.error-message')).toBeHidden();
     await expect(page.getByText('Scores submitted successfully!')).toBeVisible();
 
@@ -205,7 +205,7 @@ test.describe('Tiebreak Validation @live', () => {
     // Test case: 6-4 (invalid, must reach 7)
     await set3.locator('select').nth(0).selectOption('6');
     await set3.locator('select').nth(1).selectOption('4');
-    await page.getByRole('button', { name: 'Save Line Results' }).click();
+    await page.getByRole('button', { name: 'Save Court Results' }).click();
     await expect(page.locator('.error-message')).toContainText(/Third set must be a valid tiebreak/);
   });
 });
