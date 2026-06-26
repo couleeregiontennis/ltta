@@ -2105,6 +2105,9 @@ INSERT INTO "auth"."users" (
 )
 ON CONFLICT (id) DO NOTHING;
 
+-- Fix nullable confirmation_token scan error in Gotrue
+UPDATE "auth"."users" SET "confirmation_token" = '' WHERE "confirmation_token" IS NULL;
+
 -- 6. Players
 INSERT INTO "public"."player" (
     "id", "user_id", "first_name", "last_name", "email", "phone",
