@@ -24,9 +24,30 @@ const ScheduleSkeleton = () => (
   </div>
 );
 
+const parseLocalDate = (dateInput) => {
+  if (!dateInput) return new Date(NaN);
+  if (dateInput instanceof Date) return dateInput;
+  
+  if (typeof dateInput === 'string') {
+    const dateStr = dateInput.split(/[T ]/)[0];
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      const day = parseInt(parts[2], 10);
+      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+        return new Date(year, month - 1, day);
+      }
+    }
+  }
+  return new Date(dateInput);
+};
+
 // OPTIMIZATION: Move static helpers outside component to avoid recreation
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
+  const date = parseLocalDate(dateString);
+  if (isNaN(date.getTime())) return dateString || 'TBD';
+  return date.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -55,7 +76,7 @@ const getMatchStatus = (match) => {
     return 'canceled';
   }
 
-  const matchDate = new Date(match.date);
+  const matchDate = parseLocalDate(match.date);
   const now = new Date();
 
   if (match.status === 'completed') {
@@ -84,7 +105,7 @@ const getStatusBadge = (status) => {
 const groupMatchesByDate = (matches) => {
   const grouped = {};
   matches.forEach(match => {
-    const dateKey = new Date(match.date).toDateString();
+    const dateKey = parseLocalDate(match.date).toDateString();
     if (!grouped[dateKey]) {
       grouped[dateKey] = [];
     }
@@ -256,8 +277,7 @@ export const MatchSchedule = () => {
 
     if (viewMode === 'month') {
       filtered = filtered.filter(match => {
-        const [year, month, day] = match.date.split('-').map(Number);
-        const matchDate = new Date(year, month - 1, day);
+        const matchDate = parseLocalDate(match.date);
         return matchDate >= startOfMonth && matchDate <= endOfMonth;
       });
     } else if (viewMode === 'week') {
@@ -269,8 +289,7 @@ export const MatchSchedule = () => {
       endOfWeek.setHours(23, 59, 59, 999);
 
       filtered = filtered.filter(match => {
-        const [year, month, day] = match.date.split('-').map(Number);
-        const matchDate = new Date(year, month - 1, day);
+        const matchDate = parseLocalDate(match.date);
         return matchDate >= startOfWeek && matchDate <= endOfWeek;
       });
     }
