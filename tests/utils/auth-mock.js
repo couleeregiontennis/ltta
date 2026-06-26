@@ -68,11 +68,13 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
       // Standard Supabase localStorage key format: sb-[PROJECT_REF]-auth-token
       window.localStorage.setItem(`sb-${projectRef}-auth-token`, JSON.stringify(mockSession));
       window.localStorage.setItem(`sb-shlcqztfdhfwkhijwgue-auth-token`, JSON.stringify(mockSession));
+      window.localStorage.setItem(`sb-localhost-auth-token`, JSON.stringify(mockSession));
+      window.localStorage.setItem(`sb-localhost-54321-auth-token`, JSON.stringify(mockSession));
       // Also set generic key as fallback
       window.localStorage.setItem('supabase.auth.token', JSON.stringify(mockSession));
     }, { id, email, projectRef });
   }
-  await page.route('**/*.supabase.co/**', async (route) => {
+  await page.route(url => url.host.includes('supabase.co') || url.host.includes('localhost:54321'), async (route) => {
     const url = route.request().url();
     const method = route.request().method();
     const accept = route.request().headers()['accept'] || '';
