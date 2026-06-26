@@ -34,7 +34,8 @@ export const AuthProvider = ({ children }) => {
         supabase
           .from('season')
           .select('*')
-          .eq('is_active', true)
+          .order('end_date', { ascending: false })
+          .limit(1)
           .maybeSingle()
       ]);
 
@@ -91,7 +92,7 @@ export const AuthProvider = ({ children }) => {
           } else {
             console.log('[AuthProvider] No user in getSession, finishing init');
             setHasProfile(false);
-            const { data } = await supabase.from('season').select('*').eq('is_active', true).maybeSingle();
+            const { data } = await supabase.from('season').select('*').order('end_date', { ascending: false }).limit(1).maybeSingle();
             if (mounted && data) setCurrentSeason(data);
             setLoading(false);
           }
