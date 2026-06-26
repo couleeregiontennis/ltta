@@ -142,12 +142,13 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
         } else if (url.includes('/season')) {
             data = [{ id: 's1', number: 1, is_active: true, is_current: true }];
         } else if (url.includes('/team_match')) {
+            const todayStr = new Date().toISOString().split('T')[0];
             data = [
                 { 
                     id: 'match-1', 
                     home_team_number: 1, 
                     away_team_number: 2, 
-                    date: '2023-01-01', 
+                    date: todayStr, 
                     status: 'scheduled',
                     home_team: { id: 't1', name: 'Home Team', number: 1 }, 
                     away_team: { id: 't2', name: 'Away Team', number: 2 }
@@ -156,7 +157,7 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
                     id: 'm1-uuid', 
                     home_team_number: 1, 
                     away_team_number: 2, 
-                    date: '2023-01-01', 
+                    date: todayStr, 
                     status: 'scheduled',
                     home_team: { id: 't1', name: 'Home Team', number: 1 }, 
                     away_team: { id: 't2', name: 'Away Team', number: 2 }
