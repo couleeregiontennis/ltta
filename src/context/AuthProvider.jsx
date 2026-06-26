@@ -39,13 +39,13 @@ export const AuthProvider = ({ children }) => {
           .maybeSingle()
       ]);
 
-      console.log('[AuthProvider] Player response status:', playerRes.status);
-      if (playerRes.status === 'fulfilled') {
-        console.log('[AuthProvider] Player data present:', !!playerRes.value.data);
-      }
+      const playerData = playerRes.status === 'fulfilled' && playerRes.value ? playerRes.value.data : null;
+      const seasonData = seasonRes.status === 'fulfilled' && seasonRes.value ? seasonRes.value.data : null;
 
-      if (playerRes.status === 'fulfilled' && playerRes.value.data) {
-        const playerData = playerRes.value.data;
+      console.log('[AuthProvider] Player response status:', playerRes.status);
+      console.log('[AuthProvider] Player data present:', !!playerData);
+
+      if (playerData) {
         setCurrentPlayerData(playerData);
         setUserRole({
           isCaptain: !!playerData.is_captain,
@@ -57,8 +57,8 @@ export const AuthProvider = ({ children }) => {
         setHasProfile(false);
       }
 
-      if (seasonRes.status === 'fulfilled' && seasonRes.value.data) {
-        setCurrentSeason(seasonRes.value.data);
+      if (seasonData) {
+        setCurrentSeason(seasonData);
       }
     } catch (err) {
       console.error('Core data pre-fetch error:', err);
