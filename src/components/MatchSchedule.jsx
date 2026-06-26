@@ -251,21 +251,26 @@ export const MatchSchedule = () => {
       }
     }
 
-    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1, 0, 0, 0, 0);
+    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
 
     if (viewMode === 'month') {
       filtered = filtered.filter(match => {
-        const matchDate = new Date(match.date);
+        const [year, month, day] = match.date.split('-').map(Number);
+        const matchDate = new Date(year, month - 1, day);
         return matchDate >= startOfMonth && matchDate <= endOfMonth;
       });
     } else if (viewMode === 'week') {
       const startOfWeek = new Date(currentDate);
       startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
       filtered = filtered.filter(match => {
-        const matchDate = new Date(match.date);
+        const [year, month, day] = match.date.split('-').map(Number);
+        const matchDate = new Date(year, month - 1, day);
         return matchDate >= startOfWeek && matchDate <= endOfWeek;
       });
     }
