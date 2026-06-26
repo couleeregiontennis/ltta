@@ -2105,8 +2105,14 @@ INSERT INTO "auth"."users" (
 )
 ON CONFLICT (id) DO NOTHING;
 
--- Fix nullable confirmation_token scan error in Gotrue
-UPDATE "auth"."users" SET "confirmation_token" = '' WHERE "confirmation_token" IS NULL;
+-- Fix nullable confirmation_token, email_change, and token scan errors in Gotrue
+UPDATE "auth"."users" SET 
+  "confirmation_token" = COALESCE("confirmation_token", ''),
+  "email_change" = COALESCE("email_change", ''),
+  "email_change_token_new" = COALESCE("email_change_token_new", ''),
+  "email_change_token_current" = COALESCE("email_change_token_current", ''),
+  "recovery_token" = COALESCE("recovery_token", ''),
+  "phone_change_token" = COALESCE("phone_change_token", '');
 
 -- 6. Players
 INSERT INTO "public"."player" (
