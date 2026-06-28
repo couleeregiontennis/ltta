@@ -40,6 +40,14 @@ const isStandardSetValid = (home, away) => {
   return false;
 };
 
+const isSetWon = (p1, p2) => {
+  const score1 = parseInteger(p1);
+  const score2 = parseInteger(p2);
+  if (score1 === null || score2 === null) return false;
+  if (!isStandardSetValid(score1, score2)) return false;
+  return score1 > score2;
+};
+
 const isMatchTiebreakValid = (home, away) => {
   if (home === 0 && away === 0) {
     return true; // Not played
@@ -658,6 +666,16 @@ export const AddScore = () => {
         }
       }
 
+      const hWon1 = isSetWon(nextData.homeSet1, nextData.awaySet1);
+      const aWon1 = isSetWon(nextData.awaySet1, nextData.homeSet1);
+      const hWon2 = isSetWon(nextData.homeSet2, nextData.awaySet2);
+      const aWon2 = isSetWon(nextData.awaySet2, nextData.homeSet2);
+
+      if ((hWon1 && hWon2) || (aWon1 && aWon2)) {
+        nextData.homeSet3 = '';
+        nextData.awaySet3 = '';
+      }
+
       const calcWinner = autoCalculateWinner(nextData);
       if (calcWinner) {
         nextData.winner = calcWinner;
@@ -832,6 +850,18 @@ export const AddScore = () => {
     const set3Home = parseInteger(formData.homeSet3);
     const set3Away = parseInteger(formData.awaySet3);
 
+    const hWon1 = isSetWon(set1Home, set1Away);
+    const aWon1 = isSetWon(set1Away, set1Home);
+    const hWon2 = isSetWon(set2Home, set2Away);
+    const aWon2 = isSetWon(set2Away, set2Home);
+
+    if ((hWon1 && hWon2) || (aWon1 && aWon2)) {
+      if (!isEmptyValue(formData.homeSet3) || !isEmptyValue(formData.awaySet3)) {
+        setError('Third set tiebreak cannot be entered if a team won in straight sets');
+        return false;
+      }
+    }
+
     if (!isStandardSetValid(set1Home, set1Away) || !isStandardSetValid(set2Home, set2Away)) {
       setError('Sets 1 and 2 must be valid tennis scores (win by 2, 6-4/7-5/7-6 etc.)');
       return false;
@@ -939,6 +969,12 @@ export const AddScore = () => {
   const matchProgress = hasMatchSelected
     ? Math.min(100, Math.round((linesRecorded / LINES_PER_MATCH) * 100))
     : 0;
+
+  const homeWonSet1 = isSetWon(formData.homeSet1, formData.awaySet1);
+  const awayWonSet1 = isSetWon(formData.awaySet1, formData.homeSet1);
+  const homeWonSet2 = isSetWon(formData.homeSet2, formData.awaySet2);
+  const awayWonSet2 = isSetWon(formData.awaySet2, formData.homeSet2);
+  const isThirdSetDisabled = (homeWonSet1 && homeWonSet2) || (awayWonSet1 && awayWonSet2);
 
   return (
     <div className="add-score-page">
@@ -1161,14 +1197,22 @@ export const AddScore = () => {
                 </select>
               </div>
             </div>
-            <div className="score-group">
+            <div className={`score-group${isThirdSetDisabled ? ' is-disabled' : ''}`}>
               <label>Tiebreak</label>
               <div className="score-inputs">
-                <select value={formData.homeSet3} onChange={(e) => handleScoreChange('home', 3, e.target.value)}>
+                <select 
+                  value={formData.homeSet3} 
+                  onChange={(e) => handleScoreChange('home', 3, e.target.value)}
+                  disabled={isThirdSetDisabled}
+                >
                   <option value="">H</option>{generateTiebreakOptions()}
                 </select>
                 <span>-</span>
-                <select value={formData.awaySet3} onChange={(e) => handleScoreChange('away', 3, e.target.value)}>
+                <select 
+                  value={formData.awaySet3} 
+                  onChange={(e) => handleScoreChange('away', 3, e.target.value)}
+                  disabled={isThirdSetDisabled}
+                >
                   <option value="">A</option>{generateTiebreakOptions()}
                 </select>
               </div>

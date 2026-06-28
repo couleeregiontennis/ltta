@@ -208,4 +208,21 @@ test.describe('Tiebreak Validation @live', () => {
     await page.getByRole('button', { name: 'Save Court Results' }).click();
     await expect(page.locator('.error-message')).toContainText(/Third set must be a valid tiebreak/);
   });
+
+  test('disables 3rd set tiebreak on straight sets win', async ({ page }) => {
+    const sets = page.locator('.score-group');
+    
+    // Change second set to 6-4 (making it 6-4, 6-4 Home win in straight sets)
+    await sets.nth(1).locator('select').nth(0).selectOption('6');
+    await sets.nth(1).locator('select').nth(1).selectOption('4');
+
+    // Set 3 selects should be disabled
+    const set3HomeSelect = sets.nth(2).locator('select').nth(0);
+    const set3AwaySelect = sets.nth(2).locator('select').nth(1);
+    await expect(set3HomeSelect).toBeDisabled();
+    await expect(set3AwaySelect).toBeDisabled();
+
+    // The score group should have the is-disabled class
+    await expect(sets.nth(2)).toHaveClass(/is-disabled/);
+  });
 });
