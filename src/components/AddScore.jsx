@@ -212,20 +212,52 @@ export const AddScore = () => {
     stopListening,
     isSpeechRecognitionSupported
   } = useVoiceScoreInput((parsedData) => {
-    setFormData((prev) => ({
-      ...prev,
-      lineNumber: sanitizedLineNumber,
-      matchType: sanitizedMatchType,
-      homePlayers: matchOrLineChanged ? ['', ''] : prev.homePlayers,
-      awayPlayers: matchOrLineChanged ? ['', ''] : prev.awayPlayers,
-      homeSet1: nextForm.homeSet1?.toString() || '',
-      awaySet1: nextForm.awaySet1?.toString() || '',
-      homeSet2: nextForm.homeSet2?.toString() || '',
-      awaySet2: nextForm.awaySet2?.toString() || '',
-      homeSet3: nextForm.homeSet3?.toString() || '',
-      awaySet3: nextForm.awaySet3?.toString() || '',
-      notes: nextForm.notes
-    }));
+    if (!parsedData) return;
+
+    const targetLineNumber = parsedData.lineNumber || formData.lineNumber || 1;
+    const targetMatchType = parsedData.matchType || formData.matchType || 'doubles';
+
+    const updateScores = () => {
+      setFormData((prev) => {
+        const nextData = {
+          ...prev,
+          lineNumber: targetLineNumber,
+          matchType: targetMatchType,
+          homeSet1: parsedData.homeSet1 !== undefined && parsedData.homeSet1 !== null ? parsedData.homeSet1.toString() : prev.homeSet1,
+          awaySet1: parsedData.awaySet1 !== undefined && parsedData.awaySet1 !== null ? parsedData.awaySet1.toString() : prev.awaySet1,
+          homeSet2: parsedData.homeSet2 !== undefined && parsedData.homeSet2 !== null ? parsedData.homeSet2.toString() : prev.homeSet2,
+          awaySet2: parsedData.awaySet2 !== undefined && parsedData.awaySet2 !== null ? parsedData.awaySet2.toString() : prev.awaySet2,
+          homeSet3: parsedData.homeSet3 !== undefined && parsedData.homeSet3 !== null ? parsedData.homeSet3.toString() : prev.homeSet3,
+          awaySet3: parsedData.awaySet3 !== undefined && parsedData.awaySet3 !== null ? parsedData.awaySet3.toString() : prev.awaySet3,
+          notes: parsedData.notes || prev.notes
+        };
+
+        const hWon1 = isSetWon(nextData.homeSet1, nextData.awaySet1);
+        const aWon1 = isSetWon(nextData.awaySet1, nextData.homeSet1);
+        const hWon2 = isSetWon(nextData.homeSet2, nextData.awaySet2);
+        const aWon2 = isSetWon(nextData.awaySet2, nextData.homeSet2);
+
+        if ((hWon1 && hWon2) || (aWon1 && aWon2)) {
+          nextData.homeSet3 = '';
+          nextData.awaySet3 = '';
+        }
+
+        const calcWinner = autoCalculateWinner(nextData);
+        if (calcWinner) {
+          nextData.winner = calcWinner;
+        }
+
+        return nextData;
+      });
+    };
+
+    if (targetLineNumber !== formData.lineNumber) {
+      setLineFocus(targetLineNumber, targetMatchType);
+      setTimeout(updateScores, 50);
+    } else {
+      updateScores();
+    }
+
     setError('');
     addToast('Transcript parsed successfully by AI!', 'success');
   });
@@ -1047,6 +1079,60 @@ export const AddScore = () => {
                 </option>
               ))}
             </select>
+          </div>
+        )}
+
+        {hasMatchSelected && isSpeechRecognitionSupported && (
+          <div className="voice-score-input-section card">
+            <h3>🎙️ Voice Score Entry</h3>
+            <p className="helper-text" style={{ marginBottom: '1.25rem' }}>
+              Select a court and click record, or speak naturally specifying the court. For example:<br />
+              <strong>"Court 2 doubles, we won 6-4, 3-6, 10-8"</strong>
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={`voice-recording-btn${isListening ? ' is-active' : ''}`}
+                onClick={isListening ? stopListening : startListening}
+                disabled={aiProcessing}
+              >
+                {isListening ? (
+                  <>
+                    <span className="voice-record-dot"></span> Stop Recording
+                  </>
+                ) : (
+                  <>
+                    🎙️ Record Score
+                  </>
+                )}
+              </button>
+
+              {aiProcessing && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--score-card-text)' }}>
+                  <span className="voice-spinner-small"></span>
+                  <span>AI parsing transcript...</span>
+                </div>
+              )}
+            </div>
+
+            {transcript && (
+              <div className="voice-transcript-box">
+                <span className="voice-transcript-label">Spoken Transcript</span>
+                <div>"{transcript}"</div>
+              </div>
+            )}
+
+            {aiError && (
+              <div style={{ marginTop: '0.75rem', color: '#ef4444', fontSize: '0.9rem', fontWeight: 600 }}>
+                ❌ {aiError}
+              </div>
+            )}
+
+            {recognitionError && (
+              <div style={{ marginTop: '0.75rem', color: '#ef4444', fontSize: '0.9rem', fontWeight: 600 }}>
+                ⚠️ {recognitionError}
+              </div>
+            )}
           </div>
         )}
 

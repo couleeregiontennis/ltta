@@ -156,4 +156,110 @@ test.describe('Add Score Page (New) @live', () => {
     const subOption = optgroup.locator('option[value="Sub One"]');
     await expect(subOption).toBeAttached();
   });
+
+  test('records score via voice and parses with AI', async ({ page }) => {
+    // 1. Inject Mock SpeechRecognition before navigation
+    await page.addInitScript(() => {
+      class MockSpeechRecognition {
+        constructor() {
+          this.continuous = false;
+          this.interimResults = false;
+          this.lang = 'en-US';
+        }
+        start() {
+          if (this.onstart) this.onstart();
+          setTimeout(() => {
+            if (this.onresult) {
+              const event = {
+                resultIndex: 0,
+                results: [
+                  [
+                    { transcript: 'Court 2 doubles, we won 6-4, 3-6, 10-8' }
+                  ]
+                ]
+              };
+              event.results[0].isFinal = true;
+              this.onresult(event);
+            }
+            if (this.onend) this.onend();
+          }, 100);
+        }
+        stop() {
+          if (this.onend) this.onend();
+        }
+      }
+      window.SpeechRecognition = MockSpeechRecognition;
+      window.webkitSpeechRecognition = MockSpeechRecognition;
+    });
+
+    await disableNavigatorLocks(page);
+    await mockSupabaseAuth(page, { 
+      id: 'cap-id', 
+      is_captain: true,
+      first_name: 'Test',
+      last_name: 'Captain'
+    });
+
+    // 2. Mock Edge Function API call
+    let edgeFunctionCalled = false;
+    await page.route('**/functions/v1/parse-score', async (route) => {
+      expect(route.request().method()).toBe('POST');
+      const payload = JSON.parse(route.request().postData());
+      expect(payload.transcript).toBe('Court 2 doubles, we won 6-4, 3-6, 10-8');
+      edgeFunctionCalled = true;
+
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          lineNumber: 2,
+          matchType: 'doubles',
+          homeSet1: 6,
+          awaySet1: 4,
+          homeSet2: 3,
+          awaySet2: 6,
+          homeSet3: 10,
+          awaySet3: 8,
+          notes: 'Spoken via voice'
+        })
+      });
+    });
+
+    // 3. Go to Add Score page
+    await page.goto('/add-score?matchId=match-1');
+    await expect(page.locator('body')).not.toContainText('Loading...', { timeout: 20000 });
+
+    // 4. Click the voice record button
+    const recordBtn = page.locator('button:has-text("Record Score")');
+    await expect(recordBtn).toBeVisible();
+    await recordBtn.click();
+
+    // 5. Verify the transcript display is visible
+    await expect(page.locator('.voice-transcript-box')).toContainText('Court 2 doubles, we won 6-4, 3-6, 10-8');
+
+    // 6. Verify that it switched to Court 2
+    const activeCourtBtn = page.locator('.line-switcher-button.is-active');
+    await expect(activeCourtBtn).toContainText('Court 2');
+
+    // 7. Verify the scores have been filled correctly
+    const homeSet1Select = page.locator('.score-group:has-text("Set 1") select').nth(0);
+    const awaySet1Select = page.locator('.score-group:has-text("Set 1") select').nth(1);
+    const homeSet2Select = page.locator('.score-group:has-text("Set 2") select').nth(0);
+    const awaySet2Select = page.locator('.score-group:has-text("Set 2") select').nth(1);
+    const homeSet3Select = page.locator('.score-group:has-text("Tiebreak") select').nth(0);
+    const awaySet3Select = page.locator('.score-group:has-text("Tiebreak") select').nth(1);
+    
+    await expect(homeSet1Select).toHaveValue('6');
+    await expect(awaySet1Select).toHaveValue('4');
+    await expect(homeSet2Select).toHaveValue('3');
+    await expect(awaySet2Select).toHaveValue('6');
+    await expect(homeSet3Select).toHaveValue('10');
+    await expect(awaySet3Select).toHaveValue('8');
+
+    // Winner radio check
+    const winnerHomeRadio = page.locator('input[name="winner"][value="home"]');
+    await expect(winnerHomeRadio).toBeChecked();
+
+    expect(edgeFunctionCalled).toBe(true);
+  });
 });

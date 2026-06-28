@@ -31,3 +31,7 @@ dist/
 
 # verification files
 /verification/
+
+# Local autonomous coding agent files
+.codeep/
+DEEPSEEK.md

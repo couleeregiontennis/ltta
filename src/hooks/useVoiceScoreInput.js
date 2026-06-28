@@ -12,6 +12,13 @@ export const useVoiceScoreInput = (onScoreParsed) => {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const recognitionRef = useRef(null);
 
+  // Keep references to prevent stale closures and excessive useEffect re-runs
+  const onScoreParsedRef = useRef(onScoreParsed);
+  onScoreParsedRef.current = onScoreParsed;
+
+  const transcriptRef = useRef(transcript);
+  transcriptRef.current = transcript;
+
   const parseTranscriptWithAI = async (text) => {
     setAiProcessing(true);
     setAiError('');
@@ -40,8 +47,8 @@ export const useVoiceScoreInput = (onScoreParsed) => {
       const parsedData = await response.json();
 
       setAiSuccess('Transcript parsed successfully by AI!');
-      if (onScoreParsed) {
-        onScoreParsed(parsedData);
+      if (onScoreParsedRef.current) {
+        onScoreParsedRef.current(parsedData);
       }
       return parsedData;
     } catch (err) {
@@ -53,55 +60,60 @@ export const useVoiceScoreInput = (onScoreParsed) => {
   };
 
   useEffect(() => {
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
-
-      recognitionRef.current.onstart = () => {
-        setIsListening(true);
-        setRecognitionError('');
-        setAiSuccess('');
-        setAiError('');
-        setTranscript('');
-      };
-
-      recognitionRef.current.onresult = (event) => {
-        let interimTranscript = '';
-        let finalTranscript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
-          }
-        }
-        setTranscript(finalTranscript || interimTranscript);
-      };
-
-      recognitionRef.current.onerror = (event) => {
-        setRecognitionError(`Speech recognition error: ${event.error}`);
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-        if (transcript) {
-          parseTranscriptWithAI(transcript);
-        }
-      };
-    } else {
+    if (!SpeechRecognition) {
       setRecognitionError('Speech Recognition not supported in this browser.');
+      return;
     }
 
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
+    const rec = new SpeechRecognition();
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.lang = 'en-US';
+    recognitionRef.current = rec;
+
+    rec.onstart = () => {
+      setIsListening(true);
+      setRecognitionError('');
+      setAiSuccess('');
+      setAiError('');
+      setTranscript('');
+      transcriptRef.current = '';
+    };
+
+    rec.onresult = (event) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+      const newTranscript = finalTranscript || interimTranscript;
+      setTranscript(newTranscript);
+      transcriptRef.current = newTranscript;
+    };
+
+    rec.onerror = (event) => {
+      setRecognitionError(`Speech recognition error: ${event.error}`);
+      setIsListening(false);
+    };
+
+    rec.onend = () => {
+      setIsListening(false);
+      // Retrieve the latest value from the ref to avoid stale closure
+      const currentText = transcriptRef.current;
+      if (currentText && currentText.trim()) {
+        parseTranscriptWithAI(currentText);
       }
     };
-  }, [SpeechRecognition, transcript, onScoreParsed]); // Add onScoreParsed to dependencies
+
+    return () => {
+      rec.stop();
+    };
+  }, [SpeechRecognition]); // Only depend on SpeechRecognition class to avoid re-creation
 
   const startListening = () => {
     if (recognitionRef.current && !isListening) {
