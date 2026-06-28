@@ -37,11 +37,12 @@ serve(async (req) => {
       });
     }
 
+    const DEEPSEEK_API_KEY = Deno.env.get('DEEPSEEK_API_KEY');
     const OLLAMA_URL = Deno.env.get('LOCAL_OLLAMA_URL');
     const SECRET = Deno.env.get('LOCAL_SERVER_SECRET');
 
-    if (!OLLAMA_URL || !SECRET) {
-      return new Response(JSON.stringify({ error: 'LOCAL_OLLAMA_URL or LOCAL_SERVER_SECRET not set' }), {
+    if (!DEEPSEEK_API_KEY && (!OLLAMA_URL || !SECRET)) {
+      return new Response(JSON.stringify({ error: 'Neither DEEPSEEK_API_KEY nor LOCAL_OLLAMA_URL/LOCAL_SERVER_SECRET is set' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       });
@@ -66,39 +67,79 @@ serve(async (req) => {
   If a set score is not clearly mentioned, return null for its home and away values.
   If player names are mentioned, you can ignore them as they will be handled separately.
 
-  Always respond with ONLY the JSON object. Do not include any other text or explanation.
-
-  Transcript: "${normalizedTranscript}"`;
-
-    const response = await fetch(`${OLLAMA_URL}/api/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-home-server-secret': SECRET,
-      },
-      body: JSON.stringify({
-        model: 'gemma4:4b',
-        prompt: prompt,
-        format: 'json',
-        stream: false,
-      }),
-    });
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Ollama API failed: ${response.status} ${errText}`);
-    }
-
-    const data = await response.json();
+  Always respond with ONLY the JSON object. Do not include any other text or explanation.`;
 
     let parsedResponse;
-    try {
-      parsedResponse = JSON.parse(data.response);
-    } catch (parseError) {
-      console.error('Error parsing Ollama response as JSON:', parseError);
-      return new Response(JSON.stringify({ error: 'Invalid JSON response from AI', rawResponse: data.response }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
+
+    if (DEEPSEEK_API_KEY) {
+      console.log('Using DeepSeek for transcript parsing');
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: prompt },
+            { role: 'user', content: `Transcript: "${normalizedTranscript}"` },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.1,
+          stream: false,
+        }),
       });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`DeepSeek API failed: ${response.status} ${errText}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) {
+        throw new Error('DeepSeek returned empty content');
+      }
+      try {
+        parsedResponse = JSON.parse(content);
+      } catch (parseError) {
+        console.error('Error parsing DeepSeek response as JSON:', parseError);
+        return new Response(JSON.stringify({ error: 'Invalid JSON response from DeepSeek AI', rawResponse: content }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        });
+      }
+    } else {
+      console.log('Using local Ollama for transcript parsing');
+      const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-home-server-secret': SECRET,
+        },
+        body: JSON.stringify({
+          model: 'gemma4:4b',
+          prompt: `${prompt}\n\nTranscript: "${normalizedTranscript}"`,
+          format: 'json',
+          stream: false,
+        }),
+      });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Ollama API failed: ${response.status} ${errText}`);
+      }
+
+      const data = await response.json();
+      try {
+        parsedResponse = JSON.parse(data.response);
+      } catch (parseError) {
+        console.error('Error parsing Ollama response as JSON:', parseError);
+        return new Response(JSON.stringify({ error: 'Invalid JSON response from Ollama AI', rawResponse: data.response }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        });
+      }
     }
 
     return new Response(JSON.stringify(parsedResponse), {
