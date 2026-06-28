@@ -170,6 +170,7 @@ export const AddScore = () => {
   const [awayTeamRoster, setAwayTeamRoster] = useState([]);
   const [playerIdMap, setPlayerIdMap] = useState({});
   const [existingScores, setExistingScores] = useState([]);
+  const [allPlayers, setAllPlayers] = useState([]);
   const [lastTimeHomeLine2, setLastTimeHomeLine2] = useState(['', '']);
   const [lastTimeHomeLine3, setLastTimeHomeLine3] = useState(['', '']);
   const [lastTimeAwayLine2, setLastTimeAwayLine2] = useState(['', '']);
@@ -220,6 +221,30 @@ export const AddScore = () => {
     setError('');
     addToast('Transcript parsed successfully by AI!', 'success');
   });
+
+  const loadAllPlayers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('player')
+        .select('id, first_name, last_name, ranking')
+        .eq('is_active', true)
+        .order('first_name');
+      
+      if (error) throw error;
+      
+      const idMap = {};
+      const players = (data || []).map(p => {
+        const fullName = `${p.first_name} ${p.last_name}`;
+        idMap[fullName] = p.id;
+        return { id: p.id, name: fullName, ranking: p.ranking };
+      });
+      
+      setPlayerIdMap(prev => ({ ...prev, ...idMap }));
+      setAllPlayers(players);
+    } catch (err) {
+      console.error('Error loading all active players for subs:', err);
+    }
+  };
 
   const loadLastTimePlayers = async (homeTeamId, awayTeamId, currentMatchId) => {
     const fetchTeamLastLine = async (teamId, lineNumber) => {
@@ -326,6 +351,7 @@ export const AddScore = () => {
       try {
         setLoading(true);
         setError('');
+        await loadAllPlayers();
 
         let teamData = null;
         let flattenedMatches = [];
@@ -953,6 +979,21 @@ export const AddScore = () => {
         </div>
       )}
 
+      {hasMatchSelected && (
+        <div className="score-progress-container card">
+          <div className="progress-info">
+            <span className="progress-label">Score Progress</span>
+            <span className="progress-value">{linesRecorded} of {LINES_PER_MATCH} Courts Saved</span>
+          </div>
+          <div className="progress-bar-bg">
+            <div 
+              className="progress-bar-fill" 
+              style={{ width: `${matchProgress}%` }}
+            ></div>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="score-form" noValidate>
         {!urlMatchId && (
           <div className="score-section card card--interactive">
@@ -990,16 +1031,19 @@ export const AddScore = () => {
           </div>
 
           <div className="line-switcher-buttons" style={{ marginTop: '1rem' }}>
-            {lineNumbers.map((line) => (
-              <button
-                key={line}
-                type="button"
-                className={`line-switcher-button${activeLineNumber === line ? ' is-active' : ''}`}
-                onClick={() => setLineFocus(line)}
-              >
-                Court {line}
-              </button>
-            ))}
+            {lineNumbers.map((line) => {
+              const isCompleted = existingScores.some(s => s.line_number === line);
+              return (
+                <button
+                  key={line}
+                  type="button"
+                  className={`line-switcher-button${activeLineNumber === line ? ' is-active' : ''}${isCompleted ? ' is-completed' : ''}`}
+                  onClick={() => setLineFocus(line)}
+                >
+                  Court {line}{isCompleted && ' ✓'}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -1023,7 +1067,16 @@ export const AddScore = () => {
                 onChange={(e) => handlePlayerChange('home', 0, e.target.value)}
               >
                 <option value="">Player 1</option>
-                {homeTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
+                {homeTeamRoster.length > 0 && (
+                  <optgroup label="Roster">
+                    {homeTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
+                  </optgroup>
+                )}
+                <optgroup label="Subs / Other Players">
+                  {allPlayers
+                    .filter(p => !homeTeamRoster.some(rosterPlayer => rosterPlayer.name === p.name))
+                    .map((p, i) => <option key={`sub-${i}`} value={p.name}>{p.name}</option>)}
+                </optgroup>
               </select>
               {formData.matchType === 'doubles' && (
                 <select
@@ -1031,7 +1084,16 @@ export const AddScore = () => {
                   onChange={(e) => handlePlayerChange('home', 1, e.target.value)}
                 >
                   <option value="">Player 2</option>
-                  {homeTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
+                  {homeTeamRoster.length > 0 && (
+                    <optgroup label="Roster">
+                      {homeTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
+                    </optgroup>
+                  )}
+                  <optgroup label="Subs / Other Players">
+                    {allPlayers
+                      .filter(p => !homeTeamRoster.some(rosterPlayer => rosterPlayer.name === p.name))
+                      .map((p, i) => <option key={`sub-${i}`} value={p.name}>{p.name}</option>)}
+                  </optgroup>
                 </select>
               )}
             </div>
@@ -1042,7 +1104,16 @@ export const AddScore = () => {
                 onChange={(e) => handlePlayerChange('away', 0, e.target.value)}
               >
                 <option value="">Player 1</option>
-                {awayTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
+                {awayTeamRoster.length > 0 && (
+                  <optgroup label="Roster">
+                    {awayTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
+                  </optgroup>
+                )}
+                <optgroup label="Subs / Other Players">
+                  {allPlayers
+                    .filter(p => !awayTeamRoster.some(rosterPlayer => rosterPlayer.name === p.name))
+                    .map((p, i) => <option key={`sub-${i}`} value={p.name}>{p.name}</option>)}
+                </optgroup>
               </select>
               {formData.matchType === 'doubles' && (
                 <select
@@ -1050,7 +1121,16 @@ export const AddScore = () => {
                   onChange={(e) => handlePlayerChange('away', 1, e.target.value)}
                 >
                   <option value="">Player 2</option>
-                  {awayTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
+                  {awayTeamRoster.length > 0 && (
+                    <optgroup label="Roster">
+                      {awayTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
+                    </optgroup>
+                  )}
+                  <optgroup label="Subs / Other Players">
+                    {allPlayers
+                      .filter(p => !awayTeamRoster.some(rosterPlayer => rosterPlayer.name === p.name))
+                      .map((p, i) => <option key={`sub-${i}`} value={p.name}>{p.name}</option>)}
+                  </optgroup>
                 </select>
               )}
             </div>
