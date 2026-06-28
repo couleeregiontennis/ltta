@@ -479,3 +479,13 @@
 .line-switcher-button.is-completed:not(.is-active):hover {
   background: rgba(34, 197, 94, 0.08);
 }
+
+.score-group.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.score-group.is-disabled select {
+  background: var(--score-page-bg);
+  cursor: not-allowed;
+}
