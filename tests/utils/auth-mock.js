@@ -130,17 +130,28 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
                 } 
             }];
         } else if (url.includes('/player')) {
-            data = [{ 
-                id: 'p1', 
-                user_id: id, 
-                email, 
-                first_name, 
-                last_name, 
-                is_captain, 
-                is_admin, 
-                is_active: true,
-                player_to_team: [{ id: 'p1-t1', team: 't1', status: 'active' }]
-            }];
+            const parsedUrl = new URL(url);
+            const isActive = parsedUrl.searchParams.get('is_active');
+            if (isActive === 'eq.true' || url.includes('select=id%2Cfirst_name%2Clast_name%2Cranking')) {
+                data = [
+                    { id: 'p1', first_name: 'Test', last_name: 'Player1', ranking: 3 },
+                    { id: 'p2', first_name: 'Sub', last_name: 'One', ranking: 4 },
+                    { id: 'p3', first_name: 'Sub', last_name: 'Two', ranking: 3 },
+                    { id: 'p4', first_name: 'Sub', last_name: 'Three', ranking: 3 }
+                ];
+            } else {
+                data = [{ 
+                    id: 'p1', 
+                    user_id: id, 
+                    email, 
+                    first_name, 
+                    last_name, 
+                    is_captain, 
+                    is_admin, 
+                    is_active: true,
+                    player_to_team: [{ id: 'p1-t1', team: 't1', status: 'active' }]
+                }];
+            }
         } else if (url.includes('/season')) {
             data = [{ id: 's1', number: 1, is_active: true, is_current: true }];
         } else if (url.includes('/team_match')) {

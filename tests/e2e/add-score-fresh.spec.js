@@ -94,4 +94,66 @@ test.describe('Add Score Page (New) @live', () => {
     await expect(page.locator('h1')).toContainText('Match Schedule');
     await expect(page.locator('.match-card').first()).toBeVisible({ timeout: 15000 });
   });
+
+  test('supports selecting substitutes, displays progress, and checkmarks completed lines', async ({ page }) => {
+    await disableNavigatorLocks(page);
+    await mockSupabaseAuth(page, { 
+        id: 'cap-id', 
+        is_captain: true,
+        first_name: 'Test',
+        last_name: 'Captain'
+    });
+
+    // Mock initial existing scores to be Court 1 (recorded)
+    await page.route('**/rest/v1/line_results*', async (route) => {
+      if (route.request().method() === 'GET') {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([
+            {
+              id: 'score-1',
+              match_id: 'match-1',
+              line_number: 1,
+              match_type: 'doubles',
+              home_player_1_id: 'p1',
+              home_player_2_id: 'p2',
+              away_player_1_id: 'p3',
+              away_player_2_id: 'p4',
+              home_set_1: 6,
+              away_set_1: 4,
+              home_set_2: 6,
+              away_set_2: 4,
+              home_won: true
+            }
+          ])
+        });
+      }
+      return route.continue();
+    });
+
+    await page.goto('/add-score?matchId=match-1');
+    await expect(page.locator('body')).not.toContainText('Loading...', { timeout: 20000 });
+
+    // Verify progress bar is visible and says "1 of 4"
+    const progressContainer = page.locator('.score-progress-container');
+    await expect(progressContainer).toBeVisible();
+    await expect(progressContainer).toContainText('1 of 4');
+
+    // Verify Court 1 button has a checkmark (or is completed)
+    const court1Btn = page.locator('.line-switcher-button', { hasText: 'Court 1' });
+    await expect(court1Btn).toContainText('✓');
+
+    // Verify player dropdown contains optgroup with substitutes
+    const homePlayer1Select = page.locator('.form-group:has-text("Home Players") select').first();
+    await expect(homePlayer1Select).toBeVisible();
+
+    // Check if the optgroup is present
+    const optgroup = homePlayer1Select.locator('optgroup[label="Subs / Other Players"]');
+    await expect(optgroup).toBeAttached();
+
+    // Verify we can see the mock sub names
+    const subOption = optgroup.locator('option[value="Sub One"]');
+    await expect(subOption).toBeAttached();
+  });
 });
