@@ -55,4 +55,33 @@ test.describe('New Player Onboarding Flow @live', () => {
         await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
         await expect(page.locator('input#first-name')).toBeVisible();
     });
+
+    test('should autofill first and last name from email name parts', async ({ page }) => {
+        // Mock session with structured email address
+        await mockSupabaseAuth(page, {
+            id: 'new-user-id2',
+            email: 'john.doe@test.local'
+        });
+
+        // Re-register the profile 406 mock so it overrides mockSupabaseAuth's default profile mock
+        await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
+            const accept = route.request().headers()['accept'] || '';
+            if (accept.includes('vnd.pgrst.object')) {
+                return route.fulfill({
+                    status: 406,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ code: "PGRST116", message: "Not Found" }),
+                });
+            }
+            return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+        });
+
+        // Navigate to protected page to trigger session load and correct redirect to onboarding
+        await page.goto('/my-schedule');
+        await page.waitForURL('**/welcome', { timeout: 15000 });
+
+        await page.waitForSelector('input#first-name', { timeout: 15000 });
+        await expect(page.locator('input#first-name')).toHaveValue('John');
+        await expect(page.locator('input#last-name')).toHaveValue('Doe');
+    });
 });

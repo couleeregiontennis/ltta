@@ -56,8 +56,10 @@ test.describe('Protected Pages @live', () => {
       });
     });
 
-    // Mock matches (team_match table)
+    // Mock matches (team_match table) and track URL
+    let teamMatchRequestUrl = '';
     await page.route('**/rest/v1/team_match*', async (route) => {
+        teamMatchRequestUrl = route.request().url();
         await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -78,6 +80,9 @@ test.describe('Protected Pages @live', () => {
     await expect(page.getByRole('heading', { name: 'My Schedule' })).toBeVisible();
     // Component displays "Team X - Name", not "My Team vs Rivals" directly
     await expect(page.getByText('Team 6 - Rivals')).toBeVisible();
+
+    // Verify the query parameters correctly leverage OR syntax rather than ANDing home and away team IDs
+    expect(decodeURIComponent(teamMatchRequestUrl)).toContain('or=(home_team_id.in.');
   });
 
   test('Captain Dashboard loads', async ({ page }) => {

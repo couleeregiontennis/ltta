@@ -31,4 +31,16 @@ test.describe('Add Score Page @live', () => {
     await expect(page.locator('.match-prefilled-banner')).toBeVisible();
     await expect(page.locator('body')).toContainText('Home Team');
   });
+
+  test('automatically preselects first upcoming match when no query parameters provided', async ({ page }) => {
+    await disableNavigatorLocks(page);
+    await mockSupabaseAuth(page, { is_captain: true });
+    await page.goto('/add-score');
+    await expect(page.locator('body')).not.toContainText('Loading...', { timeout: 15000 });
+    
+    // Verify match is automatically preselected (match-1 from mock)
+    const matchSelect = page.locator('select[name="matchId"]');
+    await expect(matchSelect).toHaveValue('match-1');
+    await expect(page.locator('body')).toContainText('Home Team');
+  });
 });
