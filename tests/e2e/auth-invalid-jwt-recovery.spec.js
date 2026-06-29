@@ -20,7 +20,12 @@ test.describe('Invalid JWT Recovery Flow', () => {
         },
         expires_at: Math.floor(Date.now() / 1000) + 3600
       };
-      window.localStorage.setItem('sb-example-auth-token', JSON.stringify(mockSession));
+
+      const supabaseUrl = window._env_?.VITE_SUPABASE_URL || 'https://example.supabase.co';
+      const match = supabaseUrl.match(/https?:\/\/([^.]+)/);
+      const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
+      window.localStorage.setItem(`sb-${projectRef}-auth-token`, JSON.stringify(mockSession));
+
     });
 
     // 2. Intercept queries and return 401 / PGRST301
@@ -51,7 +56,19 @@ test.describe('Invalid JWT Recovery Flow', () => {
 
     // Verify localStorage has been cleared of the bad session
     await expect.poll(async () => {
-      return await page.evaluate(() => window.localStorage.getItem('sb-example-auth-token'));
+      try {
+        return await page.evaluate(() => {
+          const supabaseUrl = window._env_?.VITE_SUPABASE_URL || 'https://example.supabase.co';
+          const match = supabaseUrl.match(/https?:\/\/([^.]+)/);
+          const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
+          return window.localStorage.getItem(`sb-${projectRef}-auth-token`);
+        });
+      } catch (e) {
+        if (e.message.includes('Execution context was destroyed') || e.message.includes('Target page, context or browser has been closed')) {
+          return 'navigating';
+        }
+        throw e;
+      }
     }, {
       timeout: 10000,
       intervals: [500]
