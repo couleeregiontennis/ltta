@@ -67,7 +67,12 @@ export const Team = () => {
           .eq('team', teamDetails.id);
 
         if (linksError) throw linksError;
-        const playerIds = playerLinks.map(link => link.player);
+        const playerIds = playerLinks.map(link => {
+          if (typeof link.player === 'object' && link.player !== null) {
+            return link.player.id;
+          }
+          return link.player;
+        });
 
         // 4. Fetch player details for the roster
         if (playerIds.length > 0) {
@@ -128,7 +133,12 @@ export const Team = () => {
 
       if (linksError) throw linksError;
 
-      const playerIds = [...new Set(playerLinks?.map(link => link.player) || [])];
+      const playerIds = [...new Set(playerLinks?.map(link => {
+        if (typeof link.player === 'object' && link.player !== null) {
+          return link.player.id;
+        }
+        return link.player;
+      }) || [])];
 
       let players = [];
       if (playerIds.length > 0) {
