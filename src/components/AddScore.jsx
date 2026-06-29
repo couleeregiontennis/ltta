@@ -501,6 +501,25 @@ export const AddScore = () => {
             setAwayTeamRoster(awayRoster);
             await loadExistingScores(urlMatch.id, homeRoster, awayRoster, lastTimeData);
           }
+        } else if (flattenedMatches.length > 0) {
+          const defaultMatch = flattenedMatches[0];
+          setSelectedMatch(defaultMatch);
+          setFormData(prev => ({
+            ...prev,
+            matchId: defaultMatch.id,
+            homePlayers: ['', ''],
+            awayPlayers: ['', '']
+          }));
+
+          const [homeRoster, awayRoster, lastTimeData] = await Promise.all([
+            loadTeamRoster(defaultMatch.home_team_number, defaultMatch.home_team_night),
+            loadTeamRoster(defaultMatch.away_team_number, defaultMatch.away_team_night),
+            loadLastTimePlayers(defaultMatch.home_team_id, defaultMatch.away_team_id, defaultMatch.id)
+          ]);
+
+          setHomeTeamRoster(homeRoster);
+          setAwayTeamRoster(awayRoster);
+          await loadExistingScores(defaultMatch.id, homeRoster, awayRoster, lastTimeData);
         }
 
       } catch (err) {

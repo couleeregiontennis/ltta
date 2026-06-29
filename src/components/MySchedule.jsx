@@ -66,8 +66,7 @@ export const MySchedule = () => {
               away_player_2_id
             )
           `)
-          .in('home_team_id', teamIds)
-          .in('away_team_id', teamIds)
+          .or(`home_team_id.in.(${teamIds.join(',')}),away_team_id.in.(${teamIds.join(',')})`)
           .gte('date', new Date().toISOString().split('T')[0])
           .eq('status', 'scheduled')
           .order('date', { ascending: true });

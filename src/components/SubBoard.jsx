@@ -5,7 +5,7 @@ import { LoadingSpinner } from './LoadingSpinner';
 import '../styles/SubBoard.css';
 
 export const SubBoard = () => {
-    const { user, userRole } = useAuth();
+    const { user, userRole, currentPlayerData } = useAuth();
     const [activeTab, setActiveTab] = useState('available'); // 'available' or 'my_requests'
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ export const SubBoard = () => {
                 fetchFormData();
             }
         }
-    }, [user, activeTab]);
+    }, [user, activeTab, currentPlayerData, userRole]);
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -59,6 +59,41 @@ export const SubBoard = () => {
         setLoading(false);
     };
 
+    const autofillMatchInfo = async (teamId) => {
+        if (!teamId) return;
+        try {
+            const { data: matches } = await supabase
+                .from('team_match')
+                .select('date, time, location_id')
+                .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+                .eq('status', 'scheduled')
+                .gte('date', new Date().toISOString().split('T')[0])
+                .order('date', { ascending: true })
+                .limit(1);
+
+            if (matches && matches.length > 0) {
+                const match = matches[0];
+                setFormData(prev => ({
+                    ...prev,
+                    team_id: teamId,
+                    match_date: match.date || '',
+                    match_time: match.time || '',
+                    location_id: match.location_id || ''
+                }));
+            } else {
+                setFormData(prev => ({
+                    ...prev,
+                    team_id: teamId,
+                    match_date: '',
+                    match_time: '',
+                    location_id: ''
+                }));
+            }
+        } catch (err) {
+            console.error('Failed to autofill match info:', err);
+        }
+    };
+
     const fetchFormData = async () => {
         // Fetch Teams the captain belongs to (assuming we can just fetch all teams for now if admin, or user's teams)
         // For simplicity, fetch all teams
@@ -67,6 +102,19 @@ export const SubBoard = () => {
 
         const { data: locData } = await supabase.from('location').select('*').order('name');
         if (locData) setLocations(locData);
+
+        if (currentPlayerData?.id) {
+            const { data: ptData } = await supabase
+                .from('player_to_team')
+                .select('team (*)')
+                .eq('player', currentPlayerData.id);
+            if (ptData && ptData.length > 0) {
+                const captainTeams = ptData.map(pt => pt.team).filter(Boolean);
+                if (captainTeams.length > 0 && !formData.team_id) {
+                    await autofillMatchInfo(captainTeams[0].id);
+                }
+            }
+        }
     };
 
     const handleCreateRequest = async (e) => {
@@ -163,7 +211,15 @@ export const SubBoard = () => {
                                 <h3>Create Sub Request</h3>
                                 <div className="form-group">
                                     <label>Team</label>
-                                    <select required value={formData.team_id} onChange={e => setFormData({ ...formData, team_id: e.target.value })}>
+                                    <select 
+                                        required 
+                                        value={formData.team_id} 
+                                        onChange={e => {
+                                            const selectedTeamId = e.target.value;
+                                            setFormData(prev => ({ ...prev, team_id: selectedTeamId }));
+                                            autofillMatchInfo(selectedTeamId);
+                                        }}
+                                    >
                                         <option value="">Select Team</option>
                                         {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                     </select>

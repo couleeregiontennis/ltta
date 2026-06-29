@@ -34,6 +34,20 @@ export const OnboardingWizard = () => {
     fetchTeams();
   }, []);
 
+  useEffect(() => {
+    if (user && !formData.firstName && !formData.lastName) {
+      const emailName = user.email ? user.email.split('@')[0] : '';
+      const parts = emailName.split('.');
+      const first = user.user_metadata?.first_name || user.user_metadata?.name?.split(' ')[0] || parts[0] || '';
+      const last = user.user_metadata?.last_name || user.user_metadata?.name?.split(' ').slice(1).join(' ') || parts[1] || '';
+      setFormData(prev => ({
+        ...prev,
+        firstName: prev.firstName || first.charAt(0).toUpperCase() + first.slice(1),
+        lastName: prev.lastName || (last ? last.charAt(0).toUpperCase() + last.slice(1) : '')
+      }));
+    }
+  }, [user]);
+
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
