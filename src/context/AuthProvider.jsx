@@ -42,6 +42,29 @@ export const AuthProvider = ({ children }) => {
       const playerData = playerRes.status === 'fulfilled' && playerRes.value ? playerRes.value.data : null;
       const seasonData = seasonRes.status === 'fulfilled' && seasonRes.value ? seasonRes.value.data : null;
 
+      const playerError = playerRes.status === 'fulfilled' && playerRes.value ? playerRes.value.error : null;
+      const seasonError = seasonRes.status === 'fulfilled' && seasonRes.value ? seasonRes.value.error : null;
+      const playerStatus = playerRes.status === 'fulfilled' && playerRes.value ? playerRes.value.status : null;
+      const seasonStatus = seasonRes.status === 'fulfilled' && seasonRes.value ? seasonRes.value.status : null;
+
+      const isAuthError = (err, status) => {
+        if (status === 401 || status === 403) return true;
+        if (err && (err.code === 'PGRST301' || err.code === 'PGRST302' || err.message?.includes('JWT') || err.message?.includes('token'))) return true;
+        return false;
+      };
+
+      if (isAuthError(playerError, playerStatus) || isAuthError(seasonError, seasonStatus)) {
+        console.warn('[AuthProvider] Invalid or expired JWT detected. Clearing session...');
+        const supabaseUrl = window._env_?.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
+        const match = supabaseUrl?.match(/https?:\/\/([^.]+)/);
+        const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
+        localStorage.removeItem(`sb-${projectRef}-auth-token`);
+        localStorage.removeItem('sb-shlcqztfdhfwkhijwgue-auth-token');
+        localStorage.removeItem('supabase.auth.token');
+        window.location.reload();
+        return;
+      }
+
       console.log('[AuthProvider] Player response status:', playerRes.status);
       console.log('[AuthProvider] Player data present:', !!playerData);
 
