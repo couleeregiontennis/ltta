@@ -96,6 +96,14 @@ test('visual check: mobile standings cards', async ({ page }) => {
 
   await mockSupabaseAuth(page, { is_captain: true });
 
+  await page.route(/\/rest\/v1\/season($|\?)/, async route => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ id: "s1", number: 1, is_active: true, is_current: true }]) });
+  });
+  await page.route(/\/rest\/v1\/player($|\?)/, async route => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ id: 'test-user-id', first_name: 'Test' }]) });
+  });
+
+
   // Mock standings data
   await page.route(/\/rest\/v1\/standings_2026_view($|\?)/, async route => {
     const data = [
