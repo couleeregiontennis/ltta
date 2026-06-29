@@ -162,7 +162,17 @@ test('visual check: mobile standings cards', async ({ page }) => {
     if (route.request().headers()['prefer']?.includes('count=exact')) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]), headers: { 'content-range': '0-0/48' } });
     } else {
-      await route.continue();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{
+          id: 'fake-user-id',
+          first_name: 'Test',
+          last_name: 'User',
+          is_captain: true,
+          is_admin: true
+        }])
+      });
     }
   });
 
