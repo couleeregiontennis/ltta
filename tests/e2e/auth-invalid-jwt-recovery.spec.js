@@ -20,7 +20,9 @@ test.describe('Invalid JWT Recovery Flow', () => {
         },
         expires_at: Math.floor(Date.now() / 1000) + 3600
       };
-      window.localStorage.setItem('sb-shlcqztfdhfwkhijwgue-auth-token', JSON.stringify(mockSession));
+      window.localStorage.setItem(`sb-shlcqztfdhfwkhijwgue-auth-token`, JSON.stringify(mockSession));
+      window.localStorage.setItem(`sb-example-auth-token`, JSON.stringify(mockSession));
+      window.localStorage.setItem('supabase.auth.token', JSON.stringify(mockSession)); // fallback
     });
 
     // 2. Intercept queries and return 401 / PGRST301
@@ -50,8 +52,19 @@ test.describe('Invalid JWT Recovery Flow', () => {
     await page.goto('/');
 
     // Verify localStorage has been cleared of the bad session
+    const expectedKey = 'sb-example-auth-token';
     await expect.poll(async () => {
-      return await page.evaluate(() => window.localStorage.getItem('sb-shlcqztfdhfwkhijwgue-auth-token'));
+      try {
+        const val1 = await page.evaluate((key) => window.localStorage.getItem(key), expectedKey);
+        const val2 = await page.evaluate(() => window.localStorage.getItem('supabase.auth.token'));
+        if (val1 === null && val2 === null) return null; // This is the success condition!
+        return "still present";
+      } catch (e) {
+        if (e.message.includes('Execution context was destroyed')) {
+           return null;
+        }
+        throw e;
+      }
     }, {
       timeout: 10000,
       intervals: [500]
