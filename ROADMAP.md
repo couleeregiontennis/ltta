@@ -50,12 +50,26 @@ This document outlines planned features and enhancements for the Coulee Region T
     *   Ensure calculation logic perfectly matches CRTA official rules.
     *   Add a UI tooltip or legend below the `Standings` table explaining the tie-breaker hierarchy.
 
-### 7. Mobile Optimization for Score Entry
-*   **Problem:** The `AddScore` component is heavily used on mobile devices court-side, making standard text inputs prone to "fat-finger" errors.
-*   **Solution:** Overhaul the `AddScore` form specifically for mobile viewports.
+### 8. Admin Team Management
+*   **Problem:** The `/admin/team-management` route is currently a placeholder saying "Team Management (Coming Soon)". Admins need a interface to assign players to teams, edit team numbers/names, and configure team play nights.
 *   **Key Requirements:**
-    *   Convert standard text inputs to large, tap-friendly number dials, specific `type="number"` inputs, or dropdowns.
-    *   Ensure the transition between sets and tiebreakers is intuitive on small screens.
+    *   Implement roster editing (add/remove players from a team).
+    *   Implement team details editing (number, name, night of play).
+    *   Secure access so only admins can view or edit.
+
+### 9. Real-time Rainout Alerts
+*   **Problem:** Players and captains need immediate notification when matches are rained out to avoid traveling to courts.
+*   **Key Requirements:**
+    *   Extend the existing rainout system to trigger automated SMS broadcasts.
+    *   Broadcast to active captains and players scheduled for the canceled matches.
+    *   Integrate with an SMS gateway (e.g. Twilio via Supabase Edge Function).
+
+### 10. Offline Mode for Score Entry
+*   **Problem:** Court-side cellular connection can be spotty or non-existent, causing captain score submissions to fail and frustrating users.
+*   **Key Requirements:**
+    *   Add service worker caching or IndexedDB/localStorage fallback to save score drafts locally.
+    *   Allow offline draft entry and validation in the UI.
+    *   Automatically sync with Supabase once network connection is restored.
 
 ## Recently Completed / In Progress
 
