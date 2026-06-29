@@ -17,7 +17,7 @@ describe('Database Schema Validation', () => {
             // Extract the function body or search for the buggy pattern
             // The buggy pattern was setting first_name/last_name directly to split_part(NEW.email, '@', 1)
             // without any CASE or COALESCE/NULLIF checking if they are already populated.
-            const buggyPattern = /first_name\s*=\s*split_part\(\s*NEW\.email/i;
+            const buggyPattern = /(?:first_name|last_name)\s*=\s*split_part\(\s*NEW\.email/i;
             const hasBuggyPattern = buggyPattern.test(content);
             
             expect(hasBuggyPattern).toBe(false);
