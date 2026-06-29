@@ -170,7 +170,7 @@ test('visual check: mobile standings cards', async ({ page }) => {
     if (route.request().headers()['prefer']?.includes('count=exact')) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]), headers: { 'content-range': '0-0/48' } });
     } else {
-      await route.continue();
+      await route.fallback();
     }
   });
 

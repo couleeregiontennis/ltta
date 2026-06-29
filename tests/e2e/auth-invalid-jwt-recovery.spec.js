@@ -5,8 +5,12 @@ test.describe('Invalid JWT Recovery Flow', () => {
   test('should clear local storage and reload when queries return JWT expired/unauthorized', async ({ page }) => {
     await disableNavigatorLocks(page);
 
-    // 1. Inject an initial mock session token in localStorage
+    // 1. Inject an initial mock session token in localStorage once
     await page.addInitScript(() => {
+      if (window.sessionStorage.getItem('injected-bad-jwt')) {
+        return;
+      }
+      window.sessionStorage.setItem('injected-bad-jwt', 'true');
       const mockSession = {
         access_token: 'expired-or-bad-jwt',
         token_type: 'bearer',
