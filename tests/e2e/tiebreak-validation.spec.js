@@ -162,6 +162,7 @@ test.describe('Tiebreak Validation @live', () => {
     await expect(page.locator('.error-message')).toContainText(/Third set must be a valid tiebreak/);
 
     // Test case 2: 7-5 (valid)
+    await expect(set3.locator('select').nth(0)).toBeEnabled();
     await set3.locator('select').nth(0).selectOption('7');
     await set3.locator('select').nth(1).selectOption('5');
     await page.getByRole('button', { name: 'Save Court Results' }).click();
@@ -224,5 +225,74 @@ test.describe('Tiebreak Validation @live', () => {
 
     // The score group should have the is-disabled class
     await expect(sets.nth(2)).toHaveClass(/is-disabled/);
+  });
+  test('offline mode queues score submission', async ({ page, context }) => {
+    // Fill the basic form fields just enough to pass validation
+    const sets = page.locator('.score-group');
+
+    await expect(sets.nth(0).locator('select').nth(0)).toHaveValue('6');
+
+    // Fill in set 3
+    await sets.nth(2).locator('select').nth(0).selectOption('7');
+    await sets.nth(2).locator('select').nth(1).selectOption('5');
+
+    // Setup an offline queue mock listener to handle the sync network request when online
+    await page.route('**/rest/v1/line_results*', async (route) => {
+        if (route.request().method() === 'POST' || route.request().method() === 'PATCH') {
+             await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([{ id: 'mock-id', status: 'success' }]),
+            });
+        } else {
+             await route.fallback();
+        }
+    });
+
+    await page.route('**/rest/v1/team_match*', async (route) => {
+         if (route.request().method() === 'PATCH') {
+             await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([{ id: 'match-1', status: 'success' }]),
+            });
+         } else {
+             await route.fallback();
+         }
+    });
+
+    // Force UI offline mode natively via setOffline
+    await context.setOffline(true);
+    await page.evaluate(() => {
+        Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+        window.dispatchEvent(new Event('offline'));
+    });
+
+    // Wait for button to change text
+    await expect(page.getByRole('button', { name: 'Queue Offline Submission' })).toBeVisible();
+    await page.getByRole('button', { name: 'Queue Offline Submission' }).click();
+
+    // Verify localStorage has the queued score
+    const offlineScores = await page.evaluate(() => JSON.parse(localStorage.getItem('ltta-offline-scores')));
+    expect(offlineScores).toBeDefined();
+    expect(offlineScores.length).toBe(1);
+    expect(offlineScores[0].payload.home_set_1).toBe(6);
+
+    // Go back online
+    await context.setOffline(false);
+    await page.evaluate(() => {
+        Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
+        window.dispatchEvent(new Event('online'));
+    });
+
+    // Wait for auto-sync and verify success toast (assuming the sync manager does its job)
+    await expect(page.locator('.toast--success')).toContainText('Successfully synced 1 score(s).', { timeout: 10000 });
+
+    // Verify localStorage is cleared
+    await expect(async () => {
+        const updatedOfflineScores = await page.evaluate(() => JSON.parse(localStorage.getItem('ltta-offline-scores')));
+        expect(updatedOfflineScores).toBeDefined();
+        expect(updatedOfflineScores.length).toBe(0);
+    }).toPass({ timeout: 10000 });
   });
 });
