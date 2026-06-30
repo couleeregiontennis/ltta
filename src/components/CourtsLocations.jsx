@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../scripts/supabaseClient';
 import { LoadingSpinner } from './LoadingSpinner';
 import '../styles/CourtsLocations.css';
 
