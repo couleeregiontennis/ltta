@@ -48,10 +48,10 @@ const StandingsCard = memo(({ team, index }) => {
           </div>
         </div>
         <div className="card-status">
-          {team.playoffStatus === 'Clinched' && <span className="status-badge clinched" title="Clinched 1st Place">🏆 Clinched</span>}
-          {team.playoffStatus === 'Eliminated' && <span className="status-badge eliminated">Eliminated</span>}
-          {team.playoffStatus === 'Control Destiny' && <span className="status-badge control">Control Destiny</span>}
-          {team.playoffStatus === 'On the Hunt' && <span className="status-badge hunt" title="Magic Number to Clinch">Magic #: {team.magicNumber}</span>}
+          {team.playoffStatus === 'Clinched' && <span className="status-badge clinched" title={team.playoffExplanation || "Clinched 1st Place"}>🏆 Clinched</span>}
+          {team.playoffStatus === 'Eliminated' && <span className="status-badge eliminated" title={team.playoffExplanation || "Cannot reach 1st place"}>Eliminated</span>}
+          {team.playoffStatus === 'Control Destiny' && <span className="status-badge control" title={team.playoffExplanation || "Win remaining matches to guarantee 1st place"}>Control Destiny</span>}
+          {team.playoffStatus === 'On the Hunt' && <span className="status-badge hunt" title={team.playoffExplanation || `Magic Number: ${team.magicNumber}`}>Magic #: {team.magicNumber}</span>}
           {!team.playoffStatus && team.playNight && <span className="status-badge">—</span>}
         </div>
       </div>
@@ -81,10 +81,10 @@ const StandingsCard = memo(({ team, index }) => {
         </td>
         <td data-label="Night">{team.playNight || '—'}</td>
         <td data-label="Status">
-          {team.playoffStatus === 'Clinched' && <span className="status-badge clinched" title="Clinched 1st Place">🏆 Clinched</span>}
-          {team.playoffStatus === 'Eliminated' && <span className="status-badge eliminated">Eliminated</span>}
-          {team.playoffStatus === 'Control Destiny' && <span className="status-badge control">Control Destiny</span>}
-          {team.playoffStatus === 'On the Hunt' && <span className="status-badge hunt" title="Magic Number to Clinch">Magic #: {team.magicNumber}</span>}
+          {team.playoffStatus === 'Clinched' && <span className="status-badge clinched" title={team.playoffExplanation || "Clinched 1st Place"}>🏆 Clinched</span>}
+          {team.playoffStatus === 'Eliminated' && <span className="status-badge eliminated" title={team.playoffExplanation || "Cannot reach 1st place"}>Eliminated</span>}
+          {team.playoffStatus === 'Control Destiny' && <span className="status-badge control" title={team.playoffExplanation || "Win remaining matches to guarantee 1st place"}>Control Destiny</span>}
+          {team.playoffStatus === 'On the Hunt' && <span className="status-badge hunt" title={team.playoffExplanation || `Magic Number: ${team.magicNumber}`}>Magic #: {team.magicNumber}</span>}
           {!team.playoffStatus && <span className="status-badge">—</span>}
         </td>
         <td data-label="Matches">{team.matchesPlayed}</td>
@@ -150,7 +150,7 @@ const Standings = () => {
           away_team:away_team_id (name)
         `).order('date', { ascending: false }).limit(6),
         supabase.from('team_match').select('date'),
-        supabase.functions.invoke('playoff-scenarios'),
+        supabase.functions.invoke('playoff-scenarios', { body: { season_id: currentSeason?.id } }),
         supabase.from('team_match').select('home_team_id, away_team_id').eq('is_disputed', true)
       ]);
 
@@ -205,6 +205,7 @@ const Standings = () => {
             bonusPoints: team.total_bonus_points,
             playoffStatus: scenarios?.status || '',
             magicNumber: scenarios?.magicNumber || 0,
+            playoffExplanation: scenarios?.explanation || '',
             hasDisputes: disputedTeamIds.has(team.team_id)
           };
       });

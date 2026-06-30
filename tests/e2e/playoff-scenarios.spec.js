@@ -23,10 +23,10 @@ test.describe('Playoff Scenarios UI @live', () => {
         // Intercept specific Supabase Edge Function calls
         await page.route('**/functions/v1/playoff-scenarios', async route => {
             const json = {
-                "1": { "magicNumber": 0, "status": "Clinched", "matchesRemaining": 0, "maxPossibleWins": 10 },
-                "2": { "magicNumber": 2, "status": "Control Destiny", "matchesRemaining": 4, "maxPossibleWins": 11 },
-                "3": { "magicNumber": 4, "status": "On the Hunt", "matchesRemaining": 5, "maxPossibleWins": 9 },
-                "4": { "magicNumber": 0, "status": "Eliminated", "matchesRemaining": 1, "maxPossibleWins": 5 }
+                "1": { "magicNumber": 0, "status": "Clinched", "matchesRemaining": 0, "maxPossibleWins": 10, "explanation": "Clinched 1st place." },
+                "2": { "magicNumber": 2, "status": "Control Destiny", "matchesRemaining": 4, "maxPossibleWins": 11, "explanation": "2 wins out of 4 remaining matches guarantees 1st place." },
+                "3": { "magicNumber": 4, "status": "On the Hunt", "matchesRemaining": 5, "maxPossibleWins": 9, "explanation": "Any combination of 4 wins and 1st place team losses guarantees 1st place." },
+                "4": { "magicNumber": 0, "status": "Eliminated", "matchesRemaining": 1, "maxPossibleWins": 5, "explanation": "Cannot reach 1st place." }
             };
             await route.fulfill({ json });
         });
@@ -87,5 +87,18 @@ test.describe('Playoff Scenarios UI @live', () => {
         await expect(page.locator('.standings-table >> text=Control Destiny')).toBeVisible();
         await expect(page.locator('.standings-table >> text=Magic #:')).toBeVisible();
         await expect(page.locator('.standings-table >> text=Eliminated')).toBeVisible();
+
+        // Verify hover tooltips (title attribute)
+        const clinchedBadge = page.locator('.standings-table >> text=Clinched').first();
+        await expect(clinchedBadge).toHaveAttribute('title', 'Clinched 1st place.');
+
+        const controlBadge = page.locator('.standings-table >> text=Control Destiny').first();
+        await expect(controlBadge).toHaveAttribute('title', '2 wins out of 4 remaining matches guarantees 1st place.');
+
+        const huntBadge = page.locator('.standings-table >> text=Magic #:').first();
+        await expect(huntBadge).toHaveAttribute('title', 'Any combination of 4 wins and 1st place team losses guarantees 1st place.');
+
+        const eliminatedBadge = page.locator('.standings-table >> text=Eliminated').first();
+        await expect(eliminatedBadge).toHaveAttribute('title', 'Cannot reach 1st place.');
     });
 });
