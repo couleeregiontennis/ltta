@@ -44,7 +44,7 @@
     "test:e2e:functional": "playwright test --project=chromium --grep-invert visual",
     "test:e2e:ui": "playwright test --ui",
     "test:clean-db": "node scripts/clean-db.js",
-    "db:staging:reset": "node scripts/reset-staging-db.js"
+    "db:staging:reset": "psql $STAGING_DB_URL -f supabase/seed.sql"
   },
   "browserslist": {
     "production": [

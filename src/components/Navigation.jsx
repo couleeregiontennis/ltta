@@ -59,6 +59,13 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
 
   return (
     <header>
+
+      {import.meta.env.VITE_IS_STAGING === 'true' && (
+        <div style={{ backgroundColor: '#ff9800', color: 'white', textAlign: 'center', padding: '10px', fontWeight: 'bold', zIndex: 1000, position: 'relative' }} className="staging-demo-banner">
+          DEMO MODE - Using Simulated Staging Data
+        </div>
+      )}
+
       <nav className="navbar" ref={navRef}>
         <div className="navbar-container">
           <div className="navbar-brand">
