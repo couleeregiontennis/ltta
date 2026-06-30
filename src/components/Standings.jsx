@@ -134,13 +134,11 @@ const Standings = () => {
 
   const fetchStandings = useCallback(async () => {
     if (!currentSeason) {
-      console.log('Standings: No current season, skipping fetch');
       return;
     }
     try {
       setLoading(true);
       setError('');
-      console.log('Standings: Fetching data for season:', currentSeason.id);
 
       // Use allSettled to ensure one failing call doesn't block the whole page
       const results = await Promise.allSettled([
@@ -177,10 +175,7 @@ const Standings = () => {
       const playoffData = playoffRes.status === 'fulfilled' ? playoffRes.value.data : null;
       const disputedMatches = disputedRes.status === 'fulfilled' ? disputedRes.value.data : [];
 
-      console.log('Standings: Data loaded successfully', { 
-        standingsCount: standingsData?.length,
-        recentCount: recentMatchesData?.length 
-      });
+
 
       const disputedTeamIds = new Set();
       if (disputedMatches) {
