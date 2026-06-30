@@ -91,7 +91,20 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
         let data = [];
         
         if (url.includes('/player_to_team')) {
-            data = [{ team: 't1', status: 'active', player: id }];
+            data = [{ 
+                team: { id: 't1', name: 'Test Team', number: 1, play_night: 'Tuesday' }, 
+                status: 'active', 
+                player: { 
+                    id: 'p1', 
+                    user_id: id, 
+                    email, 
+                    first_name, 
+                    last_name, 
+                    is_captain, 
+                    is_admin, 
+                    is_active: true 
+                } 
+            }];
         } else if (url.includes('/player')) {
             data = [{ id: 'p1', user_id: id, email, first_name, last_name, is_captain, is_admin, is_active: true }];
         } else if (url.includes('/season')) {

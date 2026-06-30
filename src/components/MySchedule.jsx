@@ -40,17 +40,16 @@ export const MySchedule = () => {
 
         if (teamError) throw teamError;
 
-        const teams = teamData.map(t => t.team);
+        const teams = teamData.map(t => t.team).filter(Boolean);
         setTeamInfo(teams);
 
-        if (teams.length === 0) {
-          setError('You are not currently assigned to any teams.');
+        const teamIds = teams.map(t => t.id).filter(Boolean);
+
+        if (teamIds.length === 0) {
+          setUpcomingMatches([]);
           setLoading(false);
           return;
         }
-
-        // Get upcoming matches for all user's teams
-        const teamIds = teams.map(t => t.id);
         const { data: matchData, error: matchError } = await supabase
           .from('team_match')
           .select(`
