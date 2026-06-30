@@ -26,7 +26,7 @@ serve(async (req) => {
 
     // 1. Get all standings using the proper view
     const { data: standings, error: standingsError } = await supabase
-      .from('standings_2026_view')
+      .from('standings_view')
       .select('*');
 
     if (standingsError) throw standingsError;
