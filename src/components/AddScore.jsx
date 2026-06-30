@@ -547,7 +547,6 @@ export const AddScore = () => {
   };
 
   const handleMatchSelect = async (matchId) => {
-    console.log('AddScore: Selected matchId:', matchId);
     const match = availableMatches.find(m => m.id === matchId);
     if (match) {
       const { data: teamMatchData } = await supabase
