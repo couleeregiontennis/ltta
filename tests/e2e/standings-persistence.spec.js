@@ -6,7 +6,7 @@ test.describe('Standings Persistence', () => {
     await disableNavigatorLocks(page);
 
     // Mock season data
-    await page.route(/\/rest\/v1\/season($|\?)/, async (route) => {
+    await page.route('**/rest/v1/season*', async (route) => {
       const seasonObj = {
         id: 's2026-uuid',
         number: 2026,
@@ -38,6 +38,7 @@ test.describe('Standings Persistence', () => {
             matches_played: 12,
             total_sets_won: 20,
             total_sets_lost: 4,
+            games_won: 100, games_lost: 50,
             win_percentage: 83.3,
             total_bonus_points: 2
           },
@@ -50,6 +51,7 @@ test.describe('Standings Persistence', () => {
             matches_played: 12,
             total_sets_won: 10,
             total_sets_lost: 14,
+            games_won: 80, games_lost: 100,
             win_percentage: 41.7,
             total_bonus_points: 1
           }
@@ -94,7 +96,7 @@ test.describe('Standings Persistence', () => {
     });
 
     // Mock player count
-    await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
+    await page.route('**/rest/v1/player*', async (route) => {
       if (route.request().method() === 'HEAD') {
         await route.fulfill({
           status: 200,
@@ -124,5 +126,102 @@ test.describe('Standings Persistence', () => {
 
     // Verify 'Tuesday' filter is still active
     await expect(page.getByRole('button', { name: 'Tuesday' })).toHaveClass(/active/);
+  });
+
+  test('ranks teams correctly based on sets percentage tie-breaker', async ({ page, isMobile }) => {
+    // Mock standings view data with identical match wins but different sets %
+    await page.route('**/rest/v1/standings_2026_view*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            team_id: 't2',
+            team_name: 'Team B',
+            team_number: 2,
+            play_night: 'Monday',
+            total_points: 20,
+            wins: 10,
+            matches_played: 12,
+            total_sets_won: 15,
+            total_sets_lost: 9, // 15/24 = 62.5% Sets %
+            games_won: 100,
+            games_lost: 50,
+            win_percentage: 83.3,
+            total_bonus_points: 0
+          },
+          {
+            team_id: 't1',
+            team_name: 'Team A',
+            team_number: 1,
+            play_night: 'Monday',
+            total_points: 20,
+            wins: 10,
+            matches_played: 12,
+            total_sets_won: 18,
+            total_sets_lost: 6, // 18/24 = 75% Sets %
+            games_won: 100,
+            games_lost: 50,
+            win_percentage: 83.3,
+            total_bonus_points: 0
+          }
+        ])
+      });
+    });
+
+    await page.route('**/rest/v1/team_match*', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+    });
+    await page.route('**/rest/v1/team_match*is_disputed=eq.true*', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+    });
+    await page.route('**/rest/v1/matches*', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+    });
+    await page.route('**/functions/v1/playoff-scenarios', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) });
+    });
+    await page.route('**/rest/v1/player*', async (route) => {
+      if (route.request().method() === 'HEAD') {
+        await route.fulfill({ status: 200, headers: { 'Content-Range': '0-10/10' } });
+      } else {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+      }
+    });
+
+    await page.goto('/standings');
+
+    // Filter by Monday
+    const mondayButton = page.getByRole('button', { name: 'Monday' });
+    await expect(mondayButton).toBeVisible();
+    await mondayButton.click();
+
+    if (isMobile) {
+      // In mobile view, cards should be sorted with Team A first
+      const firstCardTeamName = page.locator('.standings-mobile-card').nth(0).locator('.team-name');
+      await expect(firstCardTeamName).toHaveText('Team A');
+
+      const secondCardTeamName = page.locator('.standings-mobile-card').nth(1).locator('.team-name');
+      await expect(secondCardTeamName).toHaveText('Team B');
+    } else {
+      // In desktop view, rows should be sorted with Team A first
+      const firstRowTeamName = page.locator('.standings-table tbody tr').nth(0).locator('.team-name');
+      await expect(firstRowTeamName).toHaveText('Team A');
+
+      const secondRowTeamName = page.locator('.standings-table tbody tr').nth(1).locator('.team-name');
+      await expect(secondRowTeamName).toHaveText('Team B');
+
+      // Verify tooltips on headers
+      const mwHeader = page.locator('.standings-table th').filter({ hasText: 'MW' });
+      await expect(mwHeader.locator('.tooltip-text')).toHaveText('Match Wins: Total wins in the season');
+
+      const setsHeader = page.locator('.standings-table th').filter({ hasText: 'Sets %' });
+      await expect(setsHeader.locator('.tooltip-text')).toHaveText('Sets Won / Total Sets Played. Tiebreaker #2');
+
+      // Check legend updates
+      const legendText = page.locator('.standings-legend');
+      await expect(legendText).toContainText('Match Wins: Most wins ranks highest.');
+      await expect(legendText).toContainText('Sets %: If still tied, the team with the higher sets won percentage ranks higher.');
+    }
   });
 });

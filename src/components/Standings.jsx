@@ -39,12 +39,16 @@ const StandingsCard = memo(({ team, index }) => {
             <span className="stat-value">{team.totalPoints}</span>
           </div>
           <div className="stat-item">
-            <span className="stat-label">Sets (W-L)</span>
-            <span className="stat-value">{team.setsWon}-{team.setsLost}</span>
+            <span className="stat-label">MW</span>
+            <span className="stat-value">{team.wins}</span>
           </div>
           <div className="stat-item">
-            <span className="stat-label">Bonus</span>
-            <span className="stat-value">{team.bonusPoints}</span>
+            <span className="stat-label">Sets %</span>
+            <span className="stat-value">{team.setsPercentage?.toFixed(1)}%</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Games %</span>
+            <span className="stat-value">{team.gamesPercentage?.toFixed(1)}%</span>
           </div>
         </div>
         <div className="card-status">
@@ -89,12 +93,9 @@ const StandingsCard = memo(({ team, index }) => {
         </td>
         <td data-label="Matches">{team.matchesPlayed}</td>
         <td data-label="Points"><strong>{team.totalPoints}</strong></td>
-        <td data-label="Sets (W-L)" className="hide-mobile">
-          {team.setsWon} - {team.setsLost}
-        </td>
-        <td data-label="Bonus" className="hide-mobile">
-          {team.bonusPoints}
-        </td>
+        <td data-label="MW">{team.wins}</td>
+        <td data-label="Sets %">{team.setsPercentage?.toFixed(1)}%</td>
+        <td data-label="Games %">{team.gamesPercentage?.toFixed(1)}%</td>
       </tr>
     );
   });
@@ -196,6 +197,8 @@ const Standings = () => {
             matchesPlayed: team.matches_played,
             setsWon: team.total_sets_won,
             setsLost: team.total_sets_lost,
+            setsPercentage: (team.total_sets_won || 0) + (team.total_sets_lost || 0) > 0 ? ((team.total_sets_won || 0) / ((team.total_sets_won || 0) + (team.total_sets_lost || 0))) * 100 : 0,
+            gamesPercentage: (team.games_won || 0) + (team.games_lost || 0) > 0 ? ((team.games_won || 0) / ((team.games_won || 0) + (team.games_lost || 0))) * 100 : 0,
             wins: team.wins || 0,
             losses: team.losses || 0,
             ties: team.ties || 0,
@@ -212,9 +215,12 @@ const Standings = () => {
       // Sort Standings by Total Points
       const sortedStandings = [...formattedStandings].sort((a, b) => {
         if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
-        const setDiffA = a.setsWon - a.setsLost;
-        const setDiffB = b.setsWon - b.setsLost;
-        return setDiffB - setDiffA;
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        // Skipping head-to-head here since we might not have the data in this component context easily,
+        // but Sets % and Games % will apply next
+        if (b.setsPercentage !== a.setsPercentage) return b.setsPercentage - a.setsPercentage;
+        if (b.gamesPercentage !== a.gamesPercentage) return b.gamesPercentage - a.gamesPercentage;
+        return 0;
       });
 
       const uniqueNights = Array.from(
@@ -535,8 +541,24 @@ const Standings = () => {
                   <th>Status</th>
                   <th>Matches</th>
                   <th>Points</th>
-                  <th className="hide-mobile">Sets (W-L)</th>
-                  <th className="hide-mobile">Bonus</th>
+                  <th>
+                  <div className="tooltip-container">
+                    MW
+                    <span className="tooltip-text">Match Wins: Total wins in the season</span>
+                  </div>
+                </th>
+                <th>
+                  <div className="tooltip-container">
+                    Sets %
+                    <span className="tooltip-text">Sets Won / Total Sets Played. Tiebreaker #2</span>
+                  </div>
+                </th>
+                <th>
+                  <div className="tooltip-container">
+                    Games %
+                    <span className="tooltip-text">Games Won / Total Games Played. Tiebreaker #3</span>
+                  </div>
+                </th>
                 </tr>
               </thead>
               <tbody>
@@ -571,9 +593,10 @@ const Standings = () => {
             <h3>Tie-breaker Rules</h3>
             <p>If teams have the same Win Percentage, standings are calculated in the following CRTA priority order:</p>
             <ol>
-              <li><strong>Set Differential:</strong> The difference between total sets won and total sets lost.</li>
-              <li><strong>Game Differential:</strong> The difference between total games won and total games lost.</li>
-              <li><strong>Team Number:</strong> Ascending team number (e.g. Team 1 vs Team 2).</li>
+              <li><strong>Match Wins:</strong> Most wins ranks highest.</li>
+              <li><strong>Head-to-Head:</strong> If two teams are tied, the winner of their head-to-head match ranks higher.</li>
+              <li><strong>Sets %:</strong> If still tied, the team with the higher sets won percentage ranks higher.</li>
+              <li><strong>Games %:</strong> If still tied, the team with the higher games won percentage ranks higher.</li>
             </ol>
           </div>
 
