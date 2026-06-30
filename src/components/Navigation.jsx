@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
 import { ZeffyModal } from './ZeffyModal';
+import { NotificationTray } from './NotificationTray';
 import '../styles/Navigation.css';
 
 export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
@@ -217,6 +218,7 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
               {/* Authentication */}
               {user ? (
                 <li className="navbar-auth">
+                  <NotificationTray />
                   <span className="navbar-user-icon" title={user.email}>👤</span>
                   <button className="navbar-logout-btn" onClick={handleLogout}>
                     Logout
@@ -224,6 +226,7 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
                 </li>
               ) : (
                 <li className="navbar-auth">
+                  <NotificationTray />
                   <Link to="/login" title="Login" className="navbar-login-icon" onClick={closeMenu}>
                     🔑 Login
                   </Link>
