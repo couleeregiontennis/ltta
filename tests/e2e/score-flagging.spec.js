@@ -176,7 +176,7 @@ test.describe('Score Flagging Feature @live', () => {
             });
         });
 
-        test('should allow flagging a completed score, changing the button to a warning badge', async ({ page }) => {
+        test('should allow flagging a completed score by opening a modal and submitting a reason', async ({ page }) => {
             await page.goto('/schedule');
 
             // Click List view for safer testing
@@ -186,8 +186,23 @@ test.describe('Score Flagging Feature @live', () => {
             const flagBtn = page.locator('button.flag-score-btn');
             await expect(flagBtn).toBeVisible();
 
-            // Click the flag score button
+            // Click the flag score button to open modal
             await flagBtn.click();
+
+            // Expect the modal to appear
+            const modalHeading = page.locator('h3', { hasText: 'Dispute Score' });
+            await expect(modalHeading).toBeVisible();
+
+            // Input a dispute reason
+            const reasonInput = page.locator('#dispute-reason');
+            await reasonInput.fill('The set 2 score was 6-4, not 6-2');
+
+            // Click Submit Dispute
+            const submitBtn = page.locator('button', { hasText: 'Submit Dispute' });
+            await submitBtn.click();
+
+            // Modal should close
+            await expect(modalHeading).not.toBeVisible();
 
             // Button should disappear and a "Score Disputed ⚠️" badge should appear
             await expect(flagBtn).not.toBeVisible();

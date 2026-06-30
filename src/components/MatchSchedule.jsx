@@ -122,6 +122,9 @@ export const MatchSchedule = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [matches, setMatches] = useState([]);
+  const [disputeModalOpen, setDisputeModalOpen] = useState(false);
+  const [disputeMatchId, setDisputeMatchId] = useState(null);
+  const [disputeReason, setDisputeReason] = useState('');
   const [teams, setTeams] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('week');
@@ -229,17 +232,32 @@ export const MatchSchedule = () => {
     }
   };
 
-  const handleFlagScore = async (matchId) => {
+  const handleOpenDispute = (matchId) => {
+    setDisputeMatchId(matchId);
+    setDisputeReason('');
+    setDisputeModalOpen(true);
+  };
+
+  const handleFlagScore = async () => {
+    if (!disputeMatchId || !disputeReason.trim()) {
+      addToast('Please provide a reason for the dispute', 'error');
+      return;
+    }
+
     try {
-      const { error } = await supabase.rpc('flag_match_score', { match_id: matchId });
+      const { error } = await supabase.rpc('flag_match_score', { match_id: disputeMatchId, reason: disputeReason });
       if (error) throw error;
       
       // Update local state to show disputed immediately
       setMatches(prevMatches => prevMatches.map(m =>
-        m.id === matchId ? { ...m, is_disputed: true, status: 'disputed' } : m
+        m.id === disputeMatchId ? { ...m, is_disputed: true, status: 'disputed' } : m
       ));
+      setDisputeModalOpen(false);
+      setDisputeMatchId(null);
+      setDisputeReason('');
       addToast('Score flagged as disputed', 'info');
     } catch (err) {
+
       console.error('Error flagging match score:', err);
       addToast('Failed to flag score', 'error');
     }
@@ -424,7 +442,7 @@ export const MatchSchedule = () => {
                                     </button>
                                     <button
                                       className="flag-score-btn"
-                                      onClick={(e) => { e.stopPropagation(); handleFlagScore(match.id); }}
+                                      onClick={(e) => { e.stopPropagation(); handleOpenDispute(match.id); }}
                                       style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', backgroundColor: 'transparent', border: '1px solid var(--warning)', color: 'var(--warning)', borderRadius: '4px', cursor: 'pointer' }}
                                     >
                                       Dispute
@@ -506,6 +524,37 @@ export const MatchSchedule = () => {
           </div>
         ) : <EmptyState title="No matches found" description="Adjust your filters or check back later." />}
       </div>
+
+      {disputeModalOpen && (
+        <div className="confirm-overlay" role="dialog" aria-modal="true" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="confirm-dialog card card--interactive" style={{ width: '90%', maxWidth: '400px', backgroundColor: 'var(--bg-card)', padding: '1.5rem', borderRadius: '8px' }}>
+            <div className="confirm-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0 }}>Dispute Score</h3>
+              <button type="button" className="btn-icon-labeled" onClick={() => setDisputeModalOpen(false)} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>
+                ✕
+              </button>
+            </div>
+            <div className="form-group">
+              <label htmlFor="dispute-reason" style={{ display: 'block', marginBottom: '0.5rem' }}>Reason for dispute:</label>
+              <textarea
+                id="dispute-reason"
+                value={disputeReason}
+                onChange={(e) => setDisputeReason(e.target.value)}
+                placeholder="E.g., wrong winner entered, typo in set 2..."
+                style={{ width: '100%', minHeight: '100px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-input)', color: 'var(--text-primary)' }}
+              />
+            </div>
+            <div className="confirm-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+              <button type="button" className="btn-small btn-secondary" onClick={() => setDisputeModalOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" className="btn-small btn-danger" onClick={handleFlagScore}>
+                Submit Dispute
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
