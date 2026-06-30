@@ -199,7 +199,7 @@ test.describe('Protected Pages @live', () => {
         });
     });
     await page.goto('/admin/team-management');
-    await expect(page.getByText('Team Management (Coming Soon)')).toBeVisible();
+    await expect(page.locator('h2')).toContainText('Team Management');
   });
 
 });

@@ -1,0 +1,97 @@
+.team-management-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.team-management-layout {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.left-column, .right-column {
+  flex: 1;
+  background: var(--surface-color, #fff);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.team-list, .roster-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.team-list li, .roster-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid var(--border-color, #eee);
+}
+
+.team-list li.selected {
+  background-color: var(--primary-light, #e6f7ff);
+  border-left: 4px solid var(--primary-color, #1890ff);
+}
+
+.team-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.team-name {
+  font-weight: bold;
+}
+
+.team-night {
+  font-size: 0.8em;
+  color: #666;
+}
+
+.team-actions button, .roster-actions button {
+  margin-left: 10px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.add-player-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color, #eee);
+}
+
+.add-player-section select {
+  width: 100%;
+  padding: 8px;
+  margin-top: 10px;
+}
+
+.placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: #888;
+}
+
+.edit-team-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.edit-team-form input, .edit-team-form select {
+  padding: 5px;
+}
+
+.captain-badge {
+  background-color: gold;
+  color: black;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  margin-left: 8px;
+}
