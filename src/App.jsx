@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navigation } from './components/Navigation';
 import { AnnouncementBar } from './components/AnnouncementBar';
+import { OfflineSyncManager } from './components/OfflineSyncManager';
 import { Team } from './components/Team';
 import { Rules } from './components/Rules';
 import { Login } from './components/Login';
@@ -75,6 +76,7 @@ function App() {
         <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <div className={`App theme-${theme}`}>
             <Navigation theme={theme} onToggleTheme={toggleTheme} />
+            <OfflineSyncManager />
             <AnnouncementBar />
             <main>
               <Routes>
