@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navigation } from './components/Navigation';
 import { AnnouncementBar } from './components/AnnouncementBar';
+import { OfflineSyncManager } from './components/OfflineSyncManager';
 import { Team } from './components/Team';
 import { Rules } from './components/Rules';
 import { Login } from './components/Login';
@@ -18,6 +19,7 @@ import { ScheduleGenerator } from './components/admin/ScheduleGenerator';
 import { AuditLogViewer } from './components/admin/AuditLogViewer';
 import { PlayerManagement } from './components/admin/PlayerManagement';
 import { PaymentManagement } from './components/admin/PaymentManagement';
+import { TeamManagement } from './components/admin/TeamManagement';
 import { PlayerRankings } from './components/PlayerRankings';
 import { MySchedule } from './components/MySchedule';
 import { CourtsLocations } from './components/CourtsLocations';
@@ -74,6 +76,7 @@ function App() {
         <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <div className={`App theme-${theme}`}>
             <Navigation theme={theme} onToggleTheme={toggleTheme} />
+            <OfflineSyncManager />
             <AnnouncementBar />
             <main>
               <Routes>
@@ -161,7 +164,7 @@ function App() {
                   path="/admin/team-management"
                   element={
                     <ProtectedRoute requireAdmin>
-                      <div>Team Management (Coming Soon)</div>
+                      <TeamManagement />
                     </ProtectedRoute>
                   }
                 />

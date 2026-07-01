@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../scripts/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
@@ -173,6 +174,7 @@ export const AddScore = () => {
   const [error, setError] = useState('');
   const [userTeam, setUserTeam] = useState(null);
   const [availableMatches, setAvailableMatches] = useState([]);
+  const isOnline = useOnlineStatus();
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [homeTeamRoster, setHomeTeamRoster] = useState([]);
   const [awayTeamRoster, setAwayTeamRoster] = useState([]);
@@ -944,19 +946,6 @@ export const AddScore = () => {
 
       const existingScore = existingScores.find(s => s.line_number === Number(formData.lineNumber));
 
-      if (existingScore) {
-        const { error: lineError } = await supabase
-          .from('line_results')
-          .update(payload)
-          .eq('id', existingScore.id);
-        if (lineError) throw lineError;
-      } else {
-        const { error: lineError } = await supabase
-          .from('line_results')
-          .insert([payload]);
-        if (lineError) throw lineError;
-      }
-
       // Update participation bonus and record submission status
       const isHome = selectedMatch.home_team_number === userTeam?.number;
       const isAdmin = userRole?.isAdmin;
@@ -974,6 +963,70 @@ export const AddScore = () => {
 
       if (isHome) updateData.home_full_roster = formData.fullRosterPresent;
       else if (userTeam) updateData.away_full_roster = formData.fullRosterPresent;
+
+      if (!isOnline) {
+        const queueRaw = localStorage.getItem('ltta-offline-scores');
+        let queue = [];
+        if (queueRaw) {
+          try { queue = JSON.parse(queueRaw); } catch (e) {}
+        }
+
+        queue.push({
+          queuedAt: Date.now(),
+          payload,
+          existingScoreId: existingScore?.id,
+          updateData,
+          matchId: selectedMatch.id,
+          home_team_number: selectedMatch.home_team_number,
+          userTeamNumber: userTeam?.number
+        });
+
+        localStorage.setItem('ltta-offline-scores', JSON.stringify(queue));
+
+        setExistingScores(prev => {
+          const newScores = [...prev];
+          const existingIndex = newScores.findIndex(s => s.line_number === Number(formData.lineNumber));
+          if (existingIndex >= 0) {
+             newScores[existingIndex] = { ...payload, id: existingScore?.id || 'temp-id' };
+          } else {
+             newScores.push({ ...payload, id: 'temp-id' });
+          }
+          return newScores;
+        });
+
+        addToast('Saved offline. Will sync when network returns.', 'warning');
+        setFormData(prev => ({
+          ...prev,
+          matchType: 'doubles',
+          homePlayers: ['', ''],
+          awayPlayers: ['', ''],
+          homeSet1: '',
+          homeSet2: '',
+          homeSet3: '',
+          awaySet1: '',
+          awaySet2: '',
+          awaySet3: '',
+          winner: '',
+          notes: ''
+        }));
+        setSubmitting(false);
+        return;
+      }
+
+
+
+      if (existingScore) {
+        const { error: lineError } = await supabase
+          .from('line_results')
+          .update(payload)
+          .eq('id', existingScore.id);
+        if (lineError) throw lineError;
+      } else {
+        const { error: lineError } = await supabase
+          .from('line_results')
+          .insert([payload]);
+        if (lineError) throw lineError;
+      }
 
       await supabase
         .from('team_match')
@@ -1063,6 +1116,11 @@ export const AddScore = () => {
       )}
 
       <form onSubmit={handleSubmit} className="score-form" noValidate>
+      {!isOnline && (
+        <div className="status-banner status-banner--warning" style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '10px', borderRadius: '5px', marginBottom: '1rem', border: '1px solid #ffeeba' }}>
+          ⚠️ Working Offline: Draft saved locally. Scores will sync automatically when network returns.
+        </div>
+      )}
         {!urlMatchId && (
           <div className="score-section card card--interactive">
             <h2>Step 1: Select Your Match</h2>
@@ -1351,7 +1409,7 @@ export const AddScore = () => {
 
         {error && <div className="error-message">{error}</div>}
         <button type="submit" disabled={submitting} className="submit-button">
-          {submitting ? 'Submitting...' : 'Save Court Results'}
+          {submitting ? 'Submitting...' : (!isOnline ? 'Queue Offline Submission' : 'Save Court Results')}
         </button>
       </form>
     </div>
