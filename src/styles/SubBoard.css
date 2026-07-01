@@ -155,9 +155,134 @@
     width: 100%;
 }
 
+/* Player Profile Card */
+.player-profile-card {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.5rem;
+    background-color: var(--surface);
+    border-left: 4px solid var(--primary);
+}
+
+.player-profile-card-content {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+}
+
+.player-name {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text);
+}
+
+.player-ranking-badge {
+    background-color: var(--primary);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-lg);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.player-teams {
+    color: var(--text-light);
+    font-size: 0.95rem;
+}
+
+/* Match Suggestions (Quick-Select Buttons) */
+.match-suggestions {
+    margin-bottom: 1.25rem;
+}
+
+.match-suggestions > label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+    font-size: 0.95rem;
+}
+
+.match-suggestions-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.match-suggestion-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--primary-light, #e8f0fe);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.15s;
+    color: var(--primary);
+}
+
+.match-suggestion-btn:hover {
+    background-color: var(--primary);
+    color: white;
+}
+
+.match-suggestion-date {
+    font-weight: 700;
+}
+
+.match-suggestion-time {
+    font-weight: 600;
+}
+
+.match-suggestion-vs {
+    font-style: italic;
+}
+
+/* Request Card Highlighting */
+.request-card.highlighted {
+    border-left-color: var(--secondary, #28a745);
+    box-shadow: 0 0 0 1px var(--secondary, #28a745);
+}
+
+.match-indicator {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+
+.match-tag {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.match-tag.team-match {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.match-tag.ranking-match {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
 @media (max-width: 600px) {
     .form-row {
         flex-direction: column;
         gap: 0;
+    }
+
+    .player-profile-card-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .match-suggestions-list {
+        flex-direction: column;
     }
 }
