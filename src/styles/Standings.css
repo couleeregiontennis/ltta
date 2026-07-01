@@ -581,3 +581,32 @@
 .standings-legend strong {
   color: var(--standings-accent);
 }
+
+.tooltip-container {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dotted var(--standings-text);
+}
+.tooltip-text {
+  visibility: hidden;
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--standings-surface);
+  color: var(--standings-text);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  width: 200px;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-weight: normal;
+  text-align: center;
+  border: 1px solid var(--standings-border);
+  box-shadow: var(--shadow-sm);
+}
+.tooltip-container:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
