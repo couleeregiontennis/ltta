@@ -112,7 +112,11 @@ test.describe('Match Schedule Page', () => {
             set_win_percentage: 83.3,
             games_won: 120,
             games_lost: 50,
-            bonus_points: 2
+            bonus_points: 2,
+            wins: 10,
+            losses: 2,
+            ties: 0,
+            win_percentage: 83.3
           },
           {
             team_id: '2',
@@ -126,7 +130,11 @@ test.describe('Match Schedule Page', () => {
             set_win_percentage: 41.7,
             games_won: 80,
             games_lost: 100,
-            bonus_points: 1
+            bonus_points: 1,
+            wins: 5,
+            losses: 7,
+            ties: 0,
+            win_percentage: 41.7
           }
         ])
       });
