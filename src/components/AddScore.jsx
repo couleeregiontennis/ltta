@@ -395,58 +395,95 @@ export const AddScore = () => {
         setError('');
         await loadAllPlayers();
 
-        let teamData = null;
+        let teamsData = [];
         let flattenedMatches = [];
 
-        // 1. Get Team Assignment
-        const { data: teamLink } = await supabase
+        // 1. Get ALL Active Team Assignments (captains may have multiple teams)
+        const { data: teamLinks, error: teamLinksError } = await supabase
           .from('player_to_team')
           .select('team')
           .eq('player', currentPlayerData.id)
-          .maybeSingle();
+          .eq('status', 'active');
 
-        if (teamLink) {
-          const { data: td } = await supabase
-            .from('team')
-            .select('*')
-            .eq('id', teamLink.team)
-            .maybeSingle();
-          if (td) {
-            teamData = td;
-            setUserTeam(td);
-          }
+        if (teamLinksError) {
+          console.error('Error fetching player_to_team:', teamLinksError);
         }
 
-        // 2. Get Available Matches
-        if (teamData) {
-          const { data: matches, error: matchesError } = await supabase
-            .from('team_match')
-            .select(`
-              id, date, time, courts, status,
-              home_team:home_team_id (id, name, number, play_night),
-              away_team:away_team_id (id, name, number, play_night)
-            `)
-            .or(`home_team_id.eq.${teamData.id},away_team_id.eq.${teamData.id}`)
-            .eq('status', 'scheduled')
-            .order('date', { ascending: true });
+        if (!teamLinks || teamLinks.length === 0) {
+          // Only show error when no URL prefill (admins may bypass via direct match link)
+          if (!urlMatchId) {
+            setError('No teams with scheduled matches found. Please ask your captain to add you to a team.');
+          }
+        } else {
+          // Deduplicate team IDs
+          const teamIds = [...new Set(teamLinks.map(tl => tl.team))];
 
-          if (!matchesError && matches) {
-            flattenedMatches = matches.map(m => ({
-              id: m.id,
-              date: m.date,
-              time: m.time,
-              status: m.status,
-              courts: m.courts,
-              home_team_id: m.home_team?.id,
-              home_team_name: m.home_team?.name,
-              home_team_number: m.home_team?.number,
-              home_team_night: m.home_team?.play_night,
-              away_team_id: m.away_team?.id,
-              away_team_name: m.away_team?.name,
-              away_team_number: m.away_team?.number,
-              away_team_night: m.away_team?.play_night
-            }));
-            setAvailableMatches(flattenedMatches);
+          const { data: teams, error: teamsError } = await supabase
+            .from('team')
+            .select('*')
+            .in('id', teamIds);
+
+          if (teamsError) {
+            console.error('Error fetching teams:', teamsError);
+          }
+
+          if (teams && teams.length > 0) {
+            teamsData = teams;
+            setUserTeam(teams[0]); // Primary team for display banner
+          }
+
+          // 2. Get Available Matches for ALL user teams
+          if (teamsData.length > 0) {
+            let allMatches = [];
+            for (const team of teamsData) {
+              const { data: matches, error: matchesError } = await supabase
+                .from('team_match')
+                .select(`
+                  id, date, time, courts, status,
+                  home_team:home_team_id (id, name, number, play_night),
+                  away_team:away_team_id (id, name, number, play_night)
+                `)
+                .or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`)
+                .eq('status', 'scheduled')
+                .order('date', { ascending: true });
+
+              if (matchesError) {
+                console.error(`Error fetching matches for team ${team.id}:`, matchesError);
+              }
+
+              if (matches && matches.length > 0) {
+                for (const m of matches) {
+                  allMatches.push(m);
+                }
+              }
+            }
+
+            // Deduplicate matches (same match could appear for multiple teams of the same user)
+            const seenIds = new Set();
+            allMatches = allMatches.filter(m => {
+              if (seenIds.has(m.id)) return false;
+              seenIds.add(m.id);
+              return true;
+            });
+
+            if (allMatches.length > 0) {
+              flattenedMatches = allMatches.map(m => ({
+                id: m.id,
+                date: m.date,
+                time: m.time,
+                status: m.status,
+                courts: m.courts,
+                home_team_id: m.home_team?.id,
+                home_team_name: m.home_team?.name,
+                home_team_number: m.home_team?.number,
+                home_team_night: m.home_team?.play_night,
+                away_team_id: m.away_team?.id,
+                away_team_name: m.away_team?.name,
+                away_team_number: m.away_team?.number,
+                away_team_night: m.away_team?.play_night
+              }));
+              setAvailableMatches(flattenedMatches);
+            }
           }
         }
 
@@ -1124,19 +1161,25 @@ export const AddScore = () => {
         {!urlMatchId && (
           <div className="score-section card card--interactive">
             <h2>Step 1: Select Your Match</h2>
-            <select
-              name="matchId"
-              value={formData.matchId}
-              onChange={(e) => handleMatchSelect(e.target.value)}
-              required
-            >
-              <option value="">Choose a match from the list...</option>
-              {availableMatches.map(match => (
-                <option key={match.id} value={match.id}>
-                  {match.home_team_name} vs {match.away_team_name} - {match.date}
-                </option>
-              ))}
-            </select>
+            {availableMatches.length === 0 ? (
+              <p className="empty-state" style={{ color: 'var(--text-secondary)', padding: '1rem 0', textAlign: 'center' }}>
+                No teams with scheduled matches found. Please ask your captain to add you to a team.
+              </p>
+            ) : (
+              <select
+                name="matchId"
+                value={formData.matchId}
+                onChange={(e) => handleMatchSelect(e.target.value)}
+                required
+              >
+                <option value="">Choose a match from the list...</option>
+                {availableMatches.map(match => (
+                  <option key={match.id} value={match.id}>
+                    {match.home_team_name} vs {match.away_team_name} - {match.date}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         )}
 

@@ -38,7 +38,8 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
     is_admin = false,
     first_name = 'Test',
     last_name = 'User',
-    startLoggedOut = false
+    startLoggedOut = false,
+    teams = [{ team: 't1', status: 'active' }]
   } = userDetails;
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://shlcqztfdhfwkhijwgue.supabase.co';
@@ -115,9 +116,9 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
         let data = [];
         
         if (url.includes('/player_to_team')) {
-            data = [{ 
-                team: 't1', 
-                status: 'active', 
+            data = teams.map(t => ({ 
+                team: t.team, 
+                status: t.status || 'active', 
                 player: { 
                     id: 'p1', 
                     user_id: id, 
@@ -128,7 +129,7 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
                     is_admin, 
                     is_active: true 
                 } 
-            }];
+            }));
         } else if (url.includes('/player')) {
             const parsedUrl = new URL(url);
             const isActive = parsedUrl.searchParams.get('is_active');
@@ -159,6 +160,7 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
             data = [
                 { 
                     id: 'match-1', 
+                    home_team_id: 't1',
                     home_team_number: 1, 
                     away_team_number: 2, 
                     date: todayStr, 
@@ -168,16 +170,37 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
                 },
                 { 
                     id: 'm1-uuid', 
+                    home_team_id: 't1',
                     home_team_number: 1, 
                     away_team_number: 2, 
                     date: todayStr, 
                     status: 'scheduled',
                     home_team: { id: 't1', name: 'Home Team', number: 1 }, 
                     away_team: { id: 't2', name: 'Away Team', number: 2 }
+                },
+                { 
+                    id: 'match-3', 
+                    home_team_id: 't4',
+                    away_team_id: 't3',
+                    home_team_number: 4, 
+                    away_team_number: 3, 
+                    date: todayStr, 
+                    status: 'scheduled',
+                    home_team: { id: 't4', name: 'Team Four', number: 4 }, 
+                    away_team: { id: 't3', name: 'Third Team', number: 3 }
                 }
             ];
         } else if (url.includes('/team')) {
-            data = [{ id: 't1', name: 'Test Team', number: 1 }];
+            // Return all teams referenced in the user's team assignments plus common opponents
+            const knownTeamIds = new Set(teams.map(t => t.team));
+            const allTeams = [
+                { id: 't1', name: 'Test Team', number: 1 },
+                { id: 't2', name: 'Away Team', number: 2 },
+                { id: 't3', name: 'Third Team', number: 3 },
+                { id: 't4', name: 'Team Four', number: 4 }
+            ];
+            // Filter to only teams that are in the user's assignments or commonly needed
+            data = allTeams.filter(t => knownTeamIds.has(t.id) || ['t2', 't4'].includes(t.id));
         } else if (url.includes('/line_results')) {
             data = [];
         }
