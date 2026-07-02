@@ -13,6 +13,8 @@ export const AuthProvider = ({ children }) => {
   const [hasProfile, setHasProfile] = useState(null);
   const [currentPlayerData, setCurrentPlayerData] = useState(null);
   const [currentSeason, setCurrentSeason] = useState(null);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const mountedRef = useRef(true);
 
   const prefetchCoreData = async (userId) => {
     try {
@@ -54,7 +56,9 @@ export const AuthProvider = ({ children }) => {
       };
 
       if (isAuthError(playerError, playerStatus) || isAuthError(seasonError, seasonStatus)) {
-        console.warn('[AuthProvider] Invalid or expired JWT detected. Clearing session...');
+        // The custom fetch wrapper in supabaseClient already attempted refreshSession().
+        // If we still get here, refresh failed — clear auth and reload.
+        console.warn('[AuthProvider] Auth error in prefetchCoreData after fetch-level retry. Clearing session...');
         const supabaseUrl = window._env_?.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
         const match = supabaseUrl?.match(/https?:\/\/([^.]+)/);
         const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
@@ -93,8 +97,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    let mounted = true;
-
     const getSession = async () => {
       try {
         console.log('[AuthProvider] getSession started');
@@ -105,7 +107,7 @@ export const AuthProvider = ({ children }) => {
 
         console.log('[AuthProvider] Session retrieved:', initialSession ? 'Found' : 'None');
 
-        if (mounted) {
+        if (mountedRef.current) {
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
           
@@ -116,45 +118,82 @@ export const AuthProvider = ({ children }) => {
             console.log('[AuthProvider] No user in getSession, finishing init');
             setHasProfile(false);
             const { data } = await supabase.from('season').select('*').order('end_date', { ascending: false }).limit(1).maybeSingle();
-            if (mounted && data) setCurrentSeason(data);
+            if (mountedRef.current && data) setCurrentSeason(data);
             setLoading(false);
           }
         }
       } catch (err) {
         console.error('AuthProvider init error:', err);
-        if (mounted) setLoading(false);
+        if (mountedRef.current) setLoading(false);
       }
     };
 
     getSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (mounted) {
-        try {
-          const newUserId = session?.user?.id;
+      if (!mountedRef.current) return;
 
-          setSession(session);
-          setUser(session?.user ?? null);
+      try {
+        const newUserId = session?.user?.id;
 
-          if (newUserId) {
-            setHasProfile(null);
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('[AuthProvider] TOKEN_REFRESHED event received');
+          if (newUserId && hasProfile === null) {
             await prefetchCoreData(newUserId);
-          } else {
-            setUserRole({ isCaptain: false, isAdmin: false });
-            setHasProfile(false);
-            setCurrentPlayerData(null);
-            setLoading(false);
           }
-        } catch (err) {
-          // Error handling is handled by specific components
+          return;
+        }
+
+        if (newUserId) {
+          setHasProfile(null);
+          await prefetchCoreData(newUserId);
+        } else {
+          setUserRole({ isCaptain: false, isAdmin: false });
+          setHasProfile(false);
+          setCurrentPlayerData(null);
           setLoading(false);
         }
+      } catch (err) {
+        setLoading(false);
       }
     });
 
+    // Listen for global auth events dispatched by the custom fetch wrapper
+    const handleAuthFailed = () => {
+      console.warn('[AuthProvider] ltta:auth-failed received — clearing session and reloading');
+      const supabaseUrl = window._env_?.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
+      const match = supabaseUrl?.match(/https?:\/\/([^.]+)/);
+      const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
+      localStorage.removeItem(`sb-${projectRef}-auth-token`);
+      localStorage.removeItem('sb-shlcqztfdhfwkhijwgue-auth-token');
+      localStorage.removeItem('supabase.auth.token');
+      window.location.reload();
+    };
+
+    const handleReconnecting = () => {
+      if (mountedRef.current) setIsReconnecting(true);
+    };
+    const handleReconnected = () => {
+      if (mountedRef.current) setIsReconnecting(false);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('ltta:auth-failed', handleAuthFailed);
+      window.addEventListener('ltta:reconnecting', handleReconnecting);
+      window.addEventListener('ltta:reconnected', handleReconnected);
+    }
+
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       subscription.unsubscribe();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('ltta:auth-failed', handleAuthFailed);
+        window.removeEventListener('ltta:reconnecting', handleReconnecting);
+        window.removeEventListener('ltta:reconnected', handleReconnected);
+      }
     };
   }, []);
 
@@ -168,8 +207,9 @@ export const AuthProvider = ({ children }) => {
     hasProfile,
     currentPlayerData,
     currentSeason,
+    isReconnecting,
     signOut,
-  }), [session, user, loading, userRole, hasProfile, currentPlayerData, currentSeason, signOut]);
+  }), [session, user, loading, userRole, hasProfile, currentPlayerData, currentSeason, isReconnecting, signOut]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
