@@ -6,6 +6,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@qdrant/js-client-rest": "^1.16.2",
+    "@stripe/stripe-js": "^9.9.0",
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "csv-parse": "^5.6.0",
