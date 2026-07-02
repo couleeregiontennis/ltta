@@ -52,7 +52,7 @@ const normalizeProfile = (data, user = null) => {
     is_active: data.is_active ?? true,
     day_availability: {
       ...getDefaultAvailability(),
-      ...(typeof data.availability === 'object' && data.day_availability ? data.availability : {})
+      ...(typeof data.day_availability === 'object' ? data.day_availability : {})
     },
     notes: data.notes || ''
   };
@@ -401,11 +401,11 @@ export const PlayerProfile = () => {
                 onChange={(e) => handleInputChange('ranking', e.target.value)}
                 disabled={!isEditing}
               >
-                <option value={1}>1 - Beginner</option>
-                <option value={2}>2 - Novice</option>
+                <option value={1}>1 - Expert</option>
+                <option value={2}>2 - Advanced</option>
                 <option value={3}>3 - Intermediate</option>
-                <option value={4}>4 - Advanced</option>
-                <option value={5}>5 - Expert</option>
+                <option value={4}>4 - Novice</option>
+                <option value={5}>5 - Beginner</option>
               </select>
             </div>
 
