@@ -128,27 +128,50 @@ export const AuthProvider = ({ children }) => {
 
     getSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (mounted) {
-        try {
-          const newUserId = session?.user?.id;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      try {
+        console.log('[AuthProvider] onAuthStateChange event:', event);
+        const newUserId = session?.user?.id;
 
-          setSession(session);
-          setUser(session?.user ?? null);
+        // Update auth state synchronously. These setters are safe to call from
+        // within Supabase's auth lock (they perform no Supabase calls).
+        setSession(session);
+        setUser(session?.user ?? null);
 
-          if (newUserId) {
-            setHasProfile(null);
-            await prefetchCoreData(newUserId);
-          } else {
-            setUserRole({ isCaptain: false, isAdmin: false });
-            setHasProfile(false);
-            setCurrentPlayerData(null);
-            setLoading(false);
-          }
-        } catch (err) {
-          // Error handling is handled by specific components
+        if (newUserId) {
+          setHasProfile(null);
+          // IMPORTANT: do NOT await prefetchCoreData() inside this callback.
+          //
+          // Supabase invokes onAuthStateChange callbacks while holding its
+          // internal auth lock -- most notably during the visibility-triggered
+          // token refresh that fires when the user returns to a background tab
+          // and the access token is within the 90s expiry margin. prefetchCoreData
+          // issues Supabase REST queries, each of which calls auth.getSession() ->
+          // _acquireLock(). Awaiting those here re-enters the lock and creates a
+          // circular wait: the inner getSession() waits on the outer refresh
+          // operation, which is itself waiting on this callback to return. The
+          // lock then deadlocks forever, after which every subsequent data fetch
+          // (on any page) hangs and the UI is stuck on "Loading..." indefinitely.
+          //
+          // Scheduling prefetchCoreData on the next macrotask lets this callback
+          // return immediately so Supabase can release the auth lock before any
+          // REST query runs, while still rehydrating core data automatically.
+          setTimeout(() => {
+            if (mounted) {
+              console.log('[AuthProvider] deferred prefetchCoreData for:', newUserId, '(event:', event, ')');
+              prefetchCoreData(newUserId);
+            }
+          }, 0);
+        } else {
+          setUserRole({ isCaptain: false, isAdmin: false });
+          setHasProfile(false);
+          setCurrentPlayerData(null);
           setLoading(false);
         }
+      } catch (err) {
+        // Error handling is handled by specific components
+        setLoading(false);
       }
     });
 
