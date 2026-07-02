@@ -143,11 +143,13 @@ test.describe('UX: Add Score Spinner @live', () => {
     // Select match type
     await page.locator('select[name="matchType"]').selectOption('singles');
 
-    // Select players
-    const homePlayer1 = page.locator('select').filter({ hasText: 'Player 1' }).nth(0);
-    const awayPlayer1 = page.locator('select').filter({ hasText: 'Player 1' }).nth(1);
-    await homePlayer1.selectOption('Player One');
-    await awayPlayer1.selectOption('Player Two');
+    // Wait for players to load and select players
+    const homePlayer1 = page.locator('.form-group:has-text("Home Players") select').first();
+    const awayPlayer1 = page.locator('.form-group:has-text("Away Players") select').first();
+    await expect(homePlayer1).toContainText('Player One');
+    await expect(awayPlayer1).toContainText('Player Two');
+    await homePlayer1.selectOption({ label: 'Player One' });
+    await awayPlayer1.selectOption({ label: 'Player Two' });
 
     // Fill scores
     const sets = page.locator('.score-group');
@@ -157,6 +159,9 @@ test.describe('UX: Add Score Spinner @live', () => {
     const set2 = sets.nth(1);
     await set2.locator('select').nth(0).selectOption('6');
     await set2.locator('select').nth(1).selectOption('4');
+
+    // Select winning team
+    await page.locator('input[name="winner"][value="home"]').check();
 
     // Click submit
     const submitBtn = page.locator('button[type="submit"]');

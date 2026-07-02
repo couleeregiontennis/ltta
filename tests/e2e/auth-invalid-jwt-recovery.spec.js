@@ -56,7 +56,7 @@ test.describe('Invalid JWT Recovery Flow', () => {
     await page.goto('/');
 
     // Verify localStorage has been cleared of the bad session
-    const expectedKey = 'sb-example-auth-token';
+    const expectedKey = 'sb-shlcqztfdhfwkhijwgue-auth-token';
     await expect.poll(async () => {
       try {
         const val1 = await page.evaluate((key) => window.localStorage.getItem(key), expectedKey);

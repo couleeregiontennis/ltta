@@ -48,8 +48,9 @@ export const TeamManagement = () => {
       return;
     }
 
-    const assignedIds = new Set(pttData.map(r => r.player));
-    const unassigned = (allPlayers || []).filter(p => !assignedIds.has(p.id));
+    const assignedIds = new Set((pttData || []).map(r => r.player));
+    const allPlayersArray = Array.isArray(allPlayers) ? allPlayers : [];
+    const unassigned = allPlayersArray.filter(p => !assignedIds.has(p.id));
     setUnassignedPlayers(unassigned || []);
   };
 
