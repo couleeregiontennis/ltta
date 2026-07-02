@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navigation } from './components/Navigation';
 import { AnnouncementBar } from './components/AnnouncementBar';
+import { ReconnectingBanner } from './components/ReconnectingBanner';
 import { OfflineSyncManager } from './components/OfflineSyncManager';
 import { Team } from './components/Team';
 import { Rules } from './components/Rules';
@@ -78,6 +79,7 @@ function App() {
             <Navigation theme={theme} onToggleTheme={toggleTheme} />
             <OfflineSyncManager />
             <AnnouncementBar />
+            <ReconnectingBanner />
             <main>
               <Routes>
                 <Route path="/" element={<MatchSchedule />} />
