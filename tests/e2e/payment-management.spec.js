@@ -44,7 +44,7 @@ test.describe('Payment Management', () => {
 
     await page.goto('/pay-dues');
     await expect(page.getByRole('heading', { name: 'Pay Season Dues' })).toBeVisible();
-    await expect(page.getByText('$30.00', { exact: true })).toBeVisible();
+    await expect(page.getByText('$25.00', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Pay Roster Dues' })).toBeVisible();
   });
 
