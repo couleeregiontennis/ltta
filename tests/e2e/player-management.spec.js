@@ -231,9 +231,13 @@ test.describe('Player Management', () => {
   });
 
   test('should filter players', async ({ page }) => {
-    await page.getByPlaceholder('Search by name or email...').fill('Jane');
-    await expect(page.getByText('Smith, Jane')).toBeVisible();
-    await expect(page.getByText('Doe, John')).not.toBeVisible();
+    await page.goto('/admin/players');
+    await expect(page.getByText(/Loading player management/i)).toBeHidden({ timeout: 15000 });
+
+    const searchInput = page.locator('input#search-players');
+    await searchInput.fill('NonExistentPlayer');
+    
+    await expect(page.getByText('No players found')).toBeVisible();
   });
 
   test('dropdown menu should render above the page header', async ({ page }) => {

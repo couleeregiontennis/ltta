@@ -12,6 +12,7 @@ test.describe('Add Score Page @live', () => {
     });
   });
 
+test.describe('Add Score Page @live', () => {
   test('loads and allows match selection', async ({ page }) => {
     await disableNavigatorLocks(page);
     await mockSupabaseAuth(page, { is_captain: true });
