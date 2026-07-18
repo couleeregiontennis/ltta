@@ -64,7 +64,8 @@ jobs:
       run: npx playwright test --update-snapshots --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
 
     - name: Fix Dubious Ownership
-      run: git config --global --add safe.directory /__w/ltta/ltta
+      if: always()
+      run: git config --global --add safe.directory '*'
 
     - name: Sync branch for concurrent commits
       if: always()

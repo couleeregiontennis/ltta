@@ -12,19 +12,11 @@ serve(async (req) => {
   }
 
   try {
-    let season_id = null;
-    try {
-      const body = await req.json();
-      season_id = body.season_id;
-    } catch (e) {
-      // Body might be empty or invalid JSON
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 1. Get all standings using the proper view
+    // 1. Get all standings
     const { data: standings, error: standingsError } = await supabase
       .from('standings_view')
       .select('*');
@@ -32,33 +24,20 @@ serve(async (req) => {
     if (standingsError) throw standingsError;
 
     // 2. Get all matches to determine total matches per team
-    // In LTTA, matches are in team_match table
-    const matchQuery = supabase
-      .from('team_match')
-      .select('home_team_id, away_team_id, status');
-
-    // If season_id was provided, we could filter, but let's assume standings_2026_view covers the current season's teams.
-    const { data: matches, error: matchesError } = await matchQuery;
+    const { data: matches, error: matchesError } = await supabase
+      .from('matches')
+      .select('home_team_number, away_team_number');
 
     if (matchesError) throw matchesError;
 
-    // We'll map team_id to team_number for easier matching, or just use team_number
-    const teamIdToNumber = {};
-    standings.forEach(team => {
-        teamIdToNumber[team.team_id] = team.team_number;
-    });
-
-    // Calculate total scheduled matches for each team (including completed ones)
+    // Calculate total scheduled matches for each team
     const totalMatchesByTeam = {};
     matches.forEach(match => {
-      const homeNumber = teamIdToNumber[match.home_team_id];
-      const awayNumber = teamIdToNumber[match.away_team_id];
-
-      if (homeNumber) {
-        totalMatchesByTeam[homeNumber] = (totalMatchesByTeam[homeNumber] || 0) + 1;
+      if (match.home_team_number) {
+        totalMatchesByTeam[match.home_team_number] = (totalMatchesByTeam[match.home_team_number] || 0) + 1;
       }
-      if (awayNumber) {
-        totalMatchesByTeam[awayNumber] = (totalMatchesByTeam[awayNumber] || 0) + 1;
+      if (match.away_team_number) {
+        totalMatchesByTeam[match.away_team_number] = (totalMatchesByTeam[match.away_team_number] || 0) + 1;
       }
     });
 
@@ -76,48 +55,56 @@ serve(async (req) => {
     Object.keys(teamsByNight).forEach(night => {
       const teams = teamsByNight[night];
 
+      // Max wins possible for any team in this night
+      const maxWinsAmongAll = Math.max(...teams.map(t => {
+        const total = totalMatchesByTeam[t.team_number] || t.matches_played;
+        return t.wins + (total - t.matches_played);
+      }));
+
       // Find the first place team (most wins)
-      const highestCurrentWins = Math.max(...teams.map(t => t.wins || 0));
+      // If there are ties for first, we consider the highest wins
+      const highestCurrentWins = Math.max(...teams.map(t => t.wins));
 
       teams.forEach(t => {
-        const wins = t.wins || 0;
-        const totalMatches = totalMatchesByTeam[t.team_number] || t.matches_played || 0;
-        const matchesRemaining = totalMatches - (t.matches_played || 0);
-        const maxPossibleWins = wins + matchesRemaining;
+        const totalMatches = totalMatchesByTeam[t.team_number] || t.matches_played;
+        const matchesRemaining = totalMatches - t.matches_played;
+        const maxPossibleWins = t.wins + matchesRemaining;
 
+        // Magic Number to clinch 1st place
+        // Magic Number = (Total Matches for 1st place team) + 1 - (1st place wins) - (2nd place losses)? No.
+        // Magic Number = (Matches to win to guarantee finishing ahead of 2nd place)
         // Simplest Magic Number to clinch 1st:
+        // Find the maximum max_possible_wins of all OTHER teams.
         const otherTeams = teams.filter(other => other.team_number !== t.team_number);
         const maxWinsOtherTeams = otherTeams.length > 0
-            ? Math.max(...otherTeams.map(o => (o.wins || 0) + (totalMatchesByTeam[o.team_number] || o.matches_played || 0) - (o.matches_played || 0)))
+            ? Math.max(...otherTeams.map(o => o.wins + (totalMatchesByTeam[o.team_number] || o.matches_played) - o.matches_played))
             : 0;
 
-        let magicNumber = maxWinsOtherTeams - wins + 1;
+        // To clinch, t.wins + additional_wins > maxWinsOtherTeams
+        // So additional_wins_needed = maxWinsOtherTeams - t.wins + 1 (assuming tie is not a clinch)
+        // Actually, let's keep it simple. If we need a tie-breaker, it's complex. Let's say + 1 to outright win.
+        let magicNumber = maxWinsOtherTeams - t.wins + 1;
 
         let status = 'On the Hunt';
-        let explanation = '';
 
-        if (maxPossibleWins < highestCurrentWins || maxPossibleWins < maxWinsOtherTeams && matchesRemaining === 0) {
+        // Cannot possibly reach the highest current wins?
+        // Wait, if maxPossibleWins < highestCurrentWins, they are Eliminated from 1st place.
+        if (maxPossibleWins < highestCurrentWins) {
           status = 'Eliminated';
-          explanation = `Cannot reach 1st place.`;
         } else if (magicNumber <= 0 && matchesRemaining === 0) {
+           // Clinched (magic number is <= 0 and season is over, or magic number <= 0 means nobody can catch them)
            status = 'Clinched';
-           explanation = `Clinched 1st place.`;
         } else if (magicNumber <= 0) {
            status = 'Clinched';
-           explanation = `Clinched 1st place.`;
         } else if (maxPossibleWins >= maxWinsOtherTeams) {
-           status = 'Control Destiny';
-           explanation = `${magicNumber} wins out of ${matchesRemaining} remaining matches guarantees 1st place.`;
-        } else {
-           explanation = `Any combination of ${Math.max(0, magicNumber)} wins and 1st place team losses guarantees 1st place.`;
+           status = 'Control Destiny'; // If they win out, they are guaranteed at least a tie for 1st
         }
 
         playoffScenarios[t.team_number] = {
-          magicNumber: Math.max(0, magicNumber),
+          magicNumber: Math.max(0, magicNumber), // don't show negative
           status,
           matchesRemaining,
-          maxPossibleWins,
-          explanation
+          maxPossibleWins
         };
       });
     });

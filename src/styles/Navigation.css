@@ -263,19 +263,26 @@
   .navbar-toggle {
     display: block;
     background: none;
-    border: 1px solid var(--border-primary);
-    border-radius: var(--radius-sm);
+    border: none;
     font-size: 1.5em;
-    line-height: 1;
     cursor: pointer;
-    color: var(--text-primary);
-    background-color: var(--bg-primary);
-    padding: 0.5rem 0.75rem;
+    color: var(--secondary-light);
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1001;
+    padding: 0.5rem;
     margin: 0;
-    transition: background var(--transition-fast), color var(--transition-fast);
   }
+
   .navbar-actions {
     gap: 0.5rem;
+  }
+
+  .navbar-toggle {
+    display: block;
+    position: relative;
   }
 
   .navbar-menu {
