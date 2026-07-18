@@ -174,17 +174,12 @@ test('visual check: mobile standings cards', async ({ page }) => {
     }
   });
 
-  // Mock player endpoint
+  // Mock player count - allow fallback to mockSupabaseAuth for non-count player queries
   await page.route(/\/rest\/v1\/player($|\?)/, async route => {
     if (route.request().headers()['prefer']?.includes('count=exact')) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]), headers: { 'content-range': '0-0/48' } });
     } else {
-      // Return mock player data instead of falling through to real server
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([{ id: 'test-user-id', user_id: 'test-user-id', first_name: 'Test', last_name: 'User', is_captain: true, is_admin: false, is_active: true }])
-      });
+      await route.fallback();
     }
   });
 
