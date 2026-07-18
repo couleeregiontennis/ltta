@@ -47,6 +47,15 @@ test.describe('Comprehensive Visual Regression Suite', () => {
         is_admin: route.role === 'admin'
       });
 
+      // Block/mock zeffy.com iframe and external scripts to avoid slow loads and timeouts
+      await page.route(/.*zeffy\.com.*/, async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'text/html',
+          body: '<html><body><div style="padding: 20px; text-align: center; background: #eee;">Mocked Zeffy Form</div></body></html>'
+        });
+      });
+
       // Global Standings Mock for consistent rendering
       await page.route(/\/rest\/v1\/standings_2026_view($|\?)/, async route => {
         const data = [

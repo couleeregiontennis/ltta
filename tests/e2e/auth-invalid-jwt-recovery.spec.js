@@ -24,8 +24,13 @@ test.describe('Invalid JWT Recovery Flow', () => {
         },
         expires_at: Math.floor(Date.now() / 1000) + 3600
       };
+      
+      const supabaseUrl = window._env_?.VITE_SUPABASE_URL || 'http://localhost:54321';
+      const match = supabaseUrl.match(/https?:\/\/([^.]+)/);
+      const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
+      
+      window.localStorage.setItem(`sb-${projectRef}-auth-token`, JSON.stringify(mockSession));
       window.localStorage.setItem(`sb-shlcqztfdhfwkhijwgue-auth-token`, JSON.stringify(mockSession));
-      window.localStorage.setItem(`sb-example-auth-token`, JSON.stringify(mockSession));
       window.localStorage.setItem('supabase.auth.token', JSON.stringify(mockSession)); // fallback
     });
 
@@ -56,10 +61,14 @@ test.describe('Invalid JWT Recovery Flow', () => {
     await page.goto('/');
 
     // Verify localStorage has been cleared of the bad session
-    const expectedKey = 'sb-example-auth-token';
     await expect.poll(async () => {
       try {
-        const val1 = await page.evaluate((key) => window.localStorage.getItem(key), expectedKey);
+        const val1 = await page.evaluate(() => {
+          const supabaseUrl = window._env_?.VITE_SUPABASE_URL || 'http://localhost:54321';
+          const match = supabaseUrl.match(/https?:\/\/([^.]+)/);
+          const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
+          return window.localStorage.getItem(`sb-${projectRef}-auth-token`);
+        });
         const val2 = await page.evaluate(() => window.localStorage.getItem('supabase.auth.token'));
         if (val1 === null && val2 === null) return null; // This is the success condition!
         return "still present";

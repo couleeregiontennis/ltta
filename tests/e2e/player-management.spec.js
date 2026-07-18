@@ -231,7 +231,7 @@ test.describe('Player Management', () => {
   });
 
   test('should filter players', async ({ page }) => {
-    await page.goto('/admin/players');
+    await page.goto('/admin/player-management');
     await expect(page.getByText(/Loading player management/i)).toBeHidden({ timeout: 15000 });
 
     const searchInput = page.locator('input#search-players');
