@@ -77,6 +77,12 @@ const customFetch = async (input, init) => {
 
     // Only intercept 401/403 responses
     if (response.status === 401 || response.status === 403) {
+        // Skip session refresh attempt if there is no supabase auth token in localStorage (unauthenticated user)
+        const hasAuthToken = Object.keys(localStorage).some(key => key.includes('-auth-token') || key === 'supabase.auth.token');
+        if (!hasAuthToken) {
+            return response;
+        }
+
         const cloned = response.clone();
         try {
             const body = await cloned.json();
