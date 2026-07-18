@@ -130,26 +130,38 @@ export const AuthProvider = ({ children }) => {
 
     getSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mountedRef.current) return;
-
       try {
+        console.log('[AuthProvider] onAuthStateChange event:', event);
         const newUserId = session?.user?.id;
 
+        // Update auth state synchronously. These setters are safe to call from
+        // within Supabase's auth lock (they perform no Supabase calls).
         setSession(session);
         setUser(session?.user ?? null);
 
         if (event === 'TOKEN_REFRESHED') {
           console.log('[AuthProvider] TOKEN_REFRESHED event received');
           if (newUserId && hasProfile === null) {
-            await prefetchCoreData(newUserId);
+            setTimeout(() => {
+              if (mountedRef.current) {
+                prefetchCoreData(newUserId);
+              }
+            }, 0);
           }
           return;
         }
 
         if (newUserId) {
           setHasProfile(null);
-          await prefetchCoreData(newUserId);
+          // Defer prefetchCoreData out of the auth lock to prevent deadlock
+          setTimeout(() => {
+            if (mountedRef.current) {
+              console.log('[AuthProvider] deferred prefetchCoreData for:', newUserId, '(event:', event, ')');
+              prefetchCoreData(newUserId);
+            }
+          }, 0);
         } else {
           setUserRole({ isCaptain: false, isAdmin: false });
           setHasProfile(false);
@@ -157,6 +169,7 @@ export const AuthProvider = ({ children }) => {
           setLoading(false);
         }
       } catch (err) {
+        // Error handling is handled by specific components
         setLoading(false);
       }
     });

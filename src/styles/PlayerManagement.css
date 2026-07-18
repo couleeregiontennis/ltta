@@ -4,6 +4,12 @@
   margin: 0 auto;
 }
 
+/* Page header must stay below the navigation dropdown (z-index: 1000). */
+.player-management .header {
+  position: relative;
+  z-index: 1;
+}
+
 .player-management h1 {
   margin-bottom: 0.5rem;
   color: var(--primary-color);

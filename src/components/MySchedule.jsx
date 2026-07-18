@@ -4,6 +4,7 @@ import { supabase } from '../scripts/supabaseClient';
 export const MySchedule = () => {
   const [upcomingMatches, setUpcomingMatches] = useState([]);
   const [teamInfo, setTeamInfo] = useState(null);
+  const [playerId, setPlayerId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -29,6 +30,8 @@ export const MySchedule = () => {
           .single();
 
         if (playerError) throw playerError;
+
+        setPlayerId(playerData.id);
 
         // Get the player's teams
         const { data: teamData, error: teamError } = await supabase
@@ -66,8 +69,7 @@ export const MySchedule = () => {
               away_player_2_id
             )
           `)
-          .in('home_team_id', teamIds)
-          .in('away_team_id', teamIds)
+          .or(`home_team_id.in.(${teamIds.join(',')}),away_team_id.in.(${teamIds.join(',')})`)
           .gte('date', new Date().toISOString().split('T')[0])
           .eq('status', 'scheduled')
           .order('date', { ascending: true });
@@ -109,8 +111,6 @@ export const MySchedule = () => {
       return line.away_player_1_id === playerId || line.away_player_2_id === playerId;
     }
   };
-
-  const playerId = upcomingMatches.length > 0 ? 'current_player_id' : null;
 
   return (
     <div className="my-schedule">

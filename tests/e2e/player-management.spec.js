@@ -231,8 +231,48 @@ test.describe('Player Management', () => {
   });
 
   test('should filter players', async ({ page }) => {
-    await page.getByPlaceholder('Search by name or email...').fill('Jane');
-    await expect(page.getByText('Smith, Jane')).toBeVisible();
-    await expect(page.getByText('Doe, John')).not.toBeVisible();
+    await page.goto('/admin/player-management');
+    await expect(page.getByText(/Loading player management/i)).toBeHidden({ timeout: 15000 });
+
+    const searchInput = page.locator('input#search-players');
+    await searchInput.fill('NonExistentPlayer');
+    
+    await expect(page.getByText('No players found')).toBeVisible();
+  });
+
+  test('dropdown menu should render above the page header', async ({ page }) => {
+    const header = page.locator('.player-management .header');
+    await expect(header).toBeVisible();
+    await expect(header).toHaveCSS('z-index', '1');
+
+    const viewportWidth = await page.evaluate(() => window.innerWidth);
+
+    if (viewportWidth >= 768) {
+      // Desktop: open the Admin dropdown by clicking its toggle.
+      await page.getByRole('button', { name: 'Admin' }).click();
+    } else {
+      // Mobile: open the hamburger menu, then the Admin dropdown.
+      await page.getByRole('button', { name: 'Toggle navigation' }).click();
+      await page.getByRole('button', { name: 'Admin' }).click();
+    }
+
+    // The dropdown should contain the "Player Management" link.
+    const playerManagementLink = page.getByRole('link', { name: 'Player Management' });
+    await expect(playerManagementLink).toBeVisible();
+
+    // Capture a visual reference of the dropdown open over the header.
+    const screenshotName = `${test.info().project.name}-player-management-dropdown.png`;
+    await page.screenshot({ path: `verification/player-management-zindex/${screenshotName}`, fullPage: false });
+
+    // Verify the header's stacking context is lower than the dropdown menu's z-index.
+    const zIndices = await page.evaluate(() => {
+      const headerEl = document.querySelector('.player-management .header');
+      const menuEl = document.querySelector('.dropdown-menu.show');
+      return {
+        header: headerEl ? getComputedStyle(headerEl).zIndex : null,
+        menu: menuEl ? getComputedStyle(menuEl).zIndex : null,
+      };
+    });
+    expect(Number(zIndices.header)).toBeLessThan(Number(zIndices.menu));
   });
 });

@@ -36,8 +36,14 @@ test.describe('Invalid JWT Recovery Flow', () => {
         },
         expires_at: Math.floor(Date.now() / 1000) + 3600
       };
-      window.localStorage.setItem('sb-shlcqztfdhfwkhijwgue-auth-token', JSON.stringify(mockSession));
-      window.localStorage.setItem('supabase.auth.token', JSON.stringify(mockSession));
+      
+      const supabaseUrl = window._env_?.VITE_SUPABASE_URL || 'http://localhost:54321';
+      const match = supabaseUrl.match(/https?:\/\/([^.]+)/);
+      const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
+      
+      window.localStorage.setItem(`sb-${projectRef}-auth-token`, JSON.stringify(mockSession));
+      window.localStorage.setItem(`sb-shlcqztfdhfwkhijwgue-auth-token`, JSON.stringify(mockSession));
+      window.localStorage.setItem('supabase.auth.token', JSON.stringify(mockSession)); // fallback
     });
 
     // 2. Intercept auth token refresh — return a fresh session

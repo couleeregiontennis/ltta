@@ -38,9 +38,13 @@ test.describe('Standings Persistence', () => {
             matches_played: 12,
             total_sets_won: 20,
             total_sets_lost: 4,
-            games_won: 100, games_lost: 50,
-            win_percentage: 83.3,
-            total_bonus_points: 2
+            total_bonus_points: 2,
+            games_won: 120,
+            games_lost: 40,
+            wins: 10,
+            losses: 2,
+            ties: 0,
+            win_percentage: 83.3
           },
           { 
             team_id: 't2', 
@@ -51,9 +55,13 @@ test.describe('Standings Persistence', () => {
             matches_played: 12,
             total_sets_won: 10,
             total_sets_lost: 14,
-            games_won: 80, games_lost: 100,
-            win_percentage: 41.7,
-            total_bonus_points: 1
+            total_bonus_points: 1,
+            games_won: 60,
+            games_lost: 70,
+            wins: 5,
+            losses: 7,
+            ties: 0,
+            win_percentage: 41.7
           }
         ])
       });

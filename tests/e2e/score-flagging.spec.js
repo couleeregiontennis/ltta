@@ -141,6 +141,12 @@ test.describe('Score Flagging Feature @live', () => {
                         matches_played: 1,
                         total_sets_won: 3,
                         total_sets_lost: 0,
+                        total_bonus_points: 0,
+                        games_won: 36,
+                        games_lost: 0,
+                        wins: 1,
+                        losses: 0,
+                        ties: 0,
                         win_percentage: 100
                     }])
                 });
