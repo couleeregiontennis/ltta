@@ -53,6 +53,7 @@ const AUTH_ERROR_CODES = ['PGRST301', 'PGRST302'];
 
 let _isRefreshing = false;
 let _refreshPromise = null;
+let _refreshAttempted = false;
 
 function isAuthErrorResponse(response, body) {
     if (response.status === 401 || response.status === 403) return true;
@@ -75,8 +76,8 @@ const customFetch = async (input, init) => {
         return response;
     }
 
-    // Only intercept 401/403 responses
-    if (response.status === 401 || response.status === 403) {
+    // Only intercept 401/403 responses once per refresh cycle
+    if ((response.status === 401 || response.status === 403) && !_refreshAttempted) {
         // Skip session refresh attempt if there is no supabase auth token in localStorage (unauthenticated user)
         const hasAuthToken = Object.keys(localStorage).some(key => key.includes('-auth-token') || key === 'supabase.auth.token');
         if (!hasAuthToken) {
@@ -122,12 +123,16 @@ const customFetch = async (input, init) => {
                     // Signal recovery complete
                     window.dispatchEvent(new CustomEvent('ltta:reconnected'));
                     console.log('[CustomFetch] Dispatched ltta:reconnected');
+
+                    // Mark refresh as attempted so we don't loop if retry also fails
+                    _refreshAttempted = true;
                 } else {
                     console.warn('[CustomFetch] Session refresh failed:', refreshError);
                     console.warn('[CustomFetch] refreshData:', refreshData);
                     // Signal auth failure — AuthProvider will handle storage cleanup + reload
                     window.dispatchEvent(new CustomEvent('ltta:auth-failed'));
                     console.warn('[CustomFetch] Dispatched ltta:auth-failed');
+                    _refreshAttempted = true;
                 }
             }
         } catch (e) {
