@@ -39,7 +39,7 @@ test.describe('Invalid JWT Recovery Flow', () => {
         },
         expires_at: Math.floor(Date.now() / 1000) + 3600
       };
-      
+
       window.localStorage.setItem(`sb-${hostname}-auth-token`, JSON.stringify(mockSession));
       window.localStorage.setItem(`sb-shlcqztfdhfwkhijwgue-auth-token`, JSON.stringify(mockSession));
       window.localStorage.setItem('supabase.auth.token', JSON.stringify(mockSession)); // fallback
@@ -139,3 +139,4 @@ test.describe('Invalid JWT Recovery Flow', () => {
     await expect(page).toHaveURL('/');
   });
 });
+
