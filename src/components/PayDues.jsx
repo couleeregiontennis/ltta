@@ -8,25 +8,17 @@ import '../styles/PayDues.css';
 export const PayDues = () => {
     const { user, currentPlayerData } = useAuth();
     const { currentSeason } = useSeason();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     
     const [submitting, setSubmitting] = useState(false);
     const [status, setStatus] = useState('loading');
     const [error, setError] = useState('');
 
     useEffect(() => {
-        const checkStatus = async () => {
+        let isMounted = true;
+
+        const checkStatus = async (retries = 3) => {
             if (!currentPlayerData || !currentSeason) return;
-
-            // Check URL parameters for Stripe redirect
-            if (searchParams.get('success') === 'true') {
-                setStatus('paid');
-                return;
-            }
-
-            if (searchParams.get('canceled') === 'true') {
-                setError('Payment was canceled. You can try again below.');
-            }
 
             try {
                 const { data, error } = await supabase
@@ -38,19 +30,46 @@ export const PayDues = () => {
 
                 if (error && error.code !== 'PGRST116') throw error;
 
+                // Check URL parameters for Stripe redirect
+                if (searchParams.get('success') === 'true') {
+                    if (data?.status === 'completed') {
+                        if (isMounted) setStatus('paid');
+                    } else if (retries > 0) {
+                        // Short poll if still pending after redirect
+                        setTimeout(() => {
+                            if (isMounted) checkStatus(retries - 1);
+                        }, 2000);
+                        return;
+                    } else {
+                        // Exhausted retries, might still be processing
+                        if (isMounted) setStatus('paid');
+                    }
+                    return;
+                }
+
+                if (searchParams.get('canceled') === 'true') {
+                    if (isMounted) setError('Payment was canceled. You can try again below.');
+                }
+
                 if (data?.status === 'completed') {
-                    setStatus('paid');
+                    if (isMounted) setStatus('paid');
                 } else {
-                    setStatus('unpaid');
+                    if (isMounted) setStatus('unpaid');
                 }
             } catch (err) {
                 console.error('Error checking registration status:', err);
-                setError('Failed to load payment status.');
-                setStatus('error');
+                if (isMounted) {
+                    setError('Failed to load payment status.');
+                    setStatus('error');
+                }
             }
         };
 
         checkStatus();
+
+        return () => {
+            isMounted = false;
+        };
     }, [currentPlayerData, currentSeason, searchParams]);
 
     const handleCheckout = async () => {
@@ -64,6 +83,7 @@ export const PayDues = () => {
 
         try {
             // Ensure registration exists (upsert)
+            // Use ignoreDuplicates so we don't overwrite completed to pending
             const { error: upsertError } = await supabase
                 .from('registrations')
                 .upsert(
@@ -72,7 +92,7 @@ export const PayDues = () => {
                         season_id: currentSeason.id,
                         status: 'pending'
                     },
-                    { onConflict: 'player_id, season_id' }
+                    { onConflict: 'player_id, season_id', ignoreDuplicates: true }
                 );
 
             if (upsertError) throw upsertError;
@@ -116,11 +136,14 @@ export const PayDues = () => {
         );
     }
 
+    const duesAmountCents = currentSeason?.dues_amount_cents ?? 2500;
+    const duesAmountFormatted = `$${(duesAmountCents / 100).toFixed(2)}`;
+
     return (
         <div className="pay-dues-container">
             <div className="pay-dues-header">
                 <h1>Pay Season Dues</h1>
-                <p>Support the league and pay your seasonal dues ($30.00) quickly and securely.</p>
+                <p>Support the league and pay your seasonal dues ({duesAmountFormatted}) quickly and securely.</p>
             </div>
 
             <div className="checkout-section">
@@ -128,7 +151,7 @@ export const PayDues = () => {
 
                 <div className="dues-summary card card--interactive">
                     <h2>Roster Dues: {currentSeason?.number ? `Season ${currentSeason.number}` : 'Current Season'}</h2>
-                    <div className="price-tag">$30.00</div>
+                    <div className="price-tag">{duesAmountFormatted}</div>
                     <button 
                         className="btn-primary btn-checkout"
                         onClick={handleCheckout}

@@ -19,46 +19,41 @@ serve(async (req) => {
     const body = await req.text()
     const event = stripe.webhooks.constructEvent(body, signature, endpointSecret)
 
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object
       const player_id = session.client_reference_id
       const season_id = session.metadata?.season_id
 
       if (player_id && season_id) {
-        const supabase = createClient(supabaseUrl, supabaseServiceKey)
+        const { error: rpcError } = await supabase.rpc('process_checkout_completion', {
+            p_player_id: player_id,
+            p_season_id: season_id,
+            p_stripe_checkout_id: session.id,
+            p_amount_cents: session.amount_total ?? 2500
+        });
 
-        // Update registration status to completed
+        if (rpcError) {
+          console.error('Error processing checkout completion:', rpcError)
+          throw rpcError
+        }
+      }
+    } else if (event.type === 'checkout.session.expired') {
+      const session = event.data.object
+      const player_id = session.client_reference_id
+      const season_id = session.metadata?.season_id
+
+      if (player_id && season_id) {
+        // Only update to canceled if it is currently pending
         const { error: regError } = await supabase
           .from('registrations')
-          .update({ status: 'completed' })
-          .match({ player_id, season_id })
+          .update({ status: 'canceled' })
+          .match({ player_id, season_id, status: 'pending' })
 
         if (regError) {
-          console.error('Error updating registration:', regError)
+          console.error('Error updating registration to canceled:', regError)
           throw regError
-        }
-
-        // Find registration ID
-        const { data: regData } = await supabase
-          .from('registrations')
-          .select('id')
-          .match({ player_id, season_id })
-          .single()
-
-        if (regData) {
-            // Insert into payments table
-            const { error: payError } = await supabase
-            .from('payments')
-            .insert({
-                registration_id: regData.id,
-                stripe_checkout_id: session.id,
-                amount_cents: session.amount_total,
-                status: 'paid'
-            })
-            if (payError) {
-                console.error('Error inserting payment:', payError)
-                throw payError
-            }
         }
       }
     }

@@ -1,0 +1,10 @@
+npm warn exec The following package was not found and will be installed: serve@14.2.6
+ INFO  Accepting connections at http://localhost:3000
+ HTTP  7/6/2026 11:44:33 AM ::1 GET /pay-dues
+ HTTP  7/6/2026 11:44:33 AM ::1 Returned 404 in 32 ms
+ HTTP  7/6/2026 11:44:33 AM ::1 GET /assets/index-TZrHmviY.js
+ HTTP  7/6/2026 11:44:33 AM ::1 GET /assets/index-CNbrXlRW.css
+ HTTP  7/6/2026 11:44:33 AM ::1 Returned 200 in 6 ms
+ HTTP  7/6/2026 11:44:33 AM ::1 Returned 200 in 31 ms
+ HTTP  7/6/2026 11:44:34 AM ::1 GET /crta-logo.png
+ HTTP  7/6/2026 11:44:34 AM ::1 Returned 200 in 6 ms
