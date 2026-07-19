@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
 import { ZeffyModal } from './ZeffyModal';
-import { NotificationTray } from './NotificationTray';
 import '../styles/Navigation.css';
 
 export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
@@ -46,8 +45,7 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
     try {
       // Force clear local storage to clean up any corrupt/expired session tokens
       const supabaseUrl = window._env_?.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
-      const match = supabaseUrl?.match(/https?:\/\/([^.]+)/);
-      const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
+      const projectRef = supabaseUrl ? new URL(supabaseUrl).hostname.split('.')[0] : 'shlcqztfdhfwkhijwgue';
       localStorage.removeItem(`sb-${projectRef}-auth-token`);
       localStorage.removeItem('sb-shlcqztfdhfwkhijwgue-auth-token');
       localStorage.removeItem('supabase.auth.token');
@@ -218,7 +216,6 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
               {/* Authentication */}
               {user ? (
                 <li className="navbar-auth">
-                  <NotificationTray />
                   <span className="navbar-user-icon" title={user.email}>👤</span>
                   <button className="navbar-logout-btn" onClick={handleLogout}>
                     Logout
@@ -226,7 +223,6 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
                 </li>
               ) : (
                 <li className="navbar-auth">
-                  <NotificationTray />
                   <Link to="/login" title="Login" className="navbar-login-icon" onClick={closeMenu}>
                     🔑 Login
                   </Link>

@@ -60,8 +60,7 @@ export const AuthProvider = ({ children }) => {
         // If we still get here, refresh failed — clear auth and reload.
         console.warn('[AuthProvider] Auth error in prefetchCoreData after fetch-level retry. Clearing session...');
         const supabaseUrl = window._env_?.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
-        const match = supabaseUrl?.match(/https?:\/\/([^.]+)/);
-        const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
+        const projectRef = supabaseUrl ? new URL(supabaseUrl).hostname.split('.')[0] : 'shlcqztfdhfwkhijwgue';
         localStorage.removeItem(`sb-${projectRef}-auth-token`);
         localStorage.removeItem('sb-shlcqztfdhfwkhijwgue-auth-token');
         localStorage.removeItem('supabase.auth.token');
@@ -136,8 +135,6 @@ export const AuthProvider = ({ children }) => {
         console.log('[AuthProvider] onAuthStateChange event:', event);
         const newUserId = session?.user?.id;
 
-        // Update auth state synchronously. These setters are safe to call from
-        // within Supabase's auth lock (they perform no Supabase calls).
         setSession(session);
         setUser(session?.user ?? null);
 
@@ -169,8 +166,8 @@ export const AuthProvider = ({ children }) => {
           setLoading(false);
         }
       } catch (err) {
-        // Error handling is handled by specific components
-        setLoading(false);
+        console.error('onAuthStateChange handling error:', err);
+        if (mountedRef.current) setLoading(false);
       }
     });
 

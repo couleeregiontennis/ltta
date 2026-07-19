@@ -112,11 +112,7 @@ test.describe('Match Schedule Page', () => {
             set_win_percentage: 83.3,
             games_won: 120,
             games_lost: 50,
-            bonus_points: 2,
-            wins: 10,
-            losses: 2,
-            ties: 0,
-            win_percentage: 83.3
+            bonus_points: 2
           },
           {
             team_id: '2',
@@ -130,40 +126,28 @@ test.describe('Match Schedule Page', () => {
             set_win_percentage: 41.7,
             games_won: 80,
             games_lost: 100,
-            bonus_points: 1,
-            wins: 5,
-            losses: 7,
-            ties: 0,
-            win_percentage: 41.7
+            bonus_points: 1
           }
         ])
       });
     });
 
-    // Mock player count (required for League Overview)
+    // Mock player count (required for League Overview). PostgREST requests the count
+    // via a `Prefer: count=exact` header on a HEAD request, so match the table route
+    // unconditionally and provide the total through the content-range header.
     await page.route(/\/rest\/v1\/player($|\?)/, async (route) => {
-      if (route.request().url().includes('count=exact')) {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          headers: { 'content-range': '0-0/100' }, // Mock total count
-          body: JSON.stringify([])
-        });
-      } else {
-        await route.continue();
-      }
-    });
-
-    // Mock matches for recent matches in Overview
-    await page.route('**/rest/v1/team_match*status=eq.completed*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'content-range': '0-0/100' }, // Mock total count
         body: JSON.stringify([])
       });
     });
 
-    await page.route('**/rest/v1/matches*', async (route) => {
+    // Mock ALL team_match requests (recent matches, match dates, disputed matches).
+    // The Standings page issues several team_match queries without status filters,
+    // so a catch-all keeps the test hermetic instead of leaking to the real network.
+    await page.route('**/rest/v1/team_match*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -177,15 +161,6 @@ test.describe('Match Schedule Page', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({})
-      });
-    });
-
-    // Mock disputed matches for the Standings component
-    await page.route('**/rest/v1/team_match*is_disputed=eq.true*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([])
       });
     });
 

@@ -69,7 +69,7 @@ test.describe('Comprehensive Visual Regression Suite', () => {
       });
 
       console.log(`Navigating to ${route.path} as ${route.role}...`);
-      await page.goto(route.path, { waitUntil: 'networkidle' });
+      await page.goto(route.path, { waitUntil: 'load' });
       
       // Wait for specific content based on route to ensure page is loaded
       if (route.path === '/') {
@@ -174,7 +174,7 @@ test('visual check: mobile standings cards', async ({ page }) => {
     }
   });
 
-  // Mock player count
+  // Mock player count - allow fallback to mockSupabaseAuth for non-count player queries
   await page.route(/\/rest\/v1\/player($|\?)/, async route => {
     if (route.request().headers()['prefer']?.includes('count=exact')) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]), headers: { 'content-range': '0-0/48' } });

@@ -22,7 +22,10 @@ test.describe('Invalid JWT Recovery Flow', () => {
     });
 
     // 1. Inject an expired-looking session token into localStorage
-    await page.addInitScript(() => {
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || 'http://localhost:54321';
+    // Derive the storage key the same way supabase-js does: sb-<hostname.split('.')[0]>-auth-token
+    const hostname = new URL(supabaseUrl).hostname.split('.')[0];
+    await page.addInitScript(({ hostname }) => {
       const mockSession = {
         access_token: 'expired-bad-jwt-token',
         token_type: 'bearer',
@@ -36,15 +39,11 @@ test.describe('Invalid JWT Recovery Flow', () => {
         },
         expires_at: Math.floor(Date.now() / 1000) + 3600
       };
-      
-      const supabaseUrl = window._env_?.VITE_SUPABASE_URL || 'http://localhost:54321';
-      const match = supabaseUrl.match(/https?:\/\/([^.]+)/);
-      const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
-      
-      window.localStorage.setItem(`sb-${projectRef}-auth-token`, JSON.stringify(mockSession));
+
+      window.localStorage.setItem(`sb-${hostname}-auth-token`, JSON.stringify(mockSession));
       window.localStorage.setItem(`sb-shlcqztfdhfwkhijwgue-auth-token`, JSON.stringify(mockSession));
       window.localStorage.setItem('supabase.auth.token', JSON.stringify(mockSession)); // fallback
-    });
+    }, { hostname });
 
     // 2. Intercept auth token refresh — return a fresh session
     await page.route('**/auth/v1/token*', async (route) => {
@@ -61,7 +60,6 @@ test.describe('Invalid JWT Recovery Flow', () => {
         })
       });
     });
-
     // 3. Intercept player query: first call returns 401, subsequent return valid
     let playerCallCount = 0;
     await page.route('**/rest/v1/player*', async (route) => {
@@ -140,3 +138,4 @@ test.describe('Invalid JWT Recovery Flow', () => {
     await expect(page).toHaveURL('/');
   });
 });
+

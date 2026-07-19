@@ -42,8 +42,8 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
   } = userDetails;
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://shlcqztfdhfwkhijwgue.supabase.co';
-  const match = supabaseUrl.match(/https?:\/\/([^.]+)/);
-  const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
+  // Derive the storage key the same way supabase-js does: sb-<hostname.split('.')[0]>-auth-token
+  const projectRef = new URL(supabaseUrl).hostname.split('.')[0];
 
   // Inject session into localStorage for immediate auth recognition
   if (!startLoggedOut) {
@@ -65,7 +65,7 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
         expires_at: Math.floor(Date.now() / 1000) + 3600
       };
       
-      // Standard Supabase localStorage key format: sb-[PROJECT_REF]-auth-token
+      // Standard Supabase localStorage key format: sb-<first-subdomain>-auth-token
       window.localStorage.setItem(`sb-${projectRef}-auth-token`, JSON.stringify(mockSession));
       window.localStorage.setItem(`sb-shlcqztfdhfwkhijwgue-auth-token`, JSON.stringify(mockSession));
       window.localStorage.setItem(`sb-localhost-auth-token`, JSON.stringify(mockSession));
@@ -149,7 +149,6 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
                     is_captain, 
                     is_admin, 
                     is_active: true,
-                    ranking: 3,
                     player_to_team: [{ id: 'p1-t1', team: 't1', status: 'active' }]
                 }];
             }
@@ -163,8 +162,6 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
                     home_team_number: 1, 
                     away_team_number: 2, 
                     date: todayStr,
-                    time: '6:00 PM',
-                    location_id: 'loc-1',
                     status: 'scheduled',
                     home_team: { id: 't1', name: 'Home Team', number: 1 }, 
                     away_team: { id: 't2', name: 'Away Team', number: 2 }
@@ -174,54 +171,15 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
                     home_team_number: 1, 
                     away_team_number: 2, 
                     date: todayStr,
-                    time: '7:30 PM',
-                    location_id: 'loc-1',
                     status: 'scheduled',
                     home_team: { id: 't1', name: 'Home Team', number: 1 }, 
                     away_team: { id: 't2', name: 'Away Team', number: 2 }
-                }
-            ];
-        } else if (url.includes('/sub_request')) {
-            const todayStr = new Date().toISOString().split('T')[0];
-            data = [
-                { 
-                    id: 'sub-1', 
-                    captain_user_id: 'captain-user-id',
-                    team_id: 't1', 
-                    match_date: todayStr,
-                    match_time: '6:00 PM',
-                    location_id: 'loc-1',
-                    required_ranking: 3,
-                    status: 'open',
-                    sub_user_id: null,
-                    notes: 'Need a strong player',
-                    team: { name: 'Test Team' },
-                    location: { name: 'Test Courts' }
-                },
-                {
-                    id: 'sub-2',
-                    captain_user_id: 'other-captain-id',
-                    team_id: 't2',
-                    match_date: todayStr,
-                    match_time: '7:30 PM',
-                    location_id: null,
-                    required_ranking: 4,
-                    status: 'open',
-                    sub_user_id: null,
-                    notes: null,
-                    team: { name: 'Other Team' },
-                    location: null
                 }
             ];
         } else if (url.includes('/team')) {
             data = [{ id: 't1', name: 'Test Team', number: 1 }];
         } else if (url.includes('/line_results')) {
             data = [];
-        } else if (url.includes('/location')) {
-            data = [
-                { id: 'loc-1', name: 'Test Courts', address: '123 Main St' },
-                { id: 'loc-2', name: 'Green Island', address: '900 Island Dr' }
-            ];
         }
         
         const responseBody = isSingle ? (data.length > 0 ? data[0] : null) : data;
