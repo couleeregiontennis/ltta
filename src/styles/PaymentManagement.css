@@ -135,3 +135,22 @@
     align-items: flex-start;
   }
 }
+
+.view-registrations-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.view-registrations-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .admin-controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

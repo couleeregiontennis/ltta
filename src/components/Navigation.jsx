@@ -186,6 +186,7 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
                     <li><Link to="/admin/schedule-generator" onClick={closeMenu}>Schedule Generator</Link></li>
                     <li><Link to="/admin/audit-logs" onClick={closeMenu}>Audit Logs</Link></li>
                     <li><Link to="/admin/player-management" onClick={closeMenu}>Player Management</Link></li>
+                    <li><Link to="/admin/registration-management" onClick={closeMenu}>Registration Management</Link></li>
                     <li><Link to="/admin/payment-management" onClick={closeMenu}>Payment Management</Link></li>
                     <li><Link to="/admin/team-management" onClick={closeMenu}>Team Management</Link></li>
                   </ul>
