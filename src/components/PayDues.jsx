@@ -5,19 +5,23 @@ import { useSeason } from '../hooks/useSeason';
 import { useSearchParams } from 'react-router-dom';
 import '../styles/PayDues.css';
 
+const POLL_RETRIES = 5;
+const POLL_INTERVAL_MS = 2000;
+
 export const PayDues = () => {
-    const { user, currentPlayerData } = useAuth();
+    const { currentPlayerData } = useAuth();
     const { currentSeason } = useSeason();
-    const [searchParams, setSearchParams] = useSearchParams();
-    
+    const [searchParams] = useSearchParams();
+
     const [submitting, setSubmitting] = useState(false);
     const [status, setStatus] = useState('loading');
     const [error, setError] = useState('');
+    const [refreshToken, setRefreshToken] = useState(0);
 
     useEffect(() => {
         let isMounted = true;
 
-        const checkStatus = async (retries = 3) => {
+        const checkStatus = async (retries = POLL_RETRIES) => {
             if (!currentPlayerData || !currentSeason) return;
 
             try {
@@ -28,21 +32,22 @@ export const PayDues = () => {
                     .eq('season_id', currentSeason.id)
                     .maybeSingle();
 
-                if (error && error.code !== 'PGRST116') throw error;
+                if (error) throw error;
 
                 // Check URL parameters for Stripe redirect
                 if (searchParams.get('success') === 'true') {
                     if (data?.status === 'completed') {
                         if (isMounted) setStatus('paid');
                     } else if (retries > 0) {
-                        // Short poll if still pending after redirect
+                        // The webhook can lag the redirect; poll briefly.
                         setTimeout(() => {
                             if (isMounted) checkStatus(retries - 1);
-                        }, 2000);
+                        }, POLL_INTERVAL_MS);
                         return;
                     } else {
-                        // Exhausted retries, might still be processing
-                        if (isMounted) setStatus('paid');
+                        // The webhook has not confirmed yet. Never assume paid
+                        // from the URL param alone; ask the user to re-check.
+                        if (isMounted) setStatus('processing');
                     }
                     return;
                 }
@@ -70,7 +75,7 @@ export const PayDues = () => {
         return () => {
             isMounted = false;
         };
-    }, [currentPlayerData, currentSeason, searchParams]);
+    }, [currentPlayerData, currentSeason, searchParams, refreshToken]);
 
     const handleCheckout = async () => {
         if (!currentPlayerData || !currentSeason) {
@@ -82,8 +87,8 @@ export const PayDues = () => {
         setError('');
 
         try {
-            // Ensure registration exists (upsert)
-            // Use ignoreDuplicates so we don't overwrite completed to pending
+            // Ensure registration exists. ignoreDuplicates so an existing
+            // registration (e.g. already completed) is never overwritten.
             const { error: upsertError } = await supabase
                 .from('registrations')
                 .upsert(
@@ -97,16 +102,26 @@ export const PayDues = () => {
 
             if (upsertError) throw upsertError;
 
-            // Call Edge Function
+            // The edge function verifies ownership, sources the dues amount
+            // from the season, and rejects already-paid registrations.
             const { data, error } = await supabase.functions.invoke('stripe-checkout', {
                 body: {
                     player_id: currentPlayerData.id,
-                    season_id: currentSeason.id,
-                    email: user.email
+                    season_id: currentSeason.id
                 }
             });
 
-            if (error) throw error;
+            if (error) {
+                // FunctionsHttpError carries the response; surface its message
+                // (e.g. "Dues for this season have already been paid.").
+                let message = 'Failed to start checkout process. Please try again.';
+                try {
+                    const body = await error?.context?.json?.();
+                    if (body?.error) message = body.error;
+                } catch { /* keep the generic message */ }
+                throw new Error(message);
+            }
+
             if (data?.url) {
                 window.location.href = data.url;
             } else {
@@ -114,7 +129,7 @@ export const PayDues = () => {
             }
         } catch (err) {
             console.error('Error initiating checkout:', err);
-            setError('Failed to start checkout process. Please try again.');
+            setError(err.message || 'Failed to start checkout process. Please try again.');
             setSubmitting(false);
         }
     };
@@ -136,6 +151,26 @@ export const PayDues = () => {
         );
     }
 
+    if (status === 'processing') {
+        return (
+            <div className="pay-dues-container">
+                <div className="pay-dues-header">
+                    <h1>Processing Payment</h1>
+                    <p>
+                        We received your payment and are waiting for confirmation.
+                        This usually takes a few seconds.
+                    </p>
+                    <button
+                        className="btn-primary"
+                        onClick={() => setRefreshToken((t) => t + 1)}
+                    >
+                        Check status again
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     const duesAmountCents = currentSeason?.dues_amount_cents ?? 2500;
     const duesAmountFormatted = `$${(duesAmountCents / 100).toFixed(2)}`;
 
@@ -152,7 +187,7 @@ export const PayDues = () => {
                 <div className="dues-summary card card--interactive">
                     <h2>Roster Dues: {currentSeason?.number ? `Season ${currentSeason.number}` : 'Current Season'}</h2>
                     <div className="price-tag">{duesAmountFormatted}</div>
-                    <button 
+                    <button
                         className="btn-primary btn-checkout"
                         onClick={handleCheckout}
                         disabled={submitting || !currentPlayerData}

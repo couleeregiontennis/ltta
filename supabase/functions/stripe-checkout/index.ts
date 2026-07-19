@@ -4,24 +4,40 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', { httpClient: Stripe.createFetchHttpClient() })
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+// Fail closed when unset: never silently redirect payers to a wrong origin.
+const siteUrl = Deno.env.get('SITE_URL') ?? ''
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+const jsonResponse = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+  })
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      }
-    })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { player_id, season_id, email } = await req.json();
+    if (!siteUrl) {
+      console.error('SITE_URL environment variable is not configured')
+      return jsonResponse({ error: 'Checkout is not configured.' }, 500)
+    }
 
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      throw new Error('Missing Authorization header')
+      return jsonResponse({ error: 'Missing Authorization header.' }, 401)
+    }
+
+    const { player_id, season_id } = await req.json()
+    if (!player_id || !season_id) {
+      return jsonResponse({ error: 'player_id and season_id are required.' }, 400)
     }
 
     const supabase = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
@@ -30,7 +46,7 @@ serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      throw new Error('Unauthorized')
+      return jsonResponse({ error: 'Unauthorized' }, 401)
     }
 
     // Verify player_id belongs to the authenticated user
@@ -42,7 +58,19 @@ serve(async (req) => {
       .single()
 
     if (playerError || !player) {
-      throw new Error('Player not found or not owned by user')
+      return jsonResponse({ error: 'Player not found or not owned by user.' }, 403)
+    }
+
+    // Duplicate-payment guard: never create a session for a paid registration.
+    const { data: registration } = await supabase
+      .from('registrations')
+      .select('status')
+      .eq('player_id', player_id)
+      .eq('season_id', season_id)
+      .maybeSingle()
+
+    if (registration?.status === 'completed') {
+      return jsonResponse({ error: 'Dues for this season have already been paid.' }, 409)
     }
 
     // Fetch actual dues amount from season
@@ -53,16 +81,14 @@ serve(async (req) => {
       .single()
 
     if (seasonError || !season) {
-      throw new Error('Season not found')
+      return jsonResponse({ error: 'Season not found.' }, 400)
     }
 
-    const amount_cents = season.dues_amount_cents ?? 2500;
-
-    const siteUrl = Deno.env.get('SITE_URL') ?? 'https://new.couleeregiontennis.org'
+    const amount_cents = season.dues_amount_cents ?? 2500
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      customer_email: email, // use the destructured email
+      customer_email: user.email, // verified email from the auth token
       line_items: [{
         price_data: {
           currency: 'usd',
@@ -78,20 +104,9 @@ serve(async (req) => {
       metadata: { season_id }
     });
 
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: {
-        "Content-Type": "application/json",
-        'Access-Control-Allow-Origin': '*',
-      }
-    });
+    return jsonResponse({ url: session.url })
   } catch (error) {
     console.error('Checkout error:', error)
-    return new Response(JSON.stringify({ error: 'Failed to create checkout session.' }), {
-      status: 400,
-      headers: {
-        "Content-Type": "application/json",
-        'Access-Control-Allow-Origin': '*',
-      }
-    });
+    return jsonResponse({ error: 'Failed to create checkout session.' }, 500)
   }
 });
