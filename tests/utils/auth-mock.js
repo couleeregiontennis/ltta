@@ -38,7 +38,8 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
     is_admin = false,
     first_name = 'Test',
     last_name = 'User',
-    startLoggedOut = false
+    startLoggedOut = false,
+    notifications = []
   } = userDetails;
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://shlcqztfdhfwkhijwgue.supabase.co';
@@ -129,6 +130,21 @@ export async function mockSupabaseAuth(page, userDetails = {}) {
                     is_active: true 
                 } 
             }];
+        } else if (url.includes('/notifications')) {
+            if (method === 'GET') {
+                data = notifications;
+            } else if (method === 'PATCH' || method === 'POST') {
+                const body = route.request().postDataJSON() || {};
+                const parsedUrl = new URL(url);
+                const idParam = parsedUrl.searchParams.get('id');
+                const eqId = idParam && idParam.startsWith('eq.') ? idParam.slice(3) : null;
+                const updated = { ...body, id: eqId || body.id || 'updated-notification-id' };
+                return route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([updated])
+                });
+            }
         } else if (url.includes('/player')) {
             const parsedUrl = new URL(url);
             const isActive = parsedUrl.searchParams.get('is_active');
