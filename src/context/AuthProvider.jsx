@@ -56,8 +56,7 @@ export const AuthProvider = ({ children }) => {
       if (isAuthError(playerError, playerStatus) || isAuthError(seasonError, seasonStatus)) {
         console.warn('[AuthProvider] Invalid or expired JWT detected. Clearing session...');
         const supabaseUrl = window._env_?.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
-        const match = supabaseUrl?.match(/https?:\/\/([^.]+)/);
-        const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
+        const projectRef = supabaseUrl ? new URL(supabaseUrl).hostname.split('.')[0] : 'shlcqztfdhfwkhijwgue';
         localStorage.removeItem(`sb-${projectRef}-auth-token`);
         localStorage.removeItem('sb-shlcqztfdhfwkhijwgue-auth-token');
         localStorage.removeItem('supabase.auth.token');

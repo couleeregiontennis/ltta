@@ -30,7 +30,7 @@ jobs:
         shardIndex: [1, 2, 3, 4]
         shardTotal: [4]
     container:
-      image: mcr.microsoft.com/playwright:v1.57.0-jammy # Matches package.json
+      image: mcr.microsoft.com/playwright:v1.61.1-jammy # Must match the pinned @playwright/test version in package.json
       options: --ipc=host
     env:
       VITE_SUPABASE_URL: https://example.supabase.co
