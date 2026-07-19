@@ -60,7 +60,6 @@ test.describe('Invalid JWT Recovery Flow', () => {
         })
       });
     });
-
     // 3. Intercept player query: first call returns 401, subsequent return valid
     let playerCallCount = 0;
     await page.route('**/rest/v1/player*', async (route) => {
