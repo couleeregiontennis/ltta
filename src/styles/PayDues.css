@@ -73,6 +73,30 @@
     margin-bottom: 1rem;
 }
 
+.btn-primary {
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border: none;
+    background-color: var(--color-primary);
+    color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--color-primary-dark);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.pay-dues-header .btn-primary {
+    margin-top: 1rem;
+}
+
 @media (max-width: 768px) {
     .pay-dues-container {
         margin: 1rem;

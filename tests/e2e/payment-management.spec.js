@@ -95,4 +95,69 @@ test.describe('Payment Management', () => {
     // We expect the page to redirect, so we just wait for the button to change state or URL to change
     await expect(page.getByRole('button', { name: 'Preparing Checkout...' })).toBeVisible();
   });
+
+  test('should confirm payment when registration completed after redirect', async ({ page }) => {
+    await page.route(/\/rest\/v1\/registrations($|\?)/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'completed' }),
+      });
+    });
+
+    await page.goto('/pay-dues?success=true');
+    await expect(page.getByRole('heading', { name: 'Payment Complete' })).toBeVisible();
+  });
+
+  test('should never claim payment complete when webhook has not confirmed', async ({ page }) => {
+    // Registration stays pending forever (webhook never confirms).
+    await page.route(/\/rest\/v1\/registrations($|\?)/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'pending' }),
+      });
+    });
+
+    await page.goto('/pay-dues?success=true');
+
+    // After the poll budget is exhausted the UI must show a processing state,
+    // NOT the paid screen, even though ?success=true is in the URL.
+    await expect(page.getByRole('heading', { name: 'Processing Payment' })).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole('heading', { name: 'Payment Complete' })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'Check status again' })).toBeVisible();
+  });
+
+  test('should re-check status when clicking Check status again', async ({ page }) => {
+    let registrationStatus = 'pending';
+    await page.route(/\/rest\/v1\/registrations($|\?)/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: registrationStatus }),
+      });
+    });
+
+    await page.goto('/pay-dues?success=true');
+    await expect(page.getByRole('heading', { name: 'Processing Payment' })).toBeVisible({ timeout: 20000 });
+
+    // Webhook confirms late; the manual re-check should pick it up.
+    registrationStatus = 'completed';
+    await page.getByRole('button', { name: 'Check status again' }).click();
+    await expect(page.getByRole('heading', { name: 'Payment Complete' })).toBeVisible();
+  });
+
+  test('should show canceled message when checkout was canceled', async ({ page }) => {
+    await page.route(/\/rest\/v1\/registrations($|\?)/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'pending' }),
+      });
+    });
+
+    await page.goto('/pay-dues?canceled=true');
+    await expect(page.getByText('Payment was canceled. You can try again below.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Pay Roster Dues' })).toBeVisible();
+  });
 });
