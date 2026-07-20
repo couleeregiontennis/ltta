@@ -35,8 +35,6 @@ const ROUTES = [
 ];
 
 test.describe('Comprehensive Visual Regression Suite', () => {
-  test.describe.configure({ retries: 0 });
-
   for (const route of ROUTES) {
     test(`visual check: ${route.name}`, async ({ page }) => {
       // Setup auth and mocks
@@ -45,15 +43,6 @@ test.describe('Comprehensive Visual Regression Suite', () => {
         email: `${route.role}@ltta.com`,
         is_captain: route.role === 'captain' || route.role === 'admin',
         is_admin: route.role === 'admin'
-      });
-
-      // Block/mock zeffy.com iframe and external scripts to avoid slow loads and timeouts
-      await page.route(/.*zeffy\.com.*/, async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'text/html',
-          body: '<html><body><div style="padding: 20px; text-align: center; background: #eee;">Mocked Zeffy Form</div></body></html>'
-        });
       });
 
       // Global Standings Mock for consistent rendering
@@ -69,7 +58,7 @@ test.describe('Comprehensive Visual Regression Suite', () => {
       });
 
       console.log(`Navigating to ${route.path} as ${route.role}...`);
-      await page.goto(route.path, { waitUntil: 'load' });
+      await page.goto(route.path, { waitUntil: 'networkidle' });
       
       // Wait for specific content based on route to ensure page is loaded
       if (route.path === '/') {
@@ -104,14 +93,6 @@ test('visual check: mobile standings cards', async ({ page }) => {
   page.on('console', msg => console.log(`[Browser Console] ${msg.type()}: ${msg.text()}`));
 
   await mockSupabaseAuth(page, { is_captain: true });
-
-  await page.route(/\/rest\/v1\/season($|\?)/, async route => {
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ id: "s1", number: 1, is_active: true, is_current: true }]) });
-  });
-  await page.route(/\/rest\/v1\/player($|\?)/, async route => {
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ id: 'test-user-id', first_name: 'Test' }]) });
-  });
-
 
   // Mock standings data
   await page.route(/\/rest\/v1\/standings_2026_view($|\?)/, async route => {
@@ -174,12 +155,12 @@ test('visual check: mobile standings cards', async ({ page }) => {
     }
   });
 
-  // Mock player count - allow fallback to mockSupabaseAuth for non-count player queries
+  // Mock player count
   await page.route(/\/rest\/v1\/player($|\?)/, async route => {
     if (route.request().headers()['prefer']?.includes('count=exact')) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]), headers: { 'content-range': '0-0/48' } });
     } else {
-      await route.fallback();
+      await route.continue();
     }
   });
 

@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navigation } from './components/Navigation';
 import { AnnouncementBar } from './components/AnnouncementBar';
-import { ReconnectingBanner } from './components/ReconnectingBanner';
 import { Team } from './components/Team';
 import { Rules } from './components/Rules';
 import { Login } from './components/Login';
@@ -76,7 +75,6 @@ function App() {
           <div className={`App theme-${theme}`}>
             <Navigation theme={theme} onToggleTheme={toggleTheme} />
             <AnnouncementBar />
-            <ReconnectingBanner />
             <main>
               <Routes>
                 <Route path="/" element={<MatchSchedule />} />
