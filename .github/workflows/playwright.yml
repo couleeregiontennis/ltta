@@ -64,7 +64,8 @@ jobs:
       run: pnpm playwright test --update-snapshots
 
     - name: Fix Dubious Ownership
-      run: git config --global --add safe.directory /__w/ltta/ltta
+      if: always()
+      run: git config --global --add safe.directory '*'
 
     - name: Commit updated snapshots
       if: always()
