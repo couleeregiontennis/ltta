@@ -1,0 +1,190 @@
+.registration-management {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.registration-management h1 {
+  margin-bottom: 0.5rem;
+  color: var(--primary-color);
+}
+
+.registration-management .description {
+  margin-bottom: 2rem;
+  color: var(--text-secondary);
+}
+
+.registration-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.registration-controls .control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.registration-controls label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.registration-controls select {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  min-width: 180px;
+}
+
+.registration-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.summary-card {
+  background: var(--card-bg);
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid var(--primary-color);
+}
+
+.summary-card h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.summary-card .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 0.5rem;
+}
+
+.registration-table-container {
+  overflow-x: auto;
+  background: var(--card-bg);
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.registration-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+
+.registration-table th,
+.registration-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.registration-table th {
+  background-color: var(--primary-color-light);
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.registration-table th:hover {
+  background-color: var(--hover-color);
+}
+
+.registration-table th .sort-indicator {
+  margin-left: 0.5rem;
+  opacity: 0.6;
+}
+
+.registration-table tr:hover {
+  background-color: var(--hover-color);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-badge.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.paid {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.failed {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-badge.completed {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.canceled {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+.loading,
+.no-access,
+.error-message,
+.success-message {
+  text-align: center;
+  padding: 2rem;
+}
+
+.error-message {
+  color: #d32f2f;
+  background-color: #ffebee;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+}
+
+.success-message {
+  color: #388e3c;
+  background-color: #e8f5e9;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+}
+
+.view-payments-link {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.view-payments-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .registration-controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../scripts/supabaseClient';
 import { useAuth } from '../../context/AuthProvider';
@@ -200,6 +201,9 @@ export const PaymentManagement = () => {
             <div className="header">
                 <h1>Payment Management</h1>
                 <p className="description">Track and manage player and team registration fees.</p>
+                <Link to="/admin/registration-management" className="view-registrations-link">
+                    View Registrations →
+                </Link>
             </div>
 
             {error && <div className="error-message">{error}</div>}
