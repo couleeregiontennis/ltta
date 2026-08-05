@@ -15,26 +15,23 @@ export const CourtsLocations = () => {
       try {
         setLoading(true);
 
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-        const headers = {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`
-        };
-
-        const [locationsResponse, courtGroupsResponse] = await Promise.all([
-          fetch(`${supabaseUrl}/rest/v1/location?select=*&order=name.asc`, { headers }),
-          fetch(`${supabaseUrl}/rest/v1/court_group?select=*,location(name,address,phone)&is_active=eq.true&order=group_name.asc`, { headers })
+        const [locationsResult, courtGroupsResult] = await Promise.all([
+          supabase
+            .from('location')
+            .select('*')
+            .order('name', { ascending: true }),
+          supabase
+            .from('court_group')
+            .select('*,location(name,address,phone)')
+            .eq('is_active', true)
+            .order('group_name', { ascending: true })
         ]);
 
-        if (!locationsResponse.ok) throw new Error('Failed to fetch locations');
-        if (!courtGroupsResponse.ok) throw new Error('Failed to fetch court groups');
+        if (locationsResult.error) throw locationsResult.error;
+        if (courtGroupsResult.error) throw courtGroupsResult.error;
 
-        const locationsData = await locationsResponse.json();
-        const courtGroupsData = await courtGroupsResponse.json();
-
-        setLocations(locationsData || []);
-        setCourtGroups(courtGroupsData || []);
+        setLocations(locationsResult.data || []);
+        setCourtGroups(courtGroupsResult.data || []);
       } catch (err) {
         console.error('Error loading data:', err);
         setError('Error loading courts and locations: ' + err.message);
