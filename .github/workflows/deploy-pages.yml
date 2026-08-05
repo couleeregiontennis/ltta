@@ -28,14 +28,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: 'pnpm'
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install
 
       - name: Build site
-        run: npm run build
+        run: pnpm run build
         env:
           CI: true
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
