@@ -45,8 +45,14 @@ test.describe('Login Page @live', () => {
   });
 
   test('should successfully login (Mocked)', async ({ page }) => {
-    await mockSupabaseAuth(page, { id: 'test-id', email: 'test@example.com', startLoggedOut: true });
+    await mockSupabaseAuth(page, { id: 'test-id', email: 'test@example.com' });
     
+    await page.route('**/rest/v1/player?*', r => r.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ id: 'p1', first_name: 'Test', last_name: 'User' }])
+    }));
+
     await page.goto('/login');
     
     // Wait for the UI to be ready

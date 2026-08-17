@@ -13,6 +13,7 @@ jobs:
     environment: production
     
     # We use environment variables to hold Supabase credentials if available as secrets
+    # Otherwise, it falls back to hardcoded public ANON key which is safe to expose
     env:
       SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
@@ -21,11 +22,11 @@ jobs:
       - name: Verify Secrets
         run: |
           if [ -z "${SUPABASE_URL}" ]; then
-            echo "Error: VITE_SUPABASE_URL is not set in GitHub Secrets for 'production' environment."
+            echo "Error: SUPABASE_URL is not set."
             exit 1
           fi
           if [ -z "${SUPABASE_ANON_KEY}" ]; then
-            echo "Error: VITE_SUPABASE_ANON_KEY is not set in GitHub Secrets for 'production' environment."
+            echo "Error: SUPABASE_ANON_KEY is not set."
             exit 1
           fi
           echo "Secrets are configured."

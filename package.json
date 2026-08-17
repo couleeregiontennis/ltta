@@ -25,7 +25,7 @@
     "@babel/preset-react": "^7.28.5",
     "@darkobits/nr": "^0.18.8",
     "@jest/globals": "^30.2.0",
-    "@playwright/test": "1.61.1",
+    "@playwright/test": "^1.57.0",
     "@rollup/plugin-babel": "^6.1.0",
     "@supabase/supabase-js": "^2.97.0",
     "@vitejs/plugin-react": "^4.2.1",
@@ -40,8 +40,6 @@
     "preview": "vite preview",
     "deploy": "pnpm run build && cp -r dist/* ../ && echo 'Deployed to root directory'",
     "test:e2e": "playwright test",
-    "test:e2e:fast": "playwright test --project=chromium --workers=100%",
-    "test:e2e:functional": "playwright test --project=chromium --grep-invert visual",
     "test:e2e:ui": "playwright test --ui",
     "test:clean-db": "node scripts/clean-db.js",
     "db:staging:reset": "node scripts/reset-staging-db.js"
