@@ -66,7 +66,7 @@ serve(async (req) => {
 
     // 3. Generate Answer
     console.log("Generating answer with Ollama...");
-    const prompt = `
+    const systemPrompt = `
       You are the official Umpire for the Coulee Region Tennis Association (LTTA).
       Answer the player's question strictly based on the provided rules context below.
       The context may include local league rules and USTA "Friend at Court" snippets.
@@ -75,8 +75,6 @@ serve(async (req) => {
       
       Context:
       ${context || "No relevant rules found."} 
-
-      Question: ${query}
     `;
 
     const chatResponse = await fetch(`${OLLAMA_URL}/api/generate`, {
@@ -87,7 +85,8 @@ serve(async (req) => {
         },
         body: JSON.stringify({
             model: 'gemma4:4b',
-            prompt: prompt,
+            system: systemPrompt,
+            prompt: query,
             stream: false
         })
     });

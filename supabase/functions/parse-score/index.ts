@@ -105,7 +105,7 @@ serve(async (req) => {
         parsedResponse = JSON.parse(content);
       } catch (parseError) {
         console.error('Error parsing DeepSeek response as JSON:', parseError);
-        return new Response(JSON.stringify({ error: 'Invalid JSON response from DeepSeek AI', rawResponse: content }), {
+        return new Response(JSON.stringify({ error: 'Invalid JSON response from DeepSeek AI' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 500,
         });
@@ -135,7 +135,7 @@ serve(async (req) => {
         parsedResponse = JSON.parse(data.response);
       } catch (parseError) {
         console.error('Error parsing Ollama response as JSON:', parseError);
-        return new Response(JSON.stringify({ error: 'Invalid JSON response from Ollama AI', rawResponse: data.response }), {
+        return new Response(JSON.stringify({ error: 'Invalid JSON response from Ollama AI' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 500,
         });
