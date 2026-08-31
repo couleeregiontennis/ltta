@@ -68,7 +68,7 @@ jobs:
 
     - name: Fix Dubious Ownership
       if: always()
-      run: git config --global --add safe.directory '*'
+      run: git config --global --add safe.directory /__w/ltta/ltta
 
     - name: Sync branch for concurrent commits
       if: always()
