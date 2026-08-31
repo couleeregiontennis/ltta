@@ -19,6 +19,7 @@ import { ScheduleGenerator } from './components/admin/ScheduleGenerator';
 import { AuditLogViewer } from './components/admin/AuditLogViewer';
 import { PlayerManagement } from './components/admin/PlayerManagement';
 import { PaymentManagement } from './components/admin/PaymentManagement';
+import { RegistrationDashboard } from './components/admin/RegistrationDashboard';
 import { PlayerRankings } from './components/PlayerRankings';
 import { MySchedule } from './components/MySchedule';
 import { CourtsLocations } from './components/CourtsLocations';
@@ -164,6 +165,14 @@ function App() {
                   element={
                     <ProtectedRoute requireAdmin>
                       <div>Team Management (Coming Soon)</div>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/registrations"
+                  element={
+                    <ProtectedRoute requireAdmin>
+                      <RegistrationDashboard />
                     </ProtectedRoute>
                   }
                 />

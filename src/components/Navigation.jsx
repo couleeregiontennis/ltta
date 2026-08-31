@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
 import { ZeffyModal } from './ZeffyModal';
+import { NotificationBell } from './NotificationBell';
 import '../styles/Navigation.css';
 
 export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
@@ -79,6 +80,8 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
             >
               <span aria-hidden="true">{theme === 'dark' ? '🌙' : '☀️'}</span>
             </button>
+
+            {user && <NotificationBell />}
 
             <button
               className="navbar-toggle"

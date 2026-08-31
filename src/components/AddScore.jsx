@@ -298,21 +298,27 @@ export const AddScore = () => {
 
         if (error || !matches) return ['', ''];
 
+        const matchIds = matches.map(m => m.id).filter(id => id !== currentMatchId);
+        if (matchIds.length === 0) return ['', ''];
+
+        const { data: lineResults, error: lineError } = await supabase
+          .from('line_results')
+          .select(`
+            match_id,
+            home_player_1:player!home_player_1_id(first_name, last_name),
+            home_player_2:player!home_player_2_id(first_name, last_name),
+            away_player_1:player!away_player_1_id(first_name, last_name),
+            away_player_2:player!away_player_2_id(first_name, last_name)
+          `)
+          .in('match_id', matchIds)
+          .eq('line_number', lineNumber);
+
+        if (lineError || !lineResults || lineResults.length === 0) return ['', ''];
+
         for (const match of matches) {
           if (match.id === currentMatchId) continue;
 
-          const { data: lineResult } = await supabase
-            .from('line_results')
-            .select(`
-              home_player_1:player!home_player_1_id(first_name, last_name),
-              home_player_2:player!home_player_2_id(first_name, last_name),
-              away_player_1:player!away_player_1_id(first_name, last_name),
-              away_player_2:player!away_player_2_id(first_name, last_name)
-            `)
-            .eq('match_id', match.id)
-            .eq('line_number', lineNumber)
-            .maybeSingle();
-
+          const lineResult = lineResults.find(lr => lr.match_id === match.id);
           if (lineResult) {
             const isHome = match.home_team_id === teamId;
             const player1 = isHome ? lineResult.home_player_1 : lineResult.away_player_1;
@@ -822,7 +828,6 @@ export const AddScore = () => {
   };
 
   const handleMatchSelect = async (matchId) => {
-    console.log('AddScore: Selected matchId:', matchId);
     const match = availableMatches.find(m => m.id === matchId);
     if (match) {
       const { data: teamMatchData } = await supabase
