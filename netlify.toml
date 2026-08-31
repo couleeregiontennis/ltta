@@ -1,5 +1,5 @@
 [build]
-  command = "npm install && npm run build"
+  command = "pnpm install --shamefully-hoist && pnpm run build"
   publish = "dist"
 
 [build.environment]
