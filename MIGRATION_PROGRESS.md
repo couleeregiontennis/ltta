@@ -98,8 +98,8 @@ This document tracks progress, architecture decisions, and remaining tasks for m
   - `.github/workflows/supabase-migrations.yml`
   - `.github/workflows/supabase-migrations-staging.yml`
   - `.github/workflows/deploy-pages.yml`
-- [ ] Remove `netlify.toml` and `.netlifyignore`
 - [x] Create systemd service template (`ltta.service`)
+- [x] Installed, enabled, and started user systemd service `ltta.service` (running persistently on port 3010, auto-restarts, user lingering enabled)
 
 ---
 

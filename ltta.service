@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/home/brett/Code/ltta-local
-ExecStart=/usr/bin/node server/index.js
+ExecStart=/home/linuxbrew/.linuxbrew/bin/node server/index.js
 Restart=always
 RestartSec=5
 Environment=PORT=3010
