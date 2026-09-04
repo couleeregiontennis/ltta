@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 import { useTeamStatsData } from '../hooks/useTeamStatsData';
 import { useAuth } from '../context/AuthProvider';
 import '../styles/CaptainDashboard.css';
@@ -57,27 +57,14 @@ export const CaptainDashboard = () => {
         return;
       }
 
-      const { data: teamLink, error: teamLinkError } = await supabase
-        .from('player_to_team')
-        .select('team')
-        .eq('player', currentPlayerData.id)
-        .eq('status', 'active')
-        .maybeSingle();
-
-      if (teamLinkError) throw teamLinkError;
+      const teamLink = await api.get('/players/me/team');
       
       if (!teamLink) {
         setLoading(false);
         return;
       }
 
-      const { data: teamData, error: teamError } = await supabase
-        .from('team')
-        .select('*')
-        .eq('id', teamLink.team)
-        .single();
-
-      if (teamError) throw teamError;
+      const teamData = await api.get('/teams/' + teamLink.team);
       setTeam(teamData);
 
       // Load team roster
@@ -104,13 +91,7 @@ export const CaptainDashboard = () => {
   const handleApproveRequest = async (playerId) => {
     try {
       setError('');
-      const { error } = await supabase
-        .from('player_to_team')
-        .update({ status: 'active' })
-        .eq('player', playerId)
-        .eq('team', team.id);
-      
-      if (error) throw error;
+      await api.patch('/teams/' + team.id + '/roster/' + playerId, { status: 'active' });
       setSuccess('Player request approved.');
       loadTeamRoster(team.id);
     } catch (err) {
@@ -121,13 +102,7 @@ export const CaptainDashboard = () => {
   const handleDenyRequest = async (playerId) => {
     try {
       setError('');
-      const { error } = await supabase
-        .from('player_to_team')
-        .delete()
-        .eq('player', playerId)
-        .eq('team', team.id);
-      
-      if (error) throw error;
+      await api.delete('/teams/' + team.id + '/roster/' + playerId);
       setSuccess('Player request denied.');
       loadTeamRoster(team.id);
     } catch (err) {
@@ -138,11 +113,7 @@ export const CaptainDashboard = () => {
   const handleInvitePlayer = async (playerId) => {
     try {
       setError('');
-      const { error } = await supabase
-        .from('player_to_team')
-        .insert({ player: playerId, team: team.id, status: 'invited' });
-      
-      if (error) throw error;
+      await api.post('/teams/' + team.id + '/roster', { player: playerId, team: team.id, status: 'invited' });
       setSuccess('Player invited.');
       loadTeamRoster(team.id);
       setAvailablePlayers(prev => prev.filter(p => p.id !== playerId));
@@ -172,12 +143,7 @@ export const CaptainDashboard = () => {
     setRosterManagerLoading(true);
     try {
       // Find active players not currently on this team
-      const { data: activePlayers, error: playersError } = await supabase
-        .from('player')
-        .select('*')
-        .eq('is_active', true);
-
-      if (playersError) throw playersError;
+      const activePlayers = await api.get('/players?active=true');
 
       // Filter out players already on this team
       const currentRosterIds = new Set(roster.map(p => p.id));
@@ -203,13 +169,7 @@ export const CaptainDashboard = () => {
     setLineupManagerLoading(true);
     try {
       // Load potential substitutes (active players not on this roster)
-      const { data: subs, error: subsError } = await supabase
-        .from('player')
-        .select('*')
-        .eq('is_active', true)
-        .eq('is_captain', false); // Simple filter for now
-
-      if (subsError) throw subsError;
+      const subs = await api.get('/players?active=true');
 
       const currentRosterIds = new Set(roster.map(p => p.id));
       const filtered = subs.filter(p => !currentRosterIds.has(p.id));
@@ -243,12 +203,7 @@ export const CaptainDashboard = () => {
     setConfirmLoading(true);
     try {
       if (pendingAction.type === 'RANKING_CHANGE') {
-        const { error: updateError } = await supabase
-          .from('player')
-          .update({ ranking: pendingAction.payload.ranking })
-          .eq('id', pendingAction.payload.playerId);
-
-        if (updateError) throw updateError;
+        await api.put('/players/' + pendingAction.payload.playerId, { ranking: pendingAction.payload.ranking });
         setSuccess('Ranking updated successfully.');
         await loadTeamRoster(team.id);
       }
@@ -271,15 +226,7 @@ export const CaptainDashboard = () => {
 
   const loadTeamRoster = async (teamId) => {
     try {
-      const { data: teamPlayers, error: rosterError } = await supabase
-        .from('player_to_team')
-        .select(`
-          status,
-          player:player(*)
-        `)
-        .eq('team', teamId);
-
-      if (rosterError) throw rosterError;
+      const teamPlayers = await api.get('/teams/' + teamId + '/roster');
 
       const activePlayers = [];
       const pending = [];
@@ -310,15 +257,7 @@ export const CaptainDashboard = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
 
-      const { data: matches, error: matchesError } = await supabase
-        .from('matches')
-        .select('*')
-        .or(`home_team_number.eq.${teamNumber},away_team_number.eq.${teamNumber}`)
-        .gte('date', today)
-        .order('date', { ascending: true })
-        .limit(5);
-
-      if (matchesError) throw matchesError;
+      const matches = await api.get('/matches?seasonId=' + (team?.season_id || 'current') + '&teamId=' + team.id);
       setUpcomingMatches(matches || []);
     } catch (err) {
       console.error('Error loading matches:', err);
@@ -348,12 +287,7 @@ export const CaptainDashboard = () => {
 
   const loadSeasonRecord = async (teamNumber) => {
     try {
-      const { data: scores, error: scoresError } = await supabase
-        .from('match_scores')
-        .select('*, match:matches!inner(*)')
-        .or(`match.home_team_number.eq.${teamNumber},match.away_team_number.eq.${teamNumber}`);
-
-      if (scoresError) throw scoresError;
+      const scores = await api.get('/scores?teamId=' + team.id);
 
       let wins = 0;
       let losses = 0;

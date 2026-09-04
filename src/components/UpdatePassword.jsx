@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../scripts/supabaseClient';
+import { auth } from '../scripts/apiClient';
 import { LoadingSpinner } from './LoadingSpinner';
 import '../styles/Login.css'; // Reuse Login styles
 
@@ -12,16 +12,6 @@ export const UpdatePassword = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setError('Invalid or expired reset link. Please request a new one.');
-      }
-    };
-    checkSession();
-  }, []);
-
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
     if (password !== confirmPassword) {
@@ -32,17 +22,14 @@ export const UpdatePassword = () => {
     setLoading(true);
     setError('');
     
-    const { error } = await supabase.auth.updateUser({
-      password: password
-    });
-    
-    setLoading(false);
-    
-    if (error) {
-      setError(error.message);
-    } else {
+    try {
+      await auth.updateUser({ password });
       setSuccess(true);
       setTimeout(() => navigate('/'), 2000);
+    } catch (err) {
+      setError(err.message || 'Failed to update password');
+    } finally {
+      setLoading(false);
     }
   };
 

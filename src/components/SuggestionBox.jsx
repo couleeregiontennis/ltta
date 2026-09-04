@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Turnstile from "react-turnstile";
-import { supabase } from "../scripts/supabaseClient";
+import api from "../scripts/apiClient";
 import { useAuth } from "../context/AuthProvider";
 import { LoadingSpinner } from "./LoadingSpinner";
 import ReactMarkdown from 'react-markdown';
@@ -24,14 +24,11 @@ export const SuggestionBox = () => {
 
   const fetchHistory = async () => {
     setLoadingHistory(true);
-    const { data, error } = await supabase
-      .from('suggestions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
+    try {
+      const data = await api.get('/suggestions');
       setHistory(data);
+    } catch (err) {
+      console.error(err);
     }
     setLoadingHistory(false);
   };
@@ -55,17 +52,10 @@ export const SuggestionBox = () => {
     setMessage("");
 
     try {
-      const { data, error } = await supabase.functions.invoke("submit-suggestion", {
-        body: {
-          content: suggestion,
-          captchaToken: turnstileToken,
-        },
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`
-        }
+      const data = await api.post('/suggestions', {
+        content: suggestion,
+        captchaToken: turnstileToken,
       });
-
-      if (error) throw error;
 
       setStatus("success");
       setMessage("Thank you for your feedback! It has been submitted for review.");

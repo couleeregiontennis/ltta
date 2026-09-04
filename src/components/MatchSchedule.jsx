@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 import { useAuth } from '../context/AuthProvider';
 import { useSeason } from '../hooks/useSeason';
 import { useToast } from '../context/ToastContext';
@@ -134,33 +134,8 @@ export const MatchSchedule = () => {
       setLoading(true);
       setError(null);
 
-      const { data: matchesData, error: matchesError } = await supabase
-        .from('team_match')
-        .select(`
-          id, 
-          date, 
-          time, 
-          status, 
-          courts, 
-          is_disputed,
-          submitted_by,
-          verified_by,
-          home_team:home_team_id (id, name, number), 
-          away_team:away_team_id (id, name, number),
-          line_results (
-            home_won
-          )
-        `)
-        .eq('season_id', currentSeason.id)
-        .order('date', { ascending: true });
-
-      const { data: teamsData, error: teamsError } = await supabase
-        .from('team')
-        .select('id, name, number')
-        .order('name');
-
-      if (matchesError) throw matchesError;
-      if (teamsError) throw teamsError;
+      const matchesData = await api.get('/matches?seasonId=' + currentSeason.id);
+      const teamsData = await api.get('/teams');
 
       const flattenedMatches = (matchesData || []).map(m => ({
         ...m,
@@ -217,12 +192,7 @@ export const MatchSchedule = () => {
   const handleToggleRainout = async (matchId, currentStatus) => {
     try {
       const newStatus = currentStatus === 'rain_cancellation' ? 'scheduled' : 'rain_cancellation';
-      const { error } = await supabase
-        .from('team_match')
-        .update({ status: newStatus })
-        .eq('id', matchId);
-
-      if (error) throw error;
+      await api.patch('/matches/' + matchId + '/status', { status: newStatus });
       fetchAllData();
     } catch (err) {
       console.error('Error toggling rainout status:', err);
@@ -231,10 +201,7 @@ export const MatchSchedule = () => {
 
   const handleFlagScore = async (matchId) => {
     try {
-      const { error } = await supabase.rpc('flag_match_score', { match_id: matchId });
-      if (error) throw error;
-      
-      // Update local state to show disputed immediately
+      await api.post('/matches/' + matchId + '/flag');
       setMatches(prevMatches => prevMatches.map(m =>
         m.id === matchId ? { ...m, is_disputed: true, status: 'disputed' } : m
       ));
@@ -475,7 +442,7 @@ export const MatchSchedule = () => {
                                   onClick={async (e) => {
                                     e.stopPropagation();
                                     const newStatus = match.status === 'heat_cancellation' ? 'scheduled' : 'heat_cancellation';
-                                    await supabase.from('team_match').update({ status: newStatus }).eq('id', match.id);
+                                    await api.patch('/matches/' + match.id + '/status', { status: newStatus });
                                     fetchAllData();
                                   }}
                                   style={match.status === 'heat_cancellation' ? { backgroundColor: 'var(--text-secondary)' } : { backgroundColor: 'var(--warning)', color: 'black' }}

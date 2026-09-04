@@ -71,6 +71,15 @@ This document outlines planned features and enhancements for the Coulee Region T
     *   Allow offline draft entry and validation in the UI.
     *   Automatically sync with Supabase once network connection is restored.
 
+### 8. Simple Admin UI (Announcements & Page Text)
+*   **Goal:** Allow admins to easily update text on pages, post/update announcements, and manage basic site content.
+*   **Implementation:**
+    *   Add or expand an `/admin` route or section protected by an admin role/flag.
+    *   Expose simple CRUD forms (e.g., "Update Announcements", "Edit Page Text") that read/write directly to the database.
+
+### 9. Admin Team Management
+*   **Problem:** The `/admin/team-management` route is currently a placeholder saying "Team Management (Coming Soon)". Admins need a interface to assign players to teams, edit team numbers/names, and configure team play nights.
+
 ## Recently Completed / In Progress
 
 *   **Rainout & "No Reschedule" Handling:** Improved UI to handle and clearly communicate canceled matches with prominent badges and a schedule banner. Admins and Captains can mark existing matches as "Rained Out".

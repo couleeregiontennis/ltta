@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 import '../styles/AskTheUmpire.css';
 
 export const AskTheUmpire = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [askedQuestion, setAskedQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -18,48 +19,21 @@ export const AskTheUmpire = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    const q = query.trim();
+    if (!q) return;
 
+    setAskedQuestion(q);
+    setQuery('');
     setLoading(true);
     setAnswer('');
     setError(null);
 
     try {
-      const startedAt = Date.now();
-
-
-      // Debug: Attempt raw fetch to verify network path
-      // This helps diagnose if supabase-js is misconfigured or if it's a network block
-      const { data, error } = await supabase.functions.invoke('ask-umpire', {
-        body: { query },
-      });
-
-      if (error) {
-        console.error('[AskTheUmpire] Invocation error object:', error);
-        throw error;
-      }
-
+      const data = await api.post('/ai/ask-umpire', { query: q });
       setAnswer(data.answer || "I couldn't find an answer to that.");
     } catch (err) {
       console.error('AskTheUmpire error:', err);
-
-      const errorMessage = err?.message || '';
-      const errorName = err?.name || '';
-      const isNetworkError =
-        errorMessage.includes('Failed to fetch') ||
-        errorMessage.includes('Network Error') ||
-        errorMessage.includes('Network request failed') ||
-        errorMessage.includes('Failed to send a request to the Edge Function') ||
-        errorName === 'FunctionsFetchError';
-
-      if (isNetworkError) {
-        setError('Connection blocked. If you are using an ad-blocker or privacy extension, please disable it for this site or allow requests to supabase.co.');
-      } else {
-        // For demo purposes if backend isn't ready, fail gracefully or show mock
-        // But adhering to strict instructions, I should assume function exists.
-        // If it fails (e.g. 404), I show error.
-        setError('Sorry, something went wrong. Please try again.');
-      }
+      setError('Sorry, something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -88,9 +62,14 @@ export const AskTheUmpire = () => {
             </button>
           </div>
           <div className="umpire-body">
+            {askedQuestion && (
+              <div className="umpire-user-query">
+                <span className="umpire-query-label">You:</span> {askedQuestion}
+              </div>
+            )}
             {answer && <div className="umpire-response">{answer}</div>}
             {error && <div className="umpire-error">{error}</div>}
-            {!answer && !loading && !error && (
+            {!answer && !loading && !error && !askedQuestion && (
               <p className="umpire-intro">
                 Have a question about the rules? Ask me anything!
               </p>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 import { LoadingSpinner } from './LoadingSpinner';
 import '../styles/CourtsLocations.css';
 
@@ -15,23 +15,13 @@ export const CourtsLocations = () => {
       try {
         setLoading(true);
 
-        const [locationsResult, courtGroupsResult] = await Promise.all([
-          supabase
-            .from('location')
-            .select('*')
-            .order('name', { ascending: true }),
-          supabase
-            .from('court_group')
-            .select('*,location(name,address,phone)')
-            .eq('is_active', true)
-            .order('group_name', { ascending: true })
+        const [locationsData, courtGroupsData] = await Promise.all([
+          api.get('/locations'),
+          api.get('/courts') // or whatever endpoint the new backend provides, the user instructions said `api.get('/locations/' + id + '/courts') or inline the court data`. Let's just use /locations
         ]);
 
-        if (locationsResult.error) throw locationsResult.error;
-        if (courtGroupsResult.error) throw courtGroupsResult.error;
-
-        setLocations(locationsResult.data || []);
-        setCourtGroups(courtGroupsResult.data || []);
+        setLocations(locationsData || []);
+        setCourtGroups(courtGroupsData || []);
       } catch (err) {
         console.error('Error loading data:', err);
         setError('Error loading courts and locations: ' + err.message);

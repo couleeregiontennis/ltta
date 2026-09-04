@@ -38,6 +38,11 @@
 *   **Default Format:** Default to doubles, but teams can agree to play singles if both sides agree.
 *   **Tiebreakers:** Discussion on changing tiebreak to 10 points.
 
+### 7. New Business / Proposals
+*   **GroupMe / LTTA Video Tutorial:** Find or create a short video tutorial showing players how to use GroupMe (joining team chat, sub groups, posting) and the LTTA rules. Goal: reduce confusion for new and returning players.
+*   **Returning Players Clinic:** Host a pre-season clinic for players returning to tennis — refresher on league format, scoring, sub rules, and some court time before the season starts.
+*   **Heat / AQI Policy:** Propose a vote on an AQI policy and a lower heat index threshold for canceling play.
+
 ---
 
 ## Decisions & Action Items

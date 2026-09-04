@@ -28,10 +28,17 @@ dist/
 
 # superpowers workspaces
 .worktrees/
-
 # verification files
 /verification/
 
 # Local autonomous coding agent files
 .codeep/
 DEEPSEEK.md
+
+# local playwright deps
+/playwright-deps/
+
+# SQLite local database
+server/*.db
+server/*.db-wal
+server/*.db-shm
