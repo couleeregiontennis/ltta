@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
-import { db, ensureRulesIndexed } from '../db.js';
+import { db, ensureRulesIndexed, genUUID } from '../db.js';
 import { llmQueue } from '../llmQueue.js';
 import { curatedFaqs } from '../data/curatedFaqs.js';
 
@@ -96,12 +96,42 @@ router.post('/ask-umpire', optionalAuth, async (req, res) => {
     ensureRulesIndexed();
 
     const normalized = query.trim();
+
+    const logQuery = (matchedFaq, matchedRule, finalAnswer) => {
+      try {
+        db.prepare(`
+          INSERT INTO umpire_queries (id, query, matched_faq, matched_rule, answer)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(genUUID(), normalized, matchedFaq ? 1 : 0, matchedRule ? 1 : 0, finalAnswer);
+      } catch (logErr) {
+        console.warn('Failed to log umpire query:', logErr.message);
+      }
+    };
+
     const stopWords = new Set([
       'what', 'when', 'where', 'which', 'who', 'whom', 'this', 'that', 'these',
       'those', 'the', 'and', 'with', 'from', 'for', 'about', 'does', 'did',
       'happens', 'happen', 'can', 'could', 'should', 'would', 'is', 'are', 'was',
-      'were', 'tennis', 'rule', 'rules', 'please', 'tell', 'explain'
+      'were', 'tennis', 'rule', 'rules', 'please', 'tell', 'explain', 'how', 'why'
     ]);
+
+    // Safety Gate: Refuse clinical/medical advice requests (prevent dangerous hallucinations)
+    const medicalKeywords = [
+      'treat', 'treatment', 'medicine', 'medication', 'cure', 'remedy', 'first aid',
+      'symptom', 'diagnosis', 'heat stroke', 'heatstroke', 'heart attack', 'cpr',
+      'ambulance', 'hospital', 'doctor', 'concussion', 'fracture', 'sprain'
+    ];
+    const queryLower = normalized.toLowerCase();
+    const isMedicalQuery = medicalKeywords.some(kw => queryLower.includes(kw));
+    if (isMedicalQuery) {
+      const medicalFallback = "The Umpire only answers tennis and league rules questions. For medical symptoms or heat emergencies, please seek medical assistance or emergency care immediately.";
+      logQuery(false, false, medicalFallback);
+      return res.json({
+        answer: medicalFallback,
+        directHit: false,
+        confidence: 'medical_refusal'
+      });
+    }
 
     const searchTerms = normalized
       .toLowerCase()
@@ -143,6 +173,7 @@ router.post('/ask-umpire', optionalAuth, async (req, res) => {
     }
 
     if (bestFaq) {
+      logQuery(true, false, bestFaq.answer);
       return res.json({
         answer: bestFaq.answer,
         source: 'FAQ',
@@ -151,9 +182,11 @@ router.post('/ask-umpire', optionalAuth, async (req, res) => {
       });
     }
 
-    // STEP 2: Micro-chunk Rules FTS5 Search
+    // STEP 2: Confidence Gate - Micro-chunk Rules FTS5 Search
     // Sort by priority DESC (local LTTA rules = 10, national USTA rules = 1), then rank
     let context = '';
+    let hasRuleMatch = false;
+
     if (searchTerms.length > 0) {
       const matchQuery = searchTerms.map(term => `"${term}"*`).join(' OR ');
       try {
@@ -162,12 +195,22 @@ router.post('/ask-umpire', optionalAuth, async (req, res) => {
           FROM rules_fts
           WHERE rules_fts MATCH ?
           ORDER BY CAST(priority AS INTEGER) DESC, rank ASC
-          LIMIT 3
+          LIMIT 10
         `).all(matchQuery);
 
-        if (rows && rows.length > 0) {
-          context = rows.map(r => r.content).join('\n');
-          // Bound context length strictly
+        // Confidence Gate: Require at least rank < -3.5 AND meaningful keyword overlap
+        // Prevents matching a completely unrelated snippet that only contains 1 random common word
+        const minTermsNeeded = searchTerms.length <= 1 ? 1 : Math.min(2, searchTerms.length);
+        const validRows = (rows || []).filter(r => {
+          if (r.rank >= -3.5) return false;
+          const snippetLower = r.content.toLowerCase();
+          const matchedCount = searchTerms.filter(term => snippetLower.includes(term)).length;
+          return matchedCount >= minTermsNeeded;
+        });
+
+        if (validRows.length > 0) {
+          hasRuleMatch = true;
+          context = validRows.slice(0, 3).map(r => r.content).join('\n');
           if (context.length > 700) {
             context = context.slice(0, 700);
           }
@@ -177,14 +220,27 @@ router.post('/ask-umpire', optionalAuth, async (req, res) => {
       }
     }
 
-    // STEP 3: Queue AI generation (serialized to protect CPU, tiny prompt, max 80 tokens out)
+    // If no relevant rule was found in the handbooks, refuse to speculate immediately
+    if (!hasRuleMatch || !context) {
+      const safeFallback = "I couldn't find a specific rule covering that in the LTTA handbook or USTA regulations. Please consult your team captain or League Coordinator Brett Meddaugh.";
+      logQuery(false, false, safeFallback);
+      return res.json({
+        answer: safeFallback,
+        directHit: false,
+        confidence: 'unmatched'
+      });
+    }
+
+    // STEP 3: Queue AI generation with Strict Refusal Prompt
     const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
     const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen3.5:0.8b';
 
-    const systemPrompt = `You are the official LTTA (La Crosse Team Tennis Association) umpire.
-${context ? `Official League Context:\n${context}\n` : ''}
+    const systemPrompt = `You are the official LTTA (La Crosse Team Tennis Association) rules assistant.
+Official Rules Excerpts:
+${context}
+
 Question: ${normalized}
-Instructions: Answer directly and accurately in 1 or 2 sentences based strictly on the Official League Context. Do NOT provide medical diagnosis or advice.
+Instructions: Answer directly and accurately in 1 or 2 sentences using ONLY the Official Rules Excerpts above. If the excerpts do not explicitly contain the answer, reply EXACTLY: "I don't have a specific rule for that in the LTTA handbook. Please consult your team captain or League Coordinator Brett Meddaugh." Do NOT extrapolate, speculate, or guess.
 Answer:`;
 
     const answer = await llmQueue.run(async () => {
@@ -204,7 +260,7 @@ Answer:`;
             keep_alive: '10m',
             options: {
               num_predict: 80,
-              temperature: 0.1
+              temperature: 0.0
             }
           })
         });
@@ -215,12 +271,14 @@ Answer:`;
         }
 
         const chatData = await chatRes.json();
-        return chatData.response?.trim() || "I couldn't find an answer to that question.";
+        const rawResponse = chatData.response?.trim();
+        return rawResponse || "I couldn't find an answer to that question.";
       } finally {
         clearTimeout(timeout);
       }
     });
 
+    logQuery(false, true, answer);
     res.json({ answer, contextUsed: context, directHit: false });
   } catch (error) {
     console.error('Error asking umpire:', error);

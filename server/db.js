@@ -329,6 +329,17 @@ db.exec(`
     priority INTEGER DEFAULT 0
   );
   CREATE VIRTUAL TABLE IF NOT EXISTS rules_faq_fts USING fts5(keywords, question, answer, content=rules_faq, content_rowid=rowid);
+
+  -- Log umpire queries to monitor player questions, confidence, and blindspots
+  CREATE TABLE IF NOT EXISTS umpire_queries (
+    id TEXT PRIMARY KEY,
+    query TEXT NOT NULL,
+    matched_faq INTEGER DEFAULT 0,
+    matched_rule INTEGER DEFAULT 0,
+    answer TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_umpire_queries_created ON umpire_queries(created_at);
 `);
 
 /**
@@ -400,7 +411,21 @@ export function ensureRulesIndexed() {
 
     const indexFile = (filePath, sourceName, priority = 1) => {
       if (!fs.existsSync(filePath)) return;
-      const content = fs.readFileSync(filePath, 'utf-8');
+      let content = fs.readFileSync(filePath, 'utf-8');
+
+      // Exclude medical/emergency guidelines (Part 4) from Friend at Court to prevent medical hallucinations
+      if (sourceName === 'friend_at_court.md') {
+        const part4Index = content.indexOf('PART 4—USTA EMERGENCY CARE GUIDELINES');
+        const part5Index = content.indexOf('PART 5—UMPIRE ASSIGNMENT');
+        if (part4Index !== -1) {
+          if (part5Index !== -1 && part5Index > part4Index) {
+            content = content.slice(0, part4Index) + '\n\n' + content.slice(part5Index);
+          } else {
+            content = content.slice(0, part4Index);
+          }
+        }
+      }
+
       const paragraphs = content.split(/\n\s*\n/);
       for (const para of paragraphs) {
         const clean = para.trim().replace(/\s+/g, ' ');
