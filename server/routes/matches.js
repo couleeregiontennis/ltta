@@ -80,13 +80,26 @@ router.get('/:id', (req, res) => {
 router.patch('/:id/status', requireAuth, loadPlayer, requireCaptain, (req, res) => {
   const { status } = req.body;
   try {
-    const info = db.prepare(`
+    const match = db.prepare('SELECT * FROM team_match WHERE id = ?').get(req.params.id);
+    if (!match) return res.status(404).json({ error: 'Match not found' });
+
+    // Admins can update any match; captains can only update matches involving their team
+    if (!req.player.is_admin) {
+      const captainTeam = db.prepare(`
+        SELECT team FROM player_to_team WHERE player = ? AND status = 'active'
+      `).get(req.player.id);
+
+      if (!captainTeam || (captainTeam.team !== match.home_team_id && captainTeam.team !== match.away_team_id)) {
+        return res.status(403).json({ error: 'Forbidden: You can only update matches for your own team' });
+      }
+    }
+
+    db.prepare(`
       UPDATE team_match 
       SET status = ?, updated_at = CURRENT_TIMESTAMP 
       WHERE id = ?
     `).run(status, req.params.id);
     
-    if (info.changes === 0) return res.status(404).json({ error: 'Match not found' });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -144,6 +157,19 @@ router.get('/:id/line-results', (req, res) => {
 router.post('/:id/line-results', requireAuth, loadPlayer, requireCaptain, (req, res) => {
   const { line_number, match_type, home_player_1_id, home_player_2_id, away_player_1_id, away_player_2_id, home_set_1, home_set_2, home_set_3, away_set_1, away_set_2, away_set_3, home_won, notes } = req.body;
   try {
+    const match = db.prepare('SELECT * FROM team_match WHERE id = ?').get(req.params.id);
+    if (!match) return res.status(404).json({ error: 'Match not found' });
+
+    if (!req.player.is_admin) {
+      const captainTeam = db.prepare(`
+        SELECT team FROM player_to_team WHERE player = ? AND status = 'active'
+      `).get(req.player.id);
+
+      if (!captainTeam || (captainTeam.team !== match.home_team_id && captainTeam.team !== match.away_team_id)) {
+        return res.status(403).json({ error: 'Forbidden: You can only report scores for matches involving your team' });
+      }
+    }
+
     db.prepare(`
       INSERT INTO line_results (id, match_id, line_number, match_type, home_player_1_id, home_player_2_id, away_player_1_id, away_player_2_id, home_set_1, home_set_2, home_set_3, away_set_1, away_set_2, away_set_3, home_won, submitted_by, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -180,13 +206,25 @@ router.post('/:id/line-results', requireAuth, loadPlayer, requireCaptain, (req, 
 router.patch('/:id/roster', requireAuth, loadPlayer, requireCaptain, (req, res) => {
   const { home_full_roster, away_full_roster } = req.body;
   try {
-    const info = db.prepare(`
+    const match = db.prepare('SELECT * FROM team_match WHERE id = ?').get(req.params.id);
+    if (!match) return res.status(404).json({ error: 'Match not found' });
+
+    if (!req.player.is_admin) {
+      const captainTeam = db.prepare(`
+        SELECT team FROM player_to_team WHERE player = ? AND status = 'active'
+      `).get(req.player.id);
+
+      if (!captainTeam || (captainTeam.team !== match.home_team_id && captainTeam.team !== match.away_team_id)) {
+        return res.status(403).json({ error: 'Forbidden: You can only update roster status for your own team matches' });
+      }
+    }
+
+    db.prepare(`
       UPDATE team_match 
       SET home_full_roster = ?, away_full_roster = ?, updated_at = CURRENT_TIMESTAMP 
       WHERE id = ?
     `).run(home_full_roster, away_full_roster, req.params.id);
     
-    if (info.changes === 0) return res.status(404).json({ error: 'Match not found' });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -234,6 +272,19 @@ router.post('/batch-line-results', requireAuth, (req, res) => {
 router.patch('/:id/scores', requireAuth, loadPlayer, requireCaptain, (req, res) => {
   const { home_lines_won, away_lines_won, home_total_games, away_total_games, home_won } = req.body;
   try {
+    const match = db.prepare('SELECT * FROM team_match WHERE id = ?').get(req.params.id);
+    if (!match) return res.status(404).json({ error: 'Match not found' });
+
+    if (!req.player.is_admin) {
+      const captainTeam = db.prepare(`
+        SELECT team FROM player_to_team WHERE player = ? AND status = 'active'
+      `).get(req.player.id);
+
+      if (!captainTeam || (captainTeam.team !== match.home_team_id && captainTeam.team !== match.away_team_id)) {
+        return res.status(403).json({ error: 'Forbidden: You can only update scores for your own team matches' });
+      }
+    }
+
     db.prepare(`
       INSERT INTO match_scores (id, match_id, home_lines_won, away_lines_won, home_total_games, away_total_games, home_won)
       VALUES (?, ?, ?, ?, ?, ?, ?)

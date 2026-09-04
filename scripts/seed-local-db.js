@@ -8,10 +8,10 @@ async function seed() {
   const passwordHash = await bcrypt.hash('password123', 10);
 
   const transaction = db.transaction(() => {
-    // 1. Create admin and demo users
-    const adminUserId = genUUID();
-    const captainUserId = genUUID();
-    const playerUserId = genUUID();
+    // 1. Create admin and demo users with deterministic IDs
+    const adminUserId = '00000000-0000-0000-0000-000000000001';
+    const captainUserId = '00000000-0000-0000-0000-000000000002';
+    const playerUserId = '00000000-0000-0000-0000-000000000003';
 
     db.prepare('INSERT OR IGNORE INTO users (id, email, password_hash) VALUES (?, ?, ?)')
       .run(adminUserId, 'admin@ltta.local', passwordHash);
@@ -54,10 +54,10 @@ async function seed() {
       insertTeamSeason.run(genUUID(), t.id, seasonId);
     }
 
-    // 5. Players
-    const adminPlayerId = genUUID();
-    const captainPlayerId = genUUID();
-    const regularPlayerId = genUUID();
+    // 5. Players with deterministic IDs
+    const adminPlayerId = '00000000-0000-0000-0000-000000000011';
+    const captainPlayerId = '00000000-0000-0000-0000-000000000012';
+    const regularPlayerId = '00000000-0000-0000-0000-000000000013';
 
     const insertPlayer = db.prepare(`
       INSERT OR IGNORE INTO player (id, user_id, first_name, last_name, email, phone, ranking, is_captain, is_admin, is_active)

@@ -39,6 +39,28 @@ router.get('/me/team', requireAuth, loadPlayer, (req, res) => {
   }
 });
 
+// Request to join a team or associate during onboarding
+router.post('/me/team', requireAuth, loadPlayer, (req, res) => {
+  const { team_id } = req.body;
+  if (!team_id) return res.status(400).json({ error: 'team_id is required' });
+
+  try {
+    const existing = db.prepare('SELECT id FROM player_to_team WHERE player = ? AND team = ?').get(req.player.id, team_id);
+    if (existing) {
+      return res.json({ success: true, message: 'Already requested or joined' });
+    }
+
+    db.prepare(`
+      INSERT INTO player_to_team (id, player, team, status)
+      VALUES (?, ?, ?, 'pending')
+    `).run(genUUID(), req.player.id, team_id);
+
+    res.status(201).json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/me/matches', requireAuth, loadPlayer, (req, res) => {
   try {
     const matches = db.prepare(`
@@ -56,9 +78,26 @@ router.put('/me', requireAuth, loadPlayer, (req, res) => {
   try {
     db.prepare(`
       UPDATE player 
-      SET first_name = ?, last_name = ?, phone = ?, ranking = ?, day_availability = ?, emergency_contact = ?, emergency_phone = ?, notes = ?
+      SET first_name = COALESCE(?, first_name),
+          last_name = COALESCE(?, last_name),
+          phone = COALESCE(?, phone),
+          ranking = COALESCE(?, ranking),
+          day_availability = COALESCE(?, day_availability),
+          emergency_contact = COALESCE(?, emergency_contact),
+          emergency_phone = COALESCE(?, emergency_phone),
+          notes = COALESCE(?, notes)
       WHERE id = ?
-    `).run(first_name, last_name, phone, ranking, typeof day_availability === 'object' ? JSON.stringify(day_availability) : day_availability, emergency_contact, emergency_phone, notes, req.player.id);
+    `).run(
+      first_name ?? null,
+      last_name ?? null,
+      phone ?? null,
+      ranking ?? null,
+      day_availability !== undefined ? (typeof day_availability === 'object' ? JSON.stringify(day_availability) : day_availability) : null,
+      emergency_contact ?? null,
+      emergency_phone ?? null,
+      notes ?? null,
+      req.player.id
+    );
     
     res.json({ success: true });
   } catch (err) {
