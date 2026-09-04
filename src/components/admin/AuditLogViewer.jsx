@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../../scripts/supabaseClient';
+import api from '../../scripts/apiClient';
 import { useAuth } from '../../context/AuthProvider';
 import '../../styles/AuditLogViewer.css';
 
@@ -42,11 +42,7 @@ export const AuditLogViewer = () => {
       setLoading(true);
 
       // Load all players for mapping IDs to names
-      const { data: allPlayers, error: allPlayersError } = await supabase
-        .from('player')
-        .select('id, first_name, last_name, email');
-
-      if (allPlayersError) throw allPlayersError;
+      const allPlayers = await api.get('/players');
 
       const playerMap = {};
       allPlayers.forEach(p => {
@@ -63,25 +59,11 @@ export const AuditLogViewer = () => {
 
   const loadLogs = async () => {
     try {
-      let query = supabase
-        .from('audit_logs')
-        .select('*')
-        .order('changed_at', { ascending: false })
-        .limit(100);
-
-      if (filters.tableName) {
-        query = query.eq('table_name', filters.tableName);
-      }
-      if (filters.operation) {
-        query = query.eq('operation', filters.operation);
-      }
-      if (filters.changedBy) {
-        query = query.eq('changed_by', filters.changedBy);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
+      let url = '/admin/audit-logs?';
+      if (filters.tableName) url += `tableName=${filters.tableName}&`;
+      if (filters.operation) url += `operation=${filters.operation}&`;
+      if (filters.changedBy) url += `changedBy=${filters.changedBy}&`;
+      const data = await api.get(url);
       setLogs(data || []);
 
     } catch (err) {

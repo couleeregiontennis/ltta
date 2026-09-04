@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 import { useAuth } from '../context/AuthProvider';
 import { useVoiceScoreInput } from '../hooks/useVoiceScoreInput';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -228,24 +228,16 @@ export const AddScore = () => {
         setError('');
 
         // 1. Get Team Assignment
-        const { data: teamLink, error: teamLinkError } = await supabase
-          .from('player_to_team')
-          .select('team')
-          .eq('player', currentPlayerData.id)
-          .single();
+        const teamLink = await api.get('/players/me/team');
 
-        if (teamLinkError || !teamLink) {
+        if (!teamLink) {
           setLoading(false);
           return;
         }
 
-        const { data: teamData, error: teamError } = await supabase
-          .from('team')
-          .select('*')
-          .eq('id', teamLink.team)
-          .single();
+        const teamData = await api.get('/teams/' + teamLink.team);
 
-        if (teamError || !teamData) {
+        if (!teamData) {
           setLoading(false);
           return;
         }
@@ -253,18 +245,9 @@ export const AddScore = () => {
         setUserTeam(teamData);
 
         // 2. Get Available Matches
-        const { data: matches, error: matchesError } = await supabase
-          .from('team_match')
-          .select(`
-            id, date, time, courts, status,
-            home_team:home_team_id (id, name, number, play_night),
-            away_team:away_team_id (id, name, number, play_night)
-          `)
-          .or(`home_team_id.eq.${teamData.id},away_team_id.eq.${teamData.id}`)
-          .eq('status', 'scheduled')
-          .order('date', { ascending: true });
+        const matches = await api.get('/matches?seasonId=' + currentSeason.id + '&teamId=' + teamData.id);
 
-        if (matchesError) throw matchesError;
+        
         
         const flattenedMatches = (matches || []).map(m => ({
           id: m.id,
@@ -300,28 +283,14 @@ export const AddScore = () => {
 
   const loadExistingScores = async (matchId) => {
     try {
-      const { data: scores, error } = await supabase
-        .from('line_results')
-        .select(`
-          *,
-          home_player_1:player!home_player_1_id(first_name, last_name),
-          home_player_2:player!home_player_2_id(first_name, last_name),
-          away_player_1:player!away_player_1_id(first_name, last_name),
-          away_player_2:player!away_player_2_id(first_name, last_name)
-        `)
-        .eq('match_id', matchId)
-        .order('line_number');
+      const scores = await api.get('/matches/' + matchId + '/line-results');
 
-      if (error) throw error;
+      
 
       setExistingScores(scores || []);
 
       // Also load full roster status
-      const { data: matchData } = await supabase
-        .from('team_match')
-        .select('home_full_roster, away_full_roster, home_team_id')
-        .eq('id', matchId)
-        .single();
+      const matchData = await api.get('/matches/' + matchId);
 
       if (matchData && userTeam) {
         const isHome = matchData.home_team_id === userTeam.id;
@@ -500,32 +469,15 @@ export const AddScore = () => {
   const loadTeamRoster = async (teamNumber, night) => {
     if (!teamNumber || !night) return [];
     try {
-      const { data: team, error: teamError } = await supabase
-        .from('team')
-        .select('id')
-        .eq('number', teamNumber)
-        .eq('play_night', night.toLowerCase())
-        .single();
+      const team = await api.get('/teams/search?number=' + teamNumber + '&night=' + night.toLowerCase());
 
-      if (teamError || !team) {
+      if (!team) {
         return [];
       }
 
-      const { data: playerLinks, error: linksError } = await supabase
-        .from('player_to_team')
-        .select(`
-          player:player (
-            id,
-            first_name,
-            last_name,
-            ranking
-          )
-        `)
-        .eq('team', team.id);
+      const playerLinks = await api.get('/teams/' + team.id + '/roster');
 
-      if (linksError) {
-        throw linksError;
-      }
+      
 
       const idMap = {};
       const roster = (playerLinks || [])
@@ -550,11 +502,7 @@ export const AddScore = () => {
     console.log('AddScore: Selected matchId:', matchId);
     const match = availableMatches.find(m => m.id === matchId);
     if (match) {
-      const { data: teamMatchData } = await supabase
-        .from('team_match')
-        .select('is_disputed, home_full_roster, away_full_roster, home_team_id')
-        .eq('id', matchId)
-        .single();
+      const teamMatchData = await api.get('/matches/' + matchId);
 
       const isDisputed = teamMatchData?.is_disputed || false;
       
@@ -656,16 +604,11 @@ export const AddScore = () => {
       const existingScore = existingScores.find(s => s.line_number === Number(formData.lineNumber));
 
       if (existingScore) {
-        const { error: lineError } = await supabase
-          .from('line_results')
-          .update(payload)
-          .eq('id', existingScore.id);
-        if (lineError) throw lineError;
+        await api.patch('/matches/' + selectedMatch.id + '/line-results/' + existingScore.id, payload);
+        
       } else {
-        const { error: lineError } = await supabase
-          .from('line_results')
-          .insert([payload]);
-        if (lineError) throw lineError;
+        await api.post('/matches/' + selectedMatch.id + '/line-results', payload);
+        
       }
 
       // Update participation bonus and resolve dispute
@@ -674,10 +617,7 @@ export const AddScore = () => {
       if (isHome) updateData.home_full_roster = formData.fullRosterPresent;
       else updateData.away_full_roster = formData.fullRosterPresent;
 
-      await supabase
-        .from('team_match')
-        .update(updateData)
-        .eq('id', selectedMatch.id);
+      await api.patch('/matches/' + selectedMatch.id + '/roster', updateData);
 
       addToast('Scores submitted successfully!', 'success');
       await loadExistingScores(selectedMatch.id);

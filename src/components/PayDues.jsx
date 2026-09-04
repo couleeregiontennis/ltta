@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 import { useAuth } from '../context/AuthProvider';
 import { useSeason } from '../hooks/useSeason';
 import '../styles/PayDues.css';
@@ -24,18 +24,13 @@ export const PayDues = () => {
 
         try {
             // Insert a pending payment record
-            const { error: insertError } = await supabase
-                .from('season_payments')
-                .insert([{
-                    season_id: currentSeason.id,
-                    player_id: currentPlayerData.id,
-                    amount_paid: 60, // Assuming a standard $60 dues for now, could be dynamic
-                    payment_method: 'zeffy',
-                    status: 'pending',
-                    notes: 'Self-reported via website'
-                }]);
-
-            if (insertError) throw insertError;
+            await api.post('/payments', {
+                season_id: currentSeason.id,
+                player_id: currentPlayerData.id,
+                amount_paid: 60,
+                payment_method: 'online',
+                status: 'pending'
+            });
 
             setMessage('Thank you! Your payment has been reported and is pending admin verification.');
         } catch (err) {

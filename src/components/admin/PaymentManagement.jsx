@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../scripts/supabaseClient';
+import api from '../../scripts/apiClient';
 import { useAuth } from '../../context/AuthProvider';
 import { useSeason } from '../../hooks/useSeason';
 import '../../styles/PaymentManagement.css';
@@ -58,24 +58,15 @@ export const PaymentManagement = () => {
             setLoading(true);
             
             // Fetch all seasons
-            const { data: seasonData } = await supabase
-                .from('season')
-                .select('*')
-                .order('number', { ascending: false });
+            const seasonData = await api.get('/seasons');
             setSeasons(seasonData || []);
 
             // Fetch players for the dropdown
-            const { data: playerData } = await supabase
-                .from('player')
-                .select('id, first_name, last_name')
-                .order('last_name', { ascending: true });
+            const playerData = await api.get('/players');
             setPlayers(playerData || []);
 
             // Fetch teams for the dropdown
-            const { data: teamData } = await supabase
-                .from('team')
-                .select('id, name, number')
-                .order('name', { ascending: true });
+            const teamData = await api.get('/teams');
             setTeams(teamData || []);
 
         } catch (err) {
@@ -88,17 +79,7 @@ export const PaymentManagement = () => {
 
     const fetchPayments = async (seasonId) => {
         try {
-            const { data, error } = await supabase
-                .from('season_payments')
-                .select(`
-                    *,
-                    player:player_id (first_name, last_name),
-                    team:team_id (name, number)
-                `)
-                .eq('season_id', seasonId)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
+            const data = await api.get('/payments?seasonId=' + seasonId);
             console.log('PaymentManagement: Loaded payments:', data?.length, data?.[0]?.status);
             setPayments(data || []);
         } catch (err) {
@@ -132,11 +113,7 @@ export const PaymentManagement = () => {
                 throw new Error('Please select a player or team.');
             }
 
-            const { error } = await supabase
-                .from('season_payments')
-                .insert([paymentData]);
-
-            if (error) throw error;
+            await api.post('/payments', paymentData);
 
             setSuccess('Payment recorded successfully!');
             setIsModalOpen(false);
@@ -162,12 +139,7 @@ export const PaymentManagement = () => {
     const handleApprovePayment = async (paymentId) => {
         try {
             setError('');
-            const { error } = await supabase
-                .from('season_payments')
-                .update({ status: 'verified' })
-                .eq('id', paymentId);
-
-            if (error) throw error;
+            await api.put('/payments/' + paymentId, { status: 'verified' });
 
             setSuccess('Payment approved successfully!');
             fetchPayments(selectedSeasonId);

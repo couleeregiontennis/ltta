@@ -1,80 +1,54 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
+import { useSeason } from '../hooks/useSeason';
 
 export const MySchedule = () => {
+  const { currentSeason, loading: seasonLoading } = useSeason();
   const [upcomingMatches, setUpcomingMatches] = useState([]);
   const [teamInfo, setTeamInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (seasonLoading) return;
     const loadMySchedule = async () => {
       try {
         setLoading(true);
 
-        // Get the current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        // Get the player associated with this user
+        const playerData = await api.get('/players/me').catch(() => null);
 
-        if (userError || !user) {
-          setError('You must be logged in to view your schedule.');
+        if (!playerData) {
+          setError('Could not find player information.');
           setLoading(false);
           return;
         }
 
-        // Get the player associated with this user
-        const { data: playerData, error: playerError } = await supabase
-          .from('player')
-          .select('id, first_name, last_name')
-          .eq('user_id', user.id)
-          .single();
+        // Get the player's team
+        const teamLink = await api.get('/players/me/team').catch(() => null);
 
-        if (playerError) throw playerError;
-
-        // Get the player's teams
-        const { data: teamData, error: teamError } = await supabase
-          .from('player_to_team')
-          .select(`
-            team (id, name, number, play_night)
-          `)
-          .eq('player', playerData.id);
-
-        if (teamError) throw teamError;
-
-        const teams = teamData.map(t => t.team);
-        setTeamInfo(teams);
-
-        if (teams.length === 0) {
+        if (!teamLink || !teamLink.team) {
           setError('You are not currently assigned to any teams.');
           setLoading(false);
           return;
         }
 
-        // Get upcoming matches for all user's teams
-        const teamIds = teams.map(t => t.id);
-        const { data: matchData, error: matchError } = await supabase
-          .from('team_match')
-          .select(`
-            *,
-            home_team:home_team_id (name, number, play_night),
-            away_team:away_team_id (name, number, play_night),
-            line_results (
-              line_number,
-              match_type,
-              home_player_1_id,
-              home_player_2_id,
-              away_player_1_id,
-              away_player_2_id
-            )
-          `)
-          .in('home_team_id', teamIds)
-          .in('away_team_id', teamIds)
-          .gte('date', new Date().toISOString().split('T')[0])
-          .eq('status', 'scheduled')
-          .order('date', { ascending: true });
+        const team = teamLink.team;
+        setTeamInfo([team]); // Keep as array for component compatibility
 
-        if (matchError) throw matchError;
-
-        setUpcomingMatches(matchData || []);
+        // Get upcoming matches
+        if (currentSeason) {
+          const matchData = await api.get(`/matches?seasonId=${currentSeason.id}&teamId=${team.id}`);
+          // Filter for upcoming (scheduled and date >= today)
+          const today = new Date().toISOString().split('T')[0];
+          const upcoming = (matchData || []).filter(m => 
+            m.status === 'scheduled' && m.date >= today
+          ).sort((a, b) => new Date(a.date) - new Date(b.date));
+          
+          setUpcomingMatches(upcoming);
+        } else {
+          setUpcomingMatches([]);
+        }
       } catch (err) {
         setError('Error loading schedule: ' + err.message);
       } finally {
@@ -83,7 +57,7 @@ export const MySchedule = () => {
     };
 
     loadMySchedule();
-  }, []);
+  }, [currentSeason, seasonLoading]);
 
   if (loading) return <div className="my-schedule-loading">Loading your schedule...</div>;
   if (error) return <div className="my-schedule-error">{error}</div>;

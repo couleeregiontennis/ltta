@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
-import { supabase } from '../scripts/supabaseClient';
+import { auth } from '../scripts/apiClient';
 import { LoadingSpinner } from './LoadingSpinner';
 import '../styles/Login.css';
 
@@ -9,7 +9,7 @@ const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'support@ltta.com';
 
 export const Login = () => {
   const navigate = useNavigate();
-  const { session, hasProfile } = useAuth();
+  const { session, hasProfile, refreshSession } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -33,40 +33,27 @@ export const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    let result;
-    if (isForgotPassword) {
-      result = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/update-password`,
-      });
-      if (!result.error) {
+    
+    try {
+      if (isForgotPassword) {
+        await auth.resetPasswordForEmail(email);
         setError('Password reset instructions sent. Please check your email.');
+      } else if (isSignUp) {
+        const result = await auth.signUp({ email, password });
+        if (!result?.session) {
+          setError('Please check your email for a confirmation link to complete your signup.');
+        } else {
+          await refreshSession();
+        }
+      } else {
+        await auth.signInWithPassword({ email, password });
+        await refreshSession();
       }
-    } else if (isSignUp) {
-      result = await supabase.auth.signUp({ email, password });
-      if (!result.error && !result.data?.session) {
-        setError('Please check your email for a confirmation link to complete your signup.');
-      }
-    } else {
-      result = await supabase.auth.signInWithPassword({ email, password });
+    } catch (err) {
+      setError(err.message || 'An error occurred during authentication.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    if (result.error) setError(result.error.message);
-  };
-
-  const handleOAuth = async (provider) => {
-    setError('');
-    setLoading(true);
-    const redirectUrl = window.location.origin;
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: redirectUrl
-      }
-    });
-    setLoading(false);
-    if (error) setError(error.message);
-    // On success, Supabase will redirect to your configured redirect URL
   };
 
   return (
@@ -171,24 +158,6 @@ export const Login = () => {
                 )}
               </button>
             </form>
-
-            <div className="oauth-divider">
-              <span />
-              <p>or continue with</p>
-              <span />
-            </div>
-
-            <div className="oauth-actions">
-              <button
-                type="button"
-                className="oauth-button google"
-                onClick={() => handleOAuth('google')}
-                disabled={loading}
-              >
-                <span className="oauth-icon" aria-hidden>🔵</span>
-                Google
-              </button>
-            </div>
           </div>
 
           <p className="login-switch">

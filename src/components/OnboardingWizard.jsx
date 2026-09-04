@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 import { useAuth } from '../context/AuthProvider';
 import { LoadingSpinner } from './LoadingSpinner';
 import { useToast } from '../context/ToastContext';
@@ -26,10 +26,7 @@ export const OnboardingWizard = () => {
 
   useEffect(() => {
     const fetchTeams = async () => {
-      const { data, error } = await supabase.from('team').select('id, name, number, play_night').order('name');
-      if (!error && data) {
-        setTeams(data);
-      }
+      try { const data = await api.get('/teams'); setTeams(data); } catch (err) {}
     };
     fetchTeams();
   }, []);
@@ -72,23 +69,10 @@ export const OnboardingWizard = () => {
         notes: formData.notes.trim()
       };
 
-      const { data: insertedPlayer, error: profileError } = await supabase
-        .from('player')
-        .insert(profileData)
-        .select()
-        .single();
-
-      if (profileError) throw profileError;
+      const insertedPlayer = await api.put('/players/me', profileData);
 
       if (formData.intent === 'team' && formData.selectedTeamId) {
-        const { error: teamError } = await supabase
-          .from('player_to_team')
-          .insert({
-            player: insertedPlayer.id,
-            team: formData.selectedTeamId,
-            status: 'pending'
-          });
-        if (teamError) throw teamError;
+        await api.post('/players/me/team', { team_id: formData.selectedTeamId });
       }
 
       addToast('Profile completed successfully!', 'success');

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 import { useAuth } from '../context/AuthProvider';
 import { useSeason } from '../hooks/useSeason';
 import { EmptyState } from './EmptyState';
@@ -142,57 +142,28 @@ const Standings = () => {
       setError('');
       console.log('Standings: Fetching data for season:', currentSeason.id);
 
-      // Use allSettled to ensure one failing call doesn't block the whole page
-      const results = await Promise.allSettled([
-        supabase.from('standings_2026_view').select('*'),
-        supabase.from('player').select('*', { count: 'exact', head: true }),
-        supabase.from('team_match').select(`
-          id, date, time, status, 
-          home_team:home_team_id (name), 
-          away_team:away_team_id (name)
-        `).order('date', { ascending: false }).limit(6),
-        supabase.from('team_match').select('date'),
-        supabase.functions.invoke('playoff-scenarios'),
-        supabase.from('team_match').select('home_team_id, away_team_id').eq('is_disputed', true)
+      const [
+        standingsData,
+        overviewData,
+        recentMatchesData,
+        disputedRes
+      ] = await Promise.all([
+        api.get('/standings'),
+        api.get('/standings/overview'),
+        api.get('/standings/recent-matches'),
+        api.get('/matches?seasonId=' + currentSeason.id + '&disputed=true').catch(() => [])
       ]);
 
-      const [
-        standingsRes,
-        playerCountRes,
-        recentMatchesRes,
-        allDatesRes,
-        playoffRes,
-        disputedRes
-      ] = results;
-
-      if (standingsRes.status === 'rejected' || standingsRes.value.error) {
-        console.error('Standings: Error loading standings_2026_view:', standingsRes.reason || standingsRes.value.error);
-        throw standingsRes.reason || standingsRes.value.error;
-      }
-
-      const standingsData = standingsRes.value.data;
-      const playerCount = playerCountRes.status === 'fulfilled' ? playerCountRes.value.count : 0;
-      const recentMatchesData = recentMatchesRes.status === 'fulfilled' ? recentMatchesRes.value.data : [];
-      const allMatchDates = allDatesRes.status === 'fulfilled' ? allDatesRes.value.data : [];
-      const playoffData = playoffRes.status === 'fulfilled' ? playoffRes.value.data : null;
-      const disputedMatches = disputedRes.status === 'fulfilled' ? disputedRes.value.data : [];
-
-      console.log('Standings: Data loaded successfully', { 
-        standingsCount: standingsData?.length,
-        recentCount: recentMatchesData?.length 
-      });
-
       const disputedTeamIds = new Set();
-      if (disputedMatches) {
-        disputedMatches.forEach(match => {
-          if (match.home_team_id) disputedTeamIds.add(match.home_team_id);
-          if (match.away_team_id) disputedTeamIds.add(match.away_team_id);
+      if (disputedRes && Array.isArray(disputedRes)) {
+        disputedRes.forEach(match => {
+          if (match.home_team?.id) disputedTeamIds.add(match.home_team.id);
+          if (match.away_team?.id) disputedTeamIds.add(match.away_team.id);
         });
       }
 
       // Process Standings
       const formattedStandings = (standingsData || []).map((team) => {
-        const scenarios = (playoffData && typeof playoffData === 'object') ? playoffData[team.team_number] : null;
         return {
             id: team.team_id,
             number: team.team_number,
@@ -209,8 +180,8 @@ const Standings = () => {
             gamesLost: team.games_lost || 0,
             winPercentage: team.win_percentage || 0,
             bonusPoints: team.total_bonus_points,
-            playoffStatus: scenarios?.status || '',
-            magicNumber: scenarios?.magicNumber || 0,
+            playoffStatus: team.playoffStatus || '',
+            magicNumber: team.magicNumber || 0,
             hasDisputes: disputedTeamIds.has(team.team_id)
           };
       });
@@ -240,38 +211,13 @@ const Standings = () => {
         wednesday: findTopTeamForNight('wednesday')
       });
 
-      // League Overview
-      const totalMatches = allMatchDates?.length ?? 0;
-      const totalTeams = standingsData?.length ?? 0;
-      const totalPlayers = playerCount ?? 0;
-      const avgMatchesPerTeam = totalTeams > 0 ? totalMatches / totalTeams : 0;
-
-      const matchesByWeekMap = (allMatchDates || []).reduce((acc, match) => {
-        if (!match?.date) return acc;
-        const weekKey = new Date(match.date).toISOString().split('T')[0];
-        acc[weekKey] = (acc[weekKey] || 0) + 1;
-        return acc;
-      }, {});
-
-      const matchesByWeek = Object.entries(matchesByWeekMap)
-        .map(([date, count]) => ({ date, count }))
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
-        .slice(-8);
-
-      // Process recent matches
-      const formattedMatches = (recentMatchesData || []).map(m => ({
-        ...m,
-        home_team_name: m.home_team?.name || 'Unknown',
-        away_team_name: m.away_team?.name || 'Unknown'
-      }));
-
       setLeagueOverview({
-        totalMatches,
-        totalTeams,
-        totalPlayers,
-        avgMatchesPerTeam,
-        recentMatches: formattedMatches,
-        matchesByWeek
+        totalMatches: overviewData?.totalMatches || 0,
+        totalTeams: sortedStandings.length,
+        totalPlayers: overviewData?.totalPlayers || 0,
+        avgMatchesPerTeam: sortedStandings.length > 0 ? (overviewData?.totalMatches || 0) / sortedStandings.length : 0,
+        recentMatches: recentMatchesData || [],
+        matchesByWeek: overviewData?.matchesByWeek || []
       });
 
     } catch (err) {
@@ -299,13 +245,7 @@ const Standings = () => {
       }
 
       try {
-        const { data: teamLink, error: teamLinkError } = await supabase
-          .from('player_to_team')
-          .select('team ( id, number )')
-          .eq('player', user.id)
-          .maybeSingle();
-
-        if (teamLinkError) throw teamLinkError;
+        const teamLink = await api.get('/players/me/team').catch(() => null);
 
         if (!isMounted) return;
 

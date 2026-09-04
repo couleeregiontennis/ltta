@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 
 export const PlayerRankings = () => {
   const [players, setPlayers] = useState([]);
@@ -12,20 +12,7 @@ export const PlayerRankings = () => {
       try {
         setLoading(true);
 
-        // Get all players with their team info
-        const { data: playerData, error: playerError } = await supabase
-          .from('player')
-          .select(`
-            id,
-            first_name,
-            last_name,
-            ranking,
-            is_active,
-            player_to_team (team (name, play_night))
-          `)
-          .order('ranking', { ascending: false });
-
-        if (playerError) throw playerError;
+        const playerData = await api.get('/players?active=true');
 
         // Calculate team night for each player (handle multiple teams if applicable)
         const rankedPlayers = (playerData || []).map(player => {
@@ -45,6 +32,11 @@ export const PlayerRankings = () => {
           };
         });
 
+        // The API returns all players (active and inactive) based on query. 
+        // Wait, the original queried all players and filtered active/inactive on client side.
+        // Let's assume the API without ?active=true returns all, or we fetch active=true. 
+        // Actually, the user instruction says: "supabase.from('player').select(...) -> api.get('/players?active=true')". 
+        // We'll follow the instruction, but active/inactive split is done in UI, so maybe the UI just won't show inactive players if they aren't returned.
         setPlayers(rankedPlayers);
       } catch (err) {
         setError('Error loading player rankings: ' + err.message);

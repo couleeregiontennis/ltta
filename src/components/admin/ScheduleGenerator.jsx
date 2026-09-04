@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../../scripts/supabaseClient';
+import api, { auth } from '../../scripts/apiClient';
 import { useAuth } from '../../context/AuthProvider';
 import '../../styles/ScheduleGenerator.css';
 
@@ -44,23 +44,15 @@ export const ScheduleGenerator = () => {
       setLoading(true);
 
       // Load available teams
-      const { data: teamData, error: teamError } = await supabase
-        .from('team')
-        .select('id, number, name, play_night')
-        .order('number');
-
-      if (teamError) throw teamError;
+      const teamData = await api.get('/teams');
       setTeams(teamData || []);
 
       // Check existing schedules
-      await checkExistingSchedules();
-
-    } catch (err) {
-      console.error('Error loading initial data:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+      // Instead of .limit(1) and error throw, we just check data
+      const matchesData = await api.get('/matches?seasonId=' + currentSeason.id);
+      
+      setExistingSchedule(matchesData && matchesData.length > 0);
+    } catch (err) {};
   };
 
   const checkExistingSchedules = async () => {
@@ -69,13 +61,7 @@ export const ScheduleGenerator = () => {
       const year = new Date().getFullYear();
 
       // Get schedules that exist in matches table
-      const { data, error } = await supabase
-        .from('team_match')
-        .select('play_night, date')
-        .gte('date', `${year}-01-01`)
-        .lt('date', `${year + 1}-01-01`);
-
-      if (error) throw error;
+      const data = await api.get('/matches?seasonId=' + currentSeason.id);
 
       const existing = {};
       data?.forEach(match => {
@@ -142,7 +128,7 @@ export const ScheduleGenerator = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          'Authorization': `Bearer ${(await auth.getSession())?.access_token}`
         },
         body: JSON.stringify({
           year: formData.year,
@@ -184,7 +170,7 @@ export const ScheduleGenerator = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          'Authorization': `Bearer ${(await auth.getSession())?.access_token}`
         },
         body: JSON.stringify({
           year: formData.year,

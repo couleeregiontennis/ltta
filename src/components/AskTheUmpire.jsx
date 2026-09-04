@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 import '../styles/AskTheUmpire.css';
 
 export const AskTheUmpire = () => {
@@ -30,14 +30,7 @@ export const AskTheUmpire = () => {
 
       // Debug: Attempt raw fetch to verify network path
       // This helps diagnose if supabase-js is misconfigured or if it's a network block
-      const { data, error } = await supabase.functions.invoke('ask-umpire', {
-        body: { query },
-      });
-
-      if (error) {
-        console.error('[AskTheUmpire] Invocation error object:', error);
-        throw error;
-      }
+      const data = await api.post('/ai/ask-umpire', { query });
 
       setAnswer(data.answer || "I couldn't find an answer to that.");
     } catch (err) {

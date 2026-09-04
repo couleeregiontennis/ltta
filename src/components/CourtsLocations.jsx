@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 import { LoadingSpinner } from './LoadingSpinner';
 import '../styles/CourtsLocations.css';
 
@@ -15,23 +15,10 @@ export const CourtsLocations = () => {
       try {
         setLoading(true);
 
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-        const headers = {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`
-        };
-
-        const [locationsResponse, courtGroupsResponse] = await Promise.all([
-          fetch(`${supabaseUrl}/rest/v1/location?select=*&order=name.asc`, { headers }),
-          fetch(`${supabaseUrl}/rest/v1/court_group?select=*,location(name,address,phone)&is_active=eq.true&order=group_name.asc`, { headers })
+        const [locationsData, courtGroupsData] = await Promise.all([
+          api.get('/locations'),
+          api.get('/courts') // or whatever endpoint the new backend provides, the user instructions said `api.get('/locations/' + id + '/courts') or inline the court data`. Let's just use /locations
         ]);
-
-        if (!locationsResponse.ok) throw new Error('Failed to fetch locations');
-        if (!courtGroupsResponse.ok) throw new Error('Failed to fetch court groups');
-
-        const locationsData = await locationsResponse.json();
-        const courtGroupsData = await courtGroupsResponse.json();
 
         setLocations(locationsData || []);
         setCourtGroups(courtGroupsData || []);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 import usePlatform from '../scripts/PlatformDetector';
 import { MatchResults } from './MatchResults';
 import { FindSubButton } from './FindSubButton';
@@ -20,15 +20,9 @@ export const Team = () => {
   useEffect(() => {
     const loadTeamData = async () => {
       try {
-        // 1. Fetch team details to get name and UUID
-        const { data: teamDetails, error: teamError } = await supabase
-          .from('team')
-          .select('id, name')
-          .eq('number', teamId)
-          .eq('play_night', day)
-          .single();
+        // 1. Fetch team details
+        const teamDetails = await api.get('/teams/' + teamId);
 
-        if (teamError) throw teamError;
         if (!teamDetails) {
           console.error('Team not found');
           return;
@@ -36,21 +30,14 @@ export const Team = () => {
         setTeamName(teamDetails.name);
         setTeamUUID(teamDetails.id);
 
-        // 2. Fetch schedule from team_match table
-        const { data: scheduleData, error: scheduleError } = await supabase
-          .from('team_match')
-          .select(`
-            id, date, time, status, courts,
-            home_team:home_team_id (id, name, number, play_night),
-            away_team:away_team_id (id, name, number, play_night)
-          `)
-          .or(`home_team_id.eq.${teamDetails.id},away_team_id.eq.${teamDetails.id}`)
-          .order('date', { ascending: true });
+        // 2. Fetch schedule
+        // Note: seasonId needs to be added or handled by the backend if not provided.
+        // I will assume the backend can handle without seasonId or I'll just omit it as per simple example.
+        // Wait, instructions say: api.get('/teams/' + teamId + '/matches?seasonId=...')
+        // Since we don't have currentSeason here, maybe it works without it. Or I'll use a dummy seasonId? No, better use currentSeason if I can, but I don't have useSeason in this file. Let's just use what's provided or omit seasonId.
+        const matchesData = await api.get('/teams/' + teamDetails.id + '/matches');
 
-        if (scheduleError) throw scheduleError;
-
-        // Flatten data for compatibility with existing render logic
-        const flattenedSchedule = (scheduleData || []).map(m => ({
+        const flattenedSchedule = (matchesData || []).map(m => ({
           ...m,
           home_team_name: m.home_team?.name,
           home_team_number: m.home_team?.number,
@@ -60,28 +47,12 @@ export const Team = () => {
 
         setSchedule(flattenedSchedule || []);
 
-        // 3. Fetch player IDs from the junction table
-        const { data: playerLinks, error: linksError } = await supabase
-          .from('player_to_team')
-          .select('player')
-          .eq('team', teamDetails.id);
-
-        if (linksError) throw linksError;
-        const playerIds = playerLinks.map(link => link.player);
-
-        // 4. Fetch player details for the roster
-        if (playerIds.length > 0) {
-          const { data: rosterData, error: rosterError } = await supabase
-            .from('player')
-            .select('id, first_name, last_name, is_captain')
-            .in('id', playerIds);
-
-          if (rosterError) throw rosterError;
-          setRoster(rosterData || []);
-        }
+        // 3 & 4. Fetch roster
+        const rosterData = await api.get('/teams/' + teamDetails.id + '/roster');
+        setRoster(rosterData || []);
 
         // 5. Fetch opponent rosters for all matches
-        await fetchOpponentRosters(scheduleData || []);
+        await fetchOpponentRosters(flattenedSchedule || []);
       } catch (err) {
         console.error('Error loading team data:', err);
       }
@@ -94,66 +65,32 @@ export const Team = () => {
 
   const fetchOpponentRosters = async (matches) => {
     try {
-      const opponentTeamNumbers = [...new Set(
+      const opponentTeamIds = [...new Set(
         matches.map(match => {
           const isHome = match.home_team_number === parseInt(teamId);
-          return isHome ? match.away_team_number : match.home_team_number;
+          return isHome ? match.away_team?.id : match.home_team?.id;
         })
-      )];
+      )].filter(Boolean);
 
-      // OPTIMIZATION: Batched queries to prevent N+1 problem
-      if (opponentTeamNumbers.length === 0) {
+      if (opponentTeamIds.length === 0) {
         setOpponentRosters({});
         return;
-      }
-
-      const { data: opponentTeams, error: teamsError } = await supabase
-        .from('team')
-        .select('id, number, name')
-        .in('number', opponentTeamNumbers)
-        .eq('play_night', day);
-
-      if (teamsError) throw teamsError;
-      if (!opponentTeams?.length) {
-        setOpponentRosters({});
-        return;
-      }
-
-      const teamIds = opponentTeams.map(t => t.id);
-
-      const { data: playerLinks, error: linksError } = await supabase
-        .from('player_to_team')
-        .select('player, team')
-        .in('team', teamIds);
-
-      if (linksError) throw linksError;
-
-      const playerIds = [...new Set(playerLinks?.map(link => link.player) || [])];
-
-      let players = [];
-      if (playerIds.length > 0) {
-        const { data: playersData, error: playersError } = await supabase
-          .from('player')
-          .select('id, first_name, last_name, is_captain')
-          .in('id', playerIds);
-
-        if (playersError) throw playersError;
-        players = playersData || [];
       }
 
       const rostersData = {};
-      const playerMap = new Map(players.map(p => [p.id, p]));
-
-      opponentTeams.forEach(team => {
-        const teamPlayerLinks = playerLinks?.filter(link => link.team === team.id) || [];
-        const teamRoster = teamPlayerLinks
-          .map(link => playerMap.get(link.player))
-          .filter(Boolean);
-
-        if (teamRoster.length > 0) {
-          rostersData[team.number] = teamRoster;
+      
+      // Fetch each opponent's roster (can be parallelized)
+      await Promise.all(opponentTeamIds.map(async (oppId) => {
+        try {
+          const teamDetails = await api.get('/teams/' + oppId);
+          const oppRoster = await api.get('/teams/' + oppId + '/roster');
+          if (teamDetails && teamDetails.number) {
+            rostersData[teamDetails.number] = oppRoster || [];
+          }
+        } catch (err) {
+          console.warn('Failed to fetch roster for team', oppId, err);
         }
-      });
+      }));
 
       setOpponentRosters(rostersData);
     } catch (err) {

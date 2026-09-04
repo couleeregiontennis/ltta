@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import { api, auth } from '../scripts/apiClient';
 import { MatchSchedule } from './MatchSchedule';
 import { OnboardingWizard } from './OnboardingWizard';
 import { useAuth } from '../context/AuthProvider';
@@ -21,39 +21,23 @@ export const LandingPage = () => {
       setLoading(true);
       setError(null);
 
-      // E2E Bypass: Don't let initialization hangs block testing
-      const isE2E = window._env_?.VITE_IS_E2E === 'true' || import.meta.env.VITE_IS_E2E === 'true';
-
       // Check if user is authenticated
-      const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+      const sessionData = await auth.getSession().catch(() => null);
+      const currentUser = sessionData?.user;
 
-      if (authError) {
-        console.error('Auth error:', authError);
-        if (isE2E) {
-          setLoading(false);
-        } else {
-          setLoading(false);
-        }
+      if (!currentUser) {
+        setLoading(false);
         return;
       }
 
       setUser(currentUser);
 
       // If user is authenticated, try to get their team assignment
-      if (currentUser) {
-        const { data: teamLink, error: teamLinkError } = await supabase
-          .from('player_to_team')
-          .select('team ( id )')
-          .eq('player', currentUser.id)
-          .maybeSingle();
-
-        if (teamLinkError) {
-          console.error('Team link fetch error:', teamLinkError);
-          // User might not have a team assigned yet
-          setUserTeamId(null);
-        } else {
-          setUserTeamId(teamLink?.team?.id ?? null);
-        }
+      const teamLink = await api.get('/players/me/team').catch(() => null);
+      if (teamLink && teamLink.team) {
+        setUserTeamId(teamLink.team.id);
+      } else {
+        setUserTeamId(null);
       }
 
     } catch (err) {

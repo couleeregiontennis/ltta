@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../../scripts/supabaseClient';
+import api from '../../scripts/apiClient';
 import { useAuth } from '../../context/AuthProvider';
 import '../../styles/PlayerManagement.css';
 
@@ -42,11 +42,7 @@ export const PlayerManagement = () => {
 
   const fetchTeams = async () => {
     try {
-      const { data, error } = await supabase
-        .from('team')
-        .select('id, name, number, play_night')
-        .order('name', { ascending: true });
-      if (error) throw error;
+      const data = await api.get('/teams');
       setTeams(data || []);
     } catch (err) {
       console.error('Error fetching teams:', err);
@@ -56,12 +52,7 @@ export const PlayerManagement = () => {
   const fetchPlayers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('player')
-        .select('*, player_to_team(id, team, status)')
-        .order('last_name', { ascending: true });
-
-      if (error) throw error;
+      const data = await api.get('/admin/players');
       setPlayers(data || []);
     } catch (err) {
       console.error('Error fetching players:', err);
@@ -130,21 +121,16 @@ export const PlayerManagement = () => {
         notes: updates.notes
       };
 
-      const { error: playerUpdateError } = await supabase
-        .from('player')
-        .update(dataToUpdate)
-        .eq('id', id);
-
-      if (playerUpdateError) throw playerUpdateError;
+      await api.put('/admin/players/' + id, dataToUpdate);
 
       const currentActiveTeam = players.find(p => p.id === id)?.player_to_team?.find(pt => pt.status === 'active')?.team;
       
       if (active_team !== currentActiveTeam) {
         if (currentActiveTeam) {
-          await supabase.from('player_to_team').delete().eq('player', id).eq('team', currentActiveTeam);
+          await api.delete('/teams/' + currentActiveTeam + '/roster/' + id);
         }
         if (active_team) {
-          await supabase.from('player_to_team').insert({ player: id, team: active_team, status: 'active' });
+          await api.post('/teams/' + active_team + '/roster', { player: id, team: active_team, status: 'active' });
         }
       }
 
