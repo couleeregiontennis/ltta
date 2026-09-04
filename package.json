@@ -6,8 +6,6 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@qdrant/js-client-rest": "^1.16.2",
-    "@supabase/auth-ui-react": "^0.4.7",
-    "@supabase/auth-ui-shared": "^0.1.8",
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^13.0.3",
     "cookie-parser": "^1.4.7",
@@ -32,7 +30,6 @@
     "@jest/globals": "^30.2.0",
     "@playwright/test": "^1.57.0",
     "@rollup/plugin-babel": "^6.1.0",
-    "@supabase/supabase-js": "^2.97.0",
     "@vitejs/plugin-react": "^4.2.1",
     "dotenv": "^17.3.1",
     "jest": "^30.2.0",
