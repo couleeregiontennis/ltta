@@ -2,35 +2,14 @@ import { test, expect } from '@playwright/test';
 import { mockSupabaseAuth } from '../utils/auth-mock.js';
 
 test.describe('Score Flagging Feature @live', () => {
-    test.beforeEach(async ({ page }) => {
-        page.on('console', msg => {
-            console.log(`BROWSER LOG [${msg.type()}]: ${msg.text()}`);
-        });
-        page.on('pageerror', err => {
-            console.error(`BROWSER EXCEPTION: ${err.message}\nStack: ${err.stack}`);
-            throw err;
-        });
-    });
 
-    test.describe('As a Captain', () => {
+    test.describe('As a standard Player', () => {
         test.beforeEach(async ({ page }) => {
-            // Mock captain
+            // Mock standard player
             await mockSupabaseAuth(page, {
-                email: 'captain@example.com',
-                is_captain: true,
-                is_admin: false,
-                id: 'captain-1',
-                first_name: 'Regular',
-                last_name: 'Captain'
-            });
-
-            // Mock player team link
-            await page.route('**/rest/v1/player_to_team*', async (route) => {
-                await route.fulfill({
-                    status: 200,
-                    contentType: 'application/json',
-                    body: JSON.stringify([{ team: 'team-1', player: 'captain-1', status: 'active' }])
-                });
+                email: 'player@example.com',
+                role: 'player',
+                playerData: { id: 'player-1', first_name: 'Regular', last_name: 'Player', is_captain: false, is_admin: false }
             });
 
             // Mock season fetch
@@ -159,11 +138,7 @@ test.describe('Score Flagging Feature @live', () => {
               if (route.request().method() === 'HEAD') {
                 await route.fulfill({ status: 200, headers: { 'Content-Range': '0-10/10' } });
               } else {
-                await route.fulfill({
-                  status: 200,
-                  contentType: 'application/json',
-                  body: JSON.stringify([{ id: 'captain-1', user_id: 'captain-1', email: 'captain@example.com', first_name: 'Regular', last_name: 'Captain', is_captain: true, is_admin: false, is_active: true }])
-                });
+                await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
               }
             });
 

@@ -13,10 +13,10 @@ export const AuthProvider = ({ children }) => {
   const [hasProfile, setHasProfile] = useState(null);
   const [currentPlayerData, setCurrentPlayerData] = useState(null);
   const [currentSeason, setCurrentSeason] = useState(null);
-  const [isReconnecting, setIsReconnecting] = useState(false);
-  const mountedRef = useRef(true);
 
   useEffect(() => {
+    let mounted = true;
+
     const getSession = async () => {
       try {
         const data = await auth.getSession();
@@ -110,7 +110,6 @@ export const AuthProvider = ({ children }) => {
     hasProfile,
     currentPlayerData,
     currentSeason,
-    isReconnecting,
     signOut,
     refreshSession,
   }), [session, user, loading, userRole, hasProfile, currentPlayerData, currentSeason, signOut, refreshSession]);

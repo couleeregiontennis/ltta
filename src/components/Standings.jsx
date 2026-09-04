@@ -134,11 +134,13 @@ const Standings = () => {
 
   const fetchStandings = useCallback(async () => {
     if (!currentSeason) {
+      console.log('Standings: No current season, skipping fetch');
       return;
     }
     try {
       setLoading(true);
       setError('');
+      console.log('Standings: Fetching data for season:', currentSeason.id);
 
       const [
         standingsData,

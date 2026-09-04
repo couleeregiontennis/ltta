@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
 import { ZeffyModal } from './ZeffyModal';
-import { NotificationBell } from './NotificationBell';
 import '../styles/Navigation.css';
 
 export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
@@ -38,21 +37,7 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
   };
 
   const handleLogout = async () => {
-    try {
-      await signOut();
-    } catch (e) {
-      console.error('Error during signOut:', e);
-    }
-    try {
-      // Force clear local storage to clean up any corrupt/expired session tokens
-      const supabaseUrl = window._env_?.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
-      const projectRef = supabaseUrl ? new URL(supabaseUrl).hostname.split('.')[0] : 'shlcqztfdhfwkhijwgue';
-      localStorage.removeItem(`sb-${projectRef}-auth-token`);
-      localStorage.removeItem('sb-shlcqztfdhfwkhijwgue-auth-token');
-      localStorage.removeItem('supabase.auth.token');
-    } catch (e) {
-      console.error('Failed to clear storage:', e);
-    }
+    await signOut();
     navigate('/login');
     closeMenu();
   };
@@ -80,8 +65,6 @@ export const Navigation = ({ theme = 'light', onToggleTheme = () => { } }) => {
             >
               <span aria-hidden="true">{theme === 'dark' ? '🌙' : '☀️'}</span>
             </button>
-
-            {user && <NotificationBell />}
 
             <button
               className="navbar-toggle"

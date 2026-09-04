@@ -20,7 +20,7 @@ export const Login = () => {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
 
   useEffect(() => {
-    if (session && hasProfile !== null && !isForgotPassword) {
+    if (session && !isForgotPassword) {
       if (hasProfile === false) {
         navigate('/welcome');
       } else {
