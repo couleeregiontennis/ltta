@@ -92,14 +92,17 @@ This document tracks progress, architecture decisions, and remaining tasks for m
 - [x] Verify Express server startup and API responses (tested `/api/auth/*`, `/api/teams`, `/api/standings`, `/api/players/me/team`, SPA fallback)
 
 ### Phase 4: Clean Up Cloud Artifacts & Service Setup
-- [ ] Remove unused Supabase keepalive GitHub workflows:
+- [x] Remove unused Supabase keepalive GitHub workflows:
   - `.github/workflows/keep-supabase-active-prod.yml`
   - `.github/workflows/keep-supabase-active-staging.yml`
   - `.github/workflows/supabase-migrations.yml`
   - `.github/workflows/supabase-migrations-staging.yml`
   - `.github/workflows/deploy-pages.yml`
+- [x] Remove `netlify.toml` and `.netlifyignore`
 - [x] Create systemd service template (`ltta.service`)
 - [x] Installed, enabled, and started user systemd service `ltta.service` (running persistently on port 3010, auto-restarts, user lingering enabled)
+- [x] Installed and enabled `homebrew.ollama.service` with `gemma2:2b` and `nomic-embed-text`
+- [x] Uninstalled unused `n8n`, local `supabase` (11 containers), and `cline-kanban` to optimize host RAM and CPU headroom
 
 ---
 
