@@ -18,6 +18,13 @@ This document tracks progress, architecture decisions, and remaining tasks for m
   - Voice score parsing: `/api/ai/parse-score` -> Local Ollama (`gemma4:4b` / `qwen3.5-cpu` or configured local Ollama instance).
   - Rules assistant: `/api/ai/ask-umpire` -> Ollama embeddings (`nomic-embed-text`) + Qdrant search + Ollama answer generation.
 - **Process Management**: Systemd user service (`ltta.service`), mirroring MoneyBoard setup.
+- **Authorization & Ownership Rules**:
+  - `player`: Players can only modify their own profile record (`PUT /api/players/me`), with fields like `is_admin` and `is_captain` restricted from user modification. Admins can update any player via `/api/admin/players/:id`.
+  - `matches` & `line_results`: Non-admin captains can only submit scores, line results, or toggle roster status for matches that directly involve their team (`home_team_id` or `away_team_id`). Attempting to edit other teams' matches returns `403 Forbidden`. Regular players cannot submit scores.
+  - `teams` & `player_to_team`: Captains can only invite, approve, or remove players for their own assigned team (`POST/PATCH/DELETE /api/teams/:id/roster`).
+  - `sub_request`: Captains can only cancel or delete requests they created. Any authenticated user can claim an open sub request.
+  - `season_payments`: Regular users can only create and view their own payments (`player_id = req.player.id`). Only admins can modify or delete payment records or inspect payments across all players.
+  - `admin`: Audit logs, player role promotions, and suggestion triage strictly require `req.player.is_admin == 1`.
 
 ---
 
