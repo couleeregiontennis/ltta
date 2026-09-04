@@ -112,8 +112,8 @@ export const MatchSchedule = () => {
         home_team_number: m.home_team?.number || 0,
         away_team_name: m.away_team?.name || 'Unknown',
         away_team_number: m.away_team?.number || 0,
-        home_points: m.line_results?.filter(lr => lr.home_won).length || 0,
-        away_points: m.line_results?.filter(lr => !lr.home_won && lr.home_won !== null).length || 0
+        home_points: m.home_points ?? (m.line_results?.filter(lr => lr.home_won).length || 0),
+        away_points: m.away_points ?? (m.line_results?.filter(lr => !lr.home_won && lr.home_won !== null).length || 0)
       }));
 
       setMatches(flattenedMatches);

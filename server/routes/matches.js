@@ -37,6 +37,8 @@ router.get('/', (req, res) => {
         is_disputed: match.is_disputed,
         home_full_roster: match.home_full_roster,
         away_full_roster: match.away_full_roster,
+        home_points: match.home_points,
+        away_points: match.away_points,
         home_team: {
           id: match.home_team_id_ref,
           name: match.home_team_name,

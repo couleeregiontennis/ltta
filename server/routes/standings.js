@@ -7,60 +7,66 @@ const router = Router();
 router.get('/', (req, res) => {
   try {
     const query = `
-      WITH match_points AS (
+      WITH team_match_stats AS (
         SELECT 
           tm.id as match_id,
-          t.id as team_id, t.number as team_number, t.name as team_name, t.play_night,
-          (
-            SELECT count(*) FROM line_results lr WHERE lr.match_id = tm.id AND (
-              (tm.home_team_id = t.id AND lr.home_set_1 > lr.away_set_1) OR
-              (tm.away_team_id = t.id AND lr.away_set_1 > lr.home_set_1)
-            )
-          ) + (
-            SELECT count(*) FROM line_results lr WHERE lr.match_id = tm.id AND (
-              (tm.home_team_id = t.id AND lr.home_set_2 > lr.away_set_2) OR
-              (tm.away_team_id = t.id AND lr.away_set_2 > lr.home_set_2)
-            )
-          ) + (
-            SELECT count(*) FROM line_results lr WHERE lr.match_id = tm.id AND (
-              (tm.home_team_id = t.id AND lr.home_set_3 > lr.away_set_3) OR
-              (tm.away_team_id = t.id AND lr.away_set_3 > lr.home_set_3)
-            )
-          ) as sets_won,
-          (
-            SELECT count(*) FROM line_results lr WHERE lr.match_id = tm.id AND (
-              (tm.home_team_id = t.id AND lr.home_set_1 < lr.away_set_1) OR
-              (tm.away_team_id = t.id AND lr.away_set_1 < lr.home_set_1)
-            )
-          ) + (
-            SELECT count(*) FROM line_results lr WHERE lr.match_id = tm.id AND (
-              (tm.home_team_id = t.id AND lr.home_set_2 < lr.away_set_2) OR
-              (tm.away_team_id = t.id AND lr.away_set_2 < lr.home_set_2)
-            )
-          ) + (
-            SELECT count(*) FROM line_results lr WHERE lr.match_id = tm.id AND (
-              (tm.home_team_id = t.id AND lr.home_set_3 < lr.away_set_3) OR
-              (tm.away_team_id = t.id AND lr.away_set_3 < lr.home_set_3)
-            )
-          ) as sets_lost,
-          CASE
-            WHEN tm.home_team_id = t.id AND tm.home_full_roster = 1 THEN 1
-            WHEN tm.away_team_id = t.id AND tm.away_full_roster = 1 THEN 1
+          t.id as team_id,
+          t.number as team_number,
+          t.name as team_name,
+          t.play_night,
+          CASE 
+            WHEN tm.home_team_id = t.id THEN tm.home_points
+            ELSE tm.away_points
+          END as points,
+          CASE 
+            WHEN (tm.home_team_id = t.id AND tm.home_points > tm.away_points) OR (tm.away_team_id = t.id AND tm.away_points > tm.home_points) THEN 1
             ELSE 0
+          END as is_win,
+          CASE 
+            WHEN (tm.home_team_id = t.id AND tm.home_points < tm.away_points) OR (tm.away_team_id = t.id AND tm.away_points < tm.home_points) THEN 1
+            ELSE 0
+          END as is_loss,
+          CASE 
+            WHEN tm.home_points = tm.away_points THEN 1
+            ELSE 0
+          END as is_tie,
+          CASE 
+            WHEN tm.home_team_id = t.id THEN 
+              CASE WHEN tm.home_points >= 4 THEN tm.home_points - 4 ELSE 0 END
+            ELSE 
+              CASE WHEN tm.away_points >= 4 THEN tm.away_points - 4 ELSE 0 END
+          END as sets_won,
+          CASE 
+            WHEN tm.home_team_id = t.id THEN 
+              CASE WHEN tm.away_points >= 4 THEN tm.away_points - 4 ELSE 0 END
+            ELSE 
+              CASE WHEN tm.home_points >= 4 THEN tm.home_points - 4 ELSE 0 END
+          END as sets_lost,
+          CASE 
+            WHEN tm.home_team_id = t.id THEN 
+              CASE WHEN tm.home_points >= 4 THEN 4 ELSE tm.home_points END
+            ELSE 
+              CASE WHEN tm.away_points >= 4 THEN 4 ELSE tm.away_points END
           END as bonus_points
-        FROM team_match tm
-        JOIN team t ON (tm.home_team_id = t.id OR tm.away_team_id = t.id)
-        WHERE tm.status = 'completed'
+        FROM team t
+        JOIN team_match tm ON (tm.home_team_id = t.id OR tm.away_team_id = t.id) AND tm.status = 'completed'
       )
       SELECT
-        team_id, team_number, team_name, play_night,
-        sum(sets_won) + sum(bonus_points) as total_points,
-        count(*) as matches_played,
-        sum(sets_won) as total_sets_won,
-        sum(sets_lost) as total_sets_lost,
-        sum(bonus_points) as total_bonus_points
-      FROM match_points
-      GROUP BY team_id, team_number, team_name, play_night
+        t.id as team_id,
+        t.number as team_number,
+        t.name as team_name,
+        t.play_night,
+        COALESCE(sum(s.points), 0) as total_points,
+        count(s.match_id) as matches_played,
+        COALESCE(sum(s.sets_won), 0) as total_sets_won,
+        COALESCE(sum(s.sets_lost), 0) as total_sets_lost,
+        COALESCE(sum(s.bonus_points), 0) as total_bonus_points,
+        COALESCE(sum(s.is_win), 0) as wins,
+        COALESCE(sum(s.is_loss), 0) as losses,
+        COALESCE(sum(s.is_tie), 0) as ties
+      FROM team t
+      LEFT JOIN team_match_stats s ON t.id = s.team_id
+      GROUP BY t.id, t.number, t.name, t.play_night
       ORDER BY total_points DESC
     `;
     const standings = db.prepare(query).all();
