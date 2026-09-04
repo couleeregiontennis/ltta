@@ -44,7 +44,7 @@ router.post('/parse-score', requireAuth, async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: process.env.OLLAMA_MODEL || 'gemma4:4b',
+        model: process.env.OLLAMA_MODEL || 'gemma2:2b',
         prompt: prompt,
         format: 'json',
         stream: false,
@@ -126,7 +126,7 @@ router.post('/ask-umpire', optionalAuth, async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: process.env.OLLAMA_MODEL || 'gemma4:4b',
+        model: process.env.OLLAMA_MODEL || 'gemma2:2b',
         prompt: `You are an expert tennis umpire. Answer the following user question based strictly on the provided context rules. If the context does not contain the answer, say you don't know.\\n\\nContext:\\n${context}\\n\\nQuestion: ${query}\\n\\nAnswer:`,
         stream: false
       })

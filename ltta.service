@@ -12,6 +12,7 @@ Environment=PORT=3010
 Environment=NODE_ENV=production
 Environment=JWT_SECRET=ltta-local-production-secret-replace-me-if-needed
 Environment=OLLAMA_URL=http://localhost:11434
+Environment=OLLAMA_MODEL=gemma2:2b
 Environment=QDRANT_URL=http://localhost:6333
 
 [Install]
