@@ -120,7 +120,8 @@ router.post('/ask-umpire', optionalAuth, async (req, res) => {
           LIMIT 1
         `).all(faqMatchQuery);
 
-        if (faqHits && faqHits.length > 0 && faqHits[0].rank < -6.0) {
+        // Friendly threshold: any clear match (rank < -3.0) gives an immediate authoritative answer
+        if (faqHits && faqHits.length > 0 && faqHits[0].rank < -3.0) {
           return res.json({
             answer: faqHits[0].answer,
             source: 'FAQ',
@@ -133,16 +134,17 @@ router.post('/ask-umpire', optionalAuth, async (req, res) => {
       }
     }
 
-    // STEP 2: Micro-chunk Rules FTS5 Search (top 1-2 focused snippets, max 600 chars total)
+    // STEP 2: Micro-chunk Rules FTS5 Search
+    // Sort by priority DESC (local LTTA rules = 10, national USTA rules = 1), then rank
     let context = '';
     if (searchTerms.length > 0) {
       const matchQuery = searchTerms.map(term => `"${term}"*`).join(' OR ');
       try {
         const rows = db.prepare(`
-          SELECT content, source, rank
+          SELECT content, source, priority, rank
           FROM rules_fts
           WHERE rules_fts MATCH ?
-          ORDER BY rank
+          ORDER BY CAST(priority AS INTEGER) DESC, rank ASC
           LIMIT 2
         `).all(matchQuery);
 
@@ -162,10 +164,11 @@ router.post('/ask-umpire', optionalAuth, async (req, res) => {
     const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
     const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen3.5:0.8b';
 
-    const systemPrompt = `You are an expert tennis umpire for the LTTA league.
-${context ? `Rules:\n${context}\n` : ''}
+    const systemPrompt = `You are the official LTTA (La Crosse Team Tennis Association) umpire.
+${context ? `Official League Context:\n${context}\n` : ''}
 Question: ${normalized}
-Answer concisely in 1 or 2 sentences:`;
+Instructions: Answer directly and accurately in 1 or 2 sentences based strictly on the Official League Context. Do NOT provide medical diagnosis or advice.
+Answer:`;
 
     const answer = await llmQueue.run(async () => {
       const controller = new AbortController();

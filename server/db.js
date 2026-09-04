@@ -316,8 +316,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_audit_logs_table ON audit_logs(table_name);
   CREATE INDEX IF NOT EXISTS idx_audit_logs_changed ON audit_logs(changed_at);
 
-  -- Full Text Search virtual table for local rules assistant
-  CREATE VIRTUAL TABLE IF NOT EXISTS rules_fts USING fts5(content, source);
+  -- Full Text Search virtual table for local rules assistant (priority 10 for local rules, 1 for national)
+  CREATE VIRTUAL TABLE IF NOT EXISTS rules_fts USING fts5(content, source, priority);
 
   -- Instant rules FAQ table for zero-latency direct hits
   CREATE TABLE IF NOT EXISTS rules_faq (
@@ -396,9 +396,9 @@ export function ensureRulesIndexed() {
     const rulesPath = path.join(__dirname, '../public/rules_context.md');
     const facPath = path.join(__dirname, '../public/friend_at_court.md');
 
-    const insert = db.prepare('INSERT INTO rules_fts (content, source) VALUES (?, ?)');
+    const insert = db.prepare('INSERT INTO rules_fts (content, source, priority) VALUES (?, ?, ?)');
 
-    const indexFile = (filePath, sourceName) => {
+    const indexFile = (filePath, sourceName, priority = 1) => {
       if (!fs.existsSync(filePath)) return;
       const content = fs.readFileSync(filePath, 'utf-8');
       const paragraphs = content.split(/\n\s*\n/);
@@ -408,27 +408,27 @@ export function ensureRulesIndexed() {
 
         // Keep snippets small (100 to 400 chars) for weak models
         if (clean.length <= 450) {
-          insert.run(clean, sourceName);
+          insert.run(clean, sourceName, priority.toString());
         } else {
           // Break longer paragraphs by sentences
           const sentences = clean.match(/[^.!?]+[.!?]+(\s|$)/g) || [clean];
           let currentChunk = '';
           for (const s of sentences) {
             if ((currentChunk + ' ' + s).length > 350) {
-              if (currentChunk.trim()) insert.run(currentChunk.trim(), sourceName);
+              if (currentChunk.trim()) insert.run(currentChunk.trim(), sourceName, priority.toString());
               currentChunk = s;
             } else {
               currentChunk = currentChunk ? currentChunk + ' ' + s : s;
             }
           }
-          if (currentChunk.trim()) insert.run(currentChunk.trim(), sourceName);
+          if (currentChunk.trim()) insert.run(currentChunk.trim(), sourceName, priority.toString());
         }
       }
     };
 
     const tx = db.transaction(() => {
-      indexFile(rulesPath, 'rules_context.md');
-      indexFile(facPath, 'friend_at_court.md');
+      indexFile(rulesPath, 'rules_context.md', 10);
+      indexFile(facPath, 'friend_at_court.md', 1);
     });
     tx();
   } catch (err) {
