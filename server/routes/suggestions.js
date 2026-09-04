@@ -4,9 +4,14 @@ import { requireAuth, loadPlayer, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
-router.get('/', requireAuth, loadPlayer, requireAdmin, (req, res) => {
+router.get('/', requireAuth, loadPlayer, (req, res) => {
   try {
-    const suggestions = db.prepare('SELECT * FROM suggestions ORDER BY created_at DESC').all();
+    let suggestions;
+    if (req.player?.is_admin) {
+      suggestions = db.prepare('SELECT * FROM suggestions ORDER BY created_at DESC').all();
+    } else {
+      suggestions = db.prepare('SELECT * FROM suggestions WHERE user_id = ? ORDER BY created_at DESC').all(req.user.id);
+    }
     res.json(suggestions);
   } catch (err) {
     res.status(500).json({ error: err.message });

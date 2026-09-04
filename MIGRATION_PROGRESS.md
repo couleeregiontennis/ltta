@@ -103,6 +103,13 @@ This document tracks progress, architecture decisions, and remaining tasks for m
 - [x] Installed, enabled, and started user systemd service `ltta.service` (running persistently on port 3010, auto-restarts, user lingering enabled)
 - [x] Installed and enabled `homebrew.ollama.service` with `gemma2:2b` and `nomic-embed-text`
 - [x] Uninstalled unused `n8n`, local `supabase` (11 containers), and `cline-kanban` to optimize host RAM and CPU headroom
+- [x] Resolved blank page issue at `192.168.1.88:3010`:
+  - Fixed unhandled exception in `src/scripts/supabaseClient.js` when `VITE_SUPABASE_URL` is unset.
+  - Fully ported remaining component `src/components/MatchResults.jsx` from Supabase to `apiClient`.
+  - Added `/api/courts` route in `server/routes/locations.js` for Court Assignment cheat sheets.
+  - Enabled team number lookup (`/api/teams/:id` and `/matches`) for day/team routes like `/team/tuesday/1`.
+  - Allowed authenticated players to fetch their own suggestions in `/api/suggestions`.
+  - Verified with Playwright E2E browser tests across public, player, and admin routes with 0 errors.
 
 ---
 
@@ -110,3 +117,4 @@ This document tracks progress, architecture decisions, and remaining tasks for m
 To pause or resume:
 - Work is isolated in `/home/brett/Code/ltta-local` on branch `feature/local-hosting-migration`.
 - Any progress updates must be committed to git and logged here.
+

@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api, { auth } from '../../scripts/apiClient';
 import { useAuth } from '../../context/AuthProvider';
+import { useSeason } from '../../hooks/useSeason';
 import '../../styles/ScheduleGenerator.css';
 
 export const ScheduleGenerator = () => {
   const { user, userRole, loading: authLoading } = useAuth();
+  const { currentSeason } = useSeason();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [teams, setTeams] = useState([]);
@@ -48,18 +50,22 @@ export const ScheduleGenerator = () => {
       setTeams(teamData || []);
 
       // Check existing schedules
-      // Instead of .limit(1) and error throw, we just check data
-      const matchesData = await api.get('/matches?seasonId=' + currentSeason.id);
-      
-      setExistingSchedule(matchesData && matchesData.length > 0);
+      if (currentSeason?.id) {
+        const matchesData = await api.get('/matches?seasonId=' + currentSeason.id);
+        const existing = {};
+        matchesData?.forEach(match => {
+          if (match.play_night) {
+            existing[match.play_night.toLowerCase()] = true;
+          }
+        });
+        setExistingSchedules(existing);
+      }
     } catch (err) {};
   };
 
   const checkExistingSchedules = async () => {
     try {
-      // Check what schedules already exist for the current year
-      const year = new Date().getFullYear();
-
+      if (!currentSeason?.id) return;
       // Get schedules that exist in matches table
       const data = await api.get('/matches?seasonId=' + currentSeason.id);
 

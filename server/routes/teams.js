@@ -15,7 +15,10 @@ router.get('/', (req, res) => {
 
 router.get('/:id', (req, res) => {
   try {
-    const team = db.prepare('SELECT * FROM team WHERE id = ?').get(req.params.id);
+    let team = db.prepare('SELECT * FROM team WHERE id = ?').get(req.params.id);
+    if (!team && !isNaN(parseInt(req.params.id, 10))) {
+      team = db.prepare('SELECT * FROM team WHERE number = ?').get(parseInt(req.params.id, 10));
+    }
     if (!team) return res.status(404).json({ error: 'Team not found' });
     res.json(team);
   } catch (err) {
@@ -25,12 +28,17 @@ router.get('/:id', (req, res) => {
 
 router.get('/:id/roster', (req, res) => {
   try {
+    let targetTeamId = req.params.id;
+    if (!isNaN(parseInt(req.params.id, 10)) && req.params.id.length < 10) {
+      const found = db.prepare('SELECT id FROM team WHERE number = ?').get(parseInt(req.params.id, 10));
+      if (found) targetTeamId = found.id;
+    }
     const roster = db.prepare(`
       SELECT p.*, pt.status as team_status, pt.id as link_id
       FROM player_to_team pt
       JOIN player p ON pt.player = p.id
       WHERE pt.team = ?
-    `).all(req.params.id);
+    `).all(targetTeamId);
     res.json(roster);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -39,12 +47,37 @@ router.get('/:id/roster', (req, res) => {
 
 router.get('/:id/matches', (req, res) => {
   try {
+    let targetTeamId = req.params.id;
+    if (!isNaN(parseInt(req.params.id, 10)) && req.params.id.length < 10) {
+      const found = db.prepare('SELECT id FROM team WHERE number = ?').get(parseInt(req.params.id, 10));
+      if (found) targetTeamId = found.id;
+    }
     const matches = db.prepare(`
-      SELECT * FROM team_match 
-      WHERE home_team_id = ? OR away_team_id = ?
-      ORDER BY date ASC
-    `).all(req.params.id, req.params.id);
-    res.json(matches);
+      SELECT tm.*,
+        ht.id as home_team_id_ref, ht.name as home_team_name, ht.number as home_team_number,
+        at.id as away_team_id_ref, at.name as away_team_name, at.number as away_team_number
+      FROM team_match tm
+      LEFT JOIN team ht ON tm.home_team_id = ht.id
+      LEFT JOIN team at ON tm.away_team_id = at.id
+      WHERE tm.home_team_id = ? OR tm.away_team_id = ?
+      ORDER BY tm.date ASC
+    `).all(targetTeamId, targetTeamId);
+
+    const formattedMatches = matches.map(match => ({
+      ...match,
+      home_team: {
+        id: match.home_team_id_ref,
+        name: match.home_team_name,
+        number: match.home_team_number
+      },
+      away_team: {
+        id: match.away_team_id_ref,
+        name: match.away_team_name,
+        number: match.away_team_number
+      }
+    }));
+
+    res.json(formattedMatches);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
