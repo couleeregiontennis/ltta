@@ -48,12 +48,12 @@ app.use('/api/sub-requests', subRequestsRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/locations', locationsRouter);
 
-// SPA Fallback: Any GET request that doesn't match an API route serves index.html
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api/')) {
-    return next();
+// SPA Fallback: Any GET or HEAD request that doesn't match an API route serves index.html
+app.use((req, res, next) => {
+  if ((req.method === 'GET' || req.method === 'HEAD') && !req.path.startsWith('/api/')) {
+    return res.sendFile(path.join(distPath, 'index.html'));
   }
-  res.sendFile(path.join(distPath, 'index.html'));
+  next();
 });
 
 // Global Error Handler

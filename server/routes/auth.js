@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'node:crypto';
 import { db, genUUID } from '../db.js';
-import { generateToken, requireAuth } from '../middleware/auth.js';
+import { generateToken, requireAuth, optionalAuth } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -84,18 +84,14 @@ router.post('/logout', (req, res) => {
 });
 
 // 4. GET /api/auth/session - Get current session
-router.get('/session', requireAuth, (req, res) => {
+router.get('/session', optionalAuth, (req, res) => {
   try {
-    const user = req.user; // Set by requireAuth middleware
-    
-    // Fetch player data (should contain is_captain, is_admin if present in schema)
-    const player = db.prepare('SELECT * FROM player WHERE user_id = ?').get(user.id);
-    
-    // Fetch active season
-    const season = db.prepare('SELECT * FROM season WHERE is_active = 1 LIMIT 1').get();
+    const user = req.user || null;
+    const player = user ? db.prepare('SELECT * FROM player WHERE user_id = ?').get(user.id) : null;
+    const season = db.prepare('SELECT * FROM season WHERE is_active = 1 LIMIT 1').get() || null;
 
     res.json({
-      session: { user },
+      session: user ? { user } : null,
       player: player || null,
       season: season || null
     });

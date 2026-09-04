@@ -10,7 +10,7 @@ router.get('/', (req, res) => {
     let query = 'SELECT * FROM player';
     let players;
     if (active === 'true') {
-      query += ' WHERE active = 1';
+      query += ' WHERE is_active = 1';
       players = db.prepare(query).all();
     } else {
       players = db.prepare(query).all();
@@ -28,12 +28,12 @@ router.get('/me', requireAuth, loadPlayer, (req, res) => {
 router.get('/me/team', requireAuth, loadPlayer, (req, res) => {
   try {
     const teamInfo = db.prepare(`
-      SELECT t.*, pt.status as team_status 
+      SELECT t.*, pt.status as team_status, pt.team
       FROM player_to_team pt
       JOIN team t ON pt.team = t.id
-      WHERE pt.player = ?
-    `).all(req.player.id);
-    res.json(teamInfo);
+      WHERE pt.player = ? AND pt.status = 'active'
+    `).get(req.player?.id);
+    res.json(teamInfo || null);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -43,8 +43,8 @@ router.get('/me/matches', requireAuth, loadPlayer, (req, res) => {
   try {
     const matches = db.prepare(`
       SELECT * FROM player_to_match 
-      WHERE player_id = ?
-    `).all(req.player.id);
+      WHERE player = ?
+    `).all(req.player?.id);
     res.json(matches);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -56,9 +56,9 @@ router.put('/me', requireAuth, loadPlayer, (req, res) => {
   try {
     db.prepare(`
       UPDATE player 
-      SET first_name = ?, last_name = ?, phone = ?, ranking = ?, day_availability = ?, emergency_contact = ?, emergency_phone = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+      SET first_name = ?, last_name = ?, phone = ?, ranking = ?, day_availability = ?, emergency_contact = ?, emergency_phone = ?, notes = ?
       WHERE id = ?
-    `).run(first_name, last_name, phone, ranking, day_availability, emergency_contact, emergency_phone, notes, req.player.id);
+    `).run(first_name, last_name, phone, ranking, typeof day_availability === 'object' ? JSON.stringify(day_availability) : day_availability, emergency_contact, emergency_phone, notes, req.player.id);
     
     res.json({ success: true });
   } catch (err) {
