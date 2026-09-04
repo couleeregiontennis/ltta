@@ -39,14 +39,6 @@ const isStandardSetValid = (home, away) => {
   return false;
 };
 
-const isSetWon = (p1, p2) => {
-  const score1 = parseInteger(p1);
-  const score2 = parseInteger(p2);
-  if (score1 === null || score2 === null) return false;
-  if (!isStandardSetValid(score1, score2)) return false;
-  return score1 > score2;
-};
-
 const isMatchTiebreakValid = (home, away) => {
   if (home === 0 && away === 0) {
     return true; // Not played
@@ -162,10 +154,8 @@ const isPayloadUnchanged = (existing, payload) => {
 };
 
 export const AddScore = () => {
-  const [searchParams] = useSearchParams();
-  const urlMatchId = searchParams.get('matchId');
   const { addToast } = useToast();
-  const { user, userRole, currentPlayerData, currentSeason, loading: authLoading } = useAuth();
+  const { user, currentPlayerData, currentSeason, loading: authLoading } = useAuth();
   
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -177,12 +167,6 @@ export const AddScore = () => {
   const [awayTeamRoster, setAwayTeamRoster] = useState([]);
   const [playerIdMap, setPlayerIdMap] = useState({});
   const [existingScores, setExistingScores] = useState([]);
-  const [allPlayers, setAllPlayers] = useState([]);
-  const [lastTimeHomeLine2, setLastTimeHomeLine2] = useState(['', '']);
-  const [lastTimeHomeLine3, setLastTimeHomeLine3] = useState(['', '']);
-  const [lastTimeAwayLine2, setLastTimeAwayLine2] = useState(['', '']);
-  const [lastTimeAwayLine3, setLastTimeAwayLine3] = useState(['', '']);
-
   const [formData, setFormData] = useState({
     matchId: '',
     lineNumber: 1,
@@ -195,7 +179,6 @@ export const AddScore = () => {
     awaySet2: '',
     homeSet3: '',
     awaySet3: '',
-    winner: '',
     notes: '',
     fullRosterPresent: false
   });
@@ -211,176 +194,23 @@ export const AddScore = () => {
     stopListening,
     isSpeechRecognitionSupported
   } = useVoiceScoreInput((parsedData) => {
-    if (!parsedData) return;
-
-    const targetLineNumber = parsedData.lineNumber || formData.lineNumber || 1;
-    const targetMatchType = parsedData.matchType || formData.matchType || 'doubles';
-
-    const updateScores = () => {
-      setFormData((prev) => {
-        const nextData = {
-          ...prev,
-          lineNumber: targetLineNumber,
-          matchType: targetMatchType,
-          homeSet1: parsedData.homeSet1 !== undefined && parsedData.homeSet1 !== null ? parsedData.homeSet1.toString() : prev.homeSet1,
-          awaySet1: parsedData.awaySet1 !== undefined && parsedData.awaySet1 !== null ? parsedData.awaySet1.toString() : prev.awaySet1,
-          homeSet2: parsedData.homeSet2 !== undefined && parsedData.homeSet2 !== null ? parsedData.homeSet2.toString() : prev.homeSet2,
-          awaySet2: parsedData.awaySet2 !== undefined && parsedData.awaySet2 !== null ? parsedData.awaySet2.toString() : prev.awaySet2,
-          homeSet3: parsedData.homeSet3 !== undefined && parsedData.homeSet3 !== null ? parsedData.homeSet3.toString() : prev.homeSet3,
-          awaySet3: parsedData.awaySet3 !== undefined && parsedData.awaySet3 !== null ? parsedData.awaySet3.toString() : prev.awaySet3,
-          notes: parsedData.notes || prev.notes
-        };
-
-        const hWon1 = isSetWon(nextData.homeSet1, nextData.awaySet1);
-        const aWon1 = isSetWon(nextData.awaySet1, nextData.homeSet1);
-        const hWon2 = isSetWon(nextData.homeSet2, nextData.awaySet2);
-        const aWon2 = isSetWon(nextData.awaySet2, nextData.homeSet2);
-
-        if ((hWon1 && hWon2) || (aWon1 && aWon2)) {
-          nextData.homeSet3 = '';
-          nextData.awaySet3 = '';
-        }
-
-        const calcWinner = autoCalculateWinner(nextData);
-        if (calcWinner) {
-          nextData.winner = calcWinner;
-        }
-
-        return nextData;
-      });
-    };
-
-    if (targetLineNumber !== formData.lineNumber) {
-      setLineFocus(targetLineNumber, targetMatchType);
-      setTimeout(updateScores, 50);
-    } else {
-      updateScores();
-    }
-
+    setFormData((prev) => ({
+      ...prev,
+      lineNumber: sanitizedLineNumber,
+      matchType: sanitizedMatchType,
+      homePlayers: matchOrLineChanged ? ['', ''] : prev.homePlayers,
+      awayPlayers: matchOrLineChanged ? ['', ''] : prev.awayPlayers,
+      homeSet1: nextForm.homeSet1?.toString() || '',
+      awaySet1: nextForm.awaySet1?.toString() || '',
+      homeSet2: nextForm.homeSet2?.toString() || '',
+      awaySet2: nextForm.awaySet2?.toString() || '',
+      homeSet3: nextForm.homeSet3?.toString() || '',
+      awaySet3: nextForm.awaySet3?.toString() || '',
+      notes: nextForm.notes
+    }));
     setError('');
     addToast('Transcript parsed successfully by AI!', 'success');
   });
-
-  const loadAllPlayers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('player')
-        .select('id, first_name, last_name, ranking')
-        .eq('is_active', true)
-        .order('first_name');
-      
-      if (error) throw error;
-      
-      const idMap = {};
-      const players = (data || []).map(p => {
-        const fullName = `${p.first_name} ${p.last_name}`;
-        idMap[fullName] = p.id;
-        return { id: p.id, name: fullName, ranking: p.ranking };
-      });
-      
-      setPlayerIdMap(prev => ({ ...prev, ...idMap }));
-      setAllPlayers(players);
-    } catch (err) {
-      console.error('Error loading all active players for subs:', err);
-    }
-  };
-
-  const loadLastTimePlayers = async (homeTeamId, awayTeamId, currentMatchId) => {
-    const fetchTeamLastLine = async (teamId, lineNumber) => {
-      if (!teamId) return ['', ''];
-      try {
-        const { data: matches, error } = await supabase
-          .from('team_match')
-          .select('id, home_team_id, away_team_id')
-          .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
-          .order('date', { ascending: false });
-
-        if (error || !matches) return ['', ''];
-
-        const matchIds = matches.map(m => m.id).filter(id => id !== currentMatchId);
-        if (matchIds.length === 0) return ['', ''];
-
-        const { data: lineResults, error: lineError } = await supabase
-          .from('line_results')
-          .select(`
-            match_id,
-            home_player_1:player!home_player_1_id(first_name, last_name),
-            home_player_2:player!home_player_2_id(first_name, last_name),
-            away_player_1:player!away_player_1_id(first_name, last_name),
-            away_player_2:player!away_player_2_id(first_name, last_name)
-          `)
-          .in('match_id', matchIds)
-          .eq('line_number', lineNumber);
-
-        if (lineError || !lineResults || lineResults.length === 0) return ['', ''];
-
-        for (const match of matches) {
-          if (match.id === currentMatchId) continue;
-
-          const lineResult = lineResults.find(lr => lr.match_id === match.id);
-          if (lineResult) {
-            const isHome = match.home_team_id === teamId;
-            const player1 = isHome ? lineResult.home_player_1 : lineResult.away_player_1;
-            const player2 = isHome ? lineResult.home_player_2 : lineResult.away_player_2;
-            return [
-              player1 ? `${player1.first_name} ${player1.last_name}` : '',
-              player2 ? `${player2.first_name} ${player2.last_name}` : ''
-            ];
-          }
-        }
-      } catch (err) {
-        console.error('Error loading last time players:', err);
-      }
-      return ['', ''];
-    };
-
-    const [home2, home3, away2, away3] = await Promise.all([
-      fetchTeamLastLine(homeTeamId, 2),
-      fetchTeamLastLine(homeTeamId, 3),
-      fetchTeamLastLine(awayTeamId, 2),
-      fetchTeamLastLine(awayTeamId, 3)
-    ]);
-
-    setLastTimeHomeLine2(home2);
-    setLastTimeHomeLine3(home3);
-    setLastTimeAwayLine2(away2);
-    setLastTimeAwayLine3(away3);
-
-    return { home2, home3, away2, away3 };
-  };
-
-  const applyPlayerDefaults = (lineNum, hRoster = homeTeamRoster, aRoster = awayTeamRoster, homeLast2 = lastTimeHomeLine2, homeLast3 = lastTimeHomeLine3, awayLast2 = lastTimeAwayLine2, awayLast3 = lastTimeAwayLine3) => {
-    let homeDefault = ['', ''];
-    let awayDefault = ['', ''];
-
-    if (lineNum === 1) {
-      homeDefault = [hRoster[0]?.name || '', hRoster[1]?.name || ''];
-      awayDefault = [aRoster[0]?.name || '', aRoster[1]?.name || ''];
-    } else if (lineNum === 4) {
-      homeDefault = [hRoster[6]?.name || '', hRoster[7]?.name || ''];
-      awayDefault = [aRoster[6]?.name || '', aRoster[7]?.name || ''];
-    } else if (lineNum === 2) {
-      homeDefault = homeLast2 && homeLast2.some(p => p) ? homeLast2 : [hRoster[2]?.name || '', hRoster[3]?.name || ''];
-      awayDefault = awayLast2 && awayLast2.some(p => p) ? awayLast2 : [aRoster[2]?.name || '', aRoster[3]?.name || ''];
-    } else if (lineNum === 3) {
-      homeDefault = homeLast3 && homeLast3.some(p => p) ? homeLast3 : [hRoster[4]?.name || '', hRoster[5]?.name || ''];
-      awayDefault = awayLast3 && awayLast3.some(p => p) ? awayLast3 : [aRoster[4]?.name || '', aRoster[5]?.name || ''];
-    }
-
-    setFormData(prev => ({
-      ...prev,
-      homePlayers: homeDefault,
-      awayPlayers: awayDefault,
-      homeSet1: '',
-      awaySet1: '',
-      homeSet2: '',
-      awaySet2: '',
-      homeSet3: '',
-      awaySet3: '',
-      winner: '',
-      notes: ''
-    }));
-  };
 
   useEffect(() => {
     const isReady = !authLoading && !!currentPlayerData && !!currentSeason;
@@ -396,10 +226,6 @@ export const AddScore = () => {
       try {
         setLoading(true);
         setError('');
-        await loadAllPlayers();
-
-        let teamData = null;
-        let flattenedMatches = [];
 
         // 1. Get Team Assignment
         const teamLink = await api.get('/players/me/team');
@@ -437,60 +263,7 @@ export const AddScore = () => {
           away_team_night: m.away_team?.play_night
         }));
 
-        // 3. Handle query param matchId prefill
-        if (urlMatchId) {
-          let urlMatch = flattenedMatches.find(m => m.id === urlMatchId);
-          if (!urlMatch) {
-            const { data: matched, error: matchErr } = await supabase
-              .from('team_match')
-              .select(`
-                id, date, time, courts, status,
-                home_team:home_team_id (id, name, number, play_night),
-                away_team:away_team_id (id, name, number, play_night)
-              `)
-              .eq('id', urlMatchId)
-              .single();
-            
-            if (matched && !matchErr) {
-              urlMatch = {
-                id: matched.id,
-                date: matched.date,
-                time: matched.time,
-                status: matched.status,
-                courts: matched.courts,
-                home_team_id: matched.home_team?.id,
-                home_team_name: matched.home_team?.name,
-                home_team_number: matched.home_team?.number,
-                home_team_night: matched.home_team?.play_night,
-                away_team_id: matched.away_team?.id,
-                away_team_name: matched.away_team?.name,
-                away_team_number: matched.away_team?.number,
-                away_team_night: matched.away_team?.play_night
-              };
-              setAvailableMatches(prev => [urlMatch, ...prev]);
-            }
-          }
-
-          if (urlMatch) {
-            setSelectedMatch(urlMatch);
-            setFormData(prev => ({
-              ...prev,
-              matchId: urlMatch.id,
-              homePlayers: ['', ''],
-              awayPlayers: ['', '']
-            }));
-
-            const [homeRoster, awayRoster, lastTimeData] = await Promise.all([
-              loadTeamRoster(urlMatch.home_team_number, urlMatch.home_team_night),
-              loadTeamRoster(urlMatch.away_team_number, urlMatch.away_team_night),
-              loadLastTimePlayers(urlMatch.home_team_id, urlMatch.away_team_id, urlMatch.id)
-            ]);
-
-            setHomeTeamRoster(homeRoster);
-            setAwayTeamRoster(awayRoster);
-            await loadExistingScores(urlMatch.id, homeRoster, awayRoster, lastTimeData);
-          }
-        }
+        setAvailableMatches(flattenedMatches);
 
       } catch (err) {
         console.error('Systematic Data Load Error:', err);
@@ -501,14 +274,14 @@ export const AddScore = () => {
     };
 
     loadMatchData();
-  }, [authLoading, currentPlayerData?.id, currentSeason?.id, urlMatchId]);
+  }, [authLoading, currentPlayerData?.id, currentSeason?.id]);
 
   const getEligiblePlayers = (roster, lineNumber) => {
     if (!roster || roster.length === 0) return [];
     return roster; // 2026 rule: Line 3 players can mix and match. No restrictions.
   };
 
-  const loadExistingScores = async (matchId, hRoster = homeTeamRoster, aRoster = awayTeamRoster, lastTimeData = null) => {
+  const loadExistingScores = async (matchId) => {
     try {
       const scores = await api.get('/matches/' + matchId + '/line-results');
 
@@ -530,12 +303,6 @@ export const AddScore = () => {
       const currentLineScore = scores?.find(s => s.line_number === formData.lineNumber);
       if (currentLineScore) {
         populateFormWithExistingScore(currentLineScore);
-      } else {
-        const home2 = lastTimeData ? lastTimeData.home2 : lastTimeHomeLine2;
-        const home3 = lastTimeData ? lastTimeData.home3 : lastTimeHomeLine3;
-        const away2 = lastTimeData ? lastTimeData.away2 : lastTimeAwayLine2;
-        const away3 = lastTimeData ? lastTimeData.away3 : lastTimeAwayLine3;
-        applyPlayerDefaults(formData.lineNumber, hRoster, aRoster, home2, home3, away2, away3);
       }
     } catch (err) {
       console.error('Error loading existing scores:', err);
@@ -564,7 +331,6 @@ export const AddScore = () => {
       awaySet2: score.away_set_2?.toString() || '',
       homeSet3: score.home_set_3?.toString() || '',
       awaySet3: score.away_set_3?.toString() || '',
-      winner: score.home_won ? 'home' : (score.home_won === false ? 'away' : ''),
       notes: score.notes || ''
     }));
   };
@@ -577,6 +343,8 @@ export const AddScore = () => {
   const autoSelectPlayers = (homeRoster, awayRoster, lineNumber, matchType) => {
     const existingScore = existingScores.find(s => s.line_number === parseInt(lineNumber));
     if (existingScore) return;
+
+    // No auto-select logic for now, simpler to pick
   };
 
   const setLineFocus = (lineValue, matchTypeOverride) => {
@@ -596,7 +364,19 @@ export const AddScore = () => {
         populateFormWithExistingScore(existingScore);
         return;
       }
-      applyPlayerDefaults(numericLine);
+
+      setFormData(prev => ({
+        ...prev,
+        homePlayers: ['', ''],
+        awayPlayers: ['', ''],
+        homeSet1: '',
+        awaySet1: '',
+        homeSet2: '',
+        awaySet2: '',
+        homeSet3: '',
+        awaySet3: '',
+        notes: ''
+      }));
     }, 0);
   };
 
@@ -623,73 +403,12 @@ export const AddScore = () => {
     }));
   };
 
-  const autoCalculateWinner = (newData) => {
-    const homeSet1 = parseInt(newData.homeSet1) || 0;
-    const awaySet1 = parseInt(newData.awaySet1) || 0;
-    const homeSet2 = parseInt(newData.homeSet2) || 0;
-    const awaySet2 = parseInt(newData.awaySet2) || 0;
-    const homeSet3 = parseInt(newData.homeSet3) || 0;
-    const awaySet3 = parseInt(newData.awaySet3) || 0;
-
-    let homeSetsWon = 0;
-    let awaySetsWon = 0;
-
-    if (homeSet1 > awaySet1 && (homeSet1 >= 6 && (homeSet1 - awaySet1 >= 2 || homeSet1 === 7))) homeSetsWon++;
-    else if (awaySet1 > homeSet1 && (awaySet1 >= 6 && (awaySet1 - homeSet1 >= 2 || awaySet1 === 7))) awaySetsWon++;
-
-    if (homeSet2 > awaySet2 && (homeSet2 >= 6 && (homeSet2 - awaySet2 >= 2 || homeSet2 === 7))) homeSetsWon++;
-    else if (awaySet2 > homeSet2 && (awaySet2 >= 6 && (awaySet2 - homeSet2 >= 2 || awaySet2 === 7))) awaySetsWon++;
-
-    if (homeSet3 || awaySet3) {
-      if (homeSet3 > awaySet3 && homeSet3 >= MATCH_TIEBREAK_TARGET && homeSet3 - awaySet3 >= 2) homeSetsWon++;
-      else if (awaySet3 > homeSet3 && awaySet3 >= MATCH_TIEBREAK_TARGET && awaySet3 - homeSet3 >= 2) awaySetsWon++;
-    }
-
-    if (homeSetsWon > awaySetsWon) return 'home';
-    if (awaySetsWon > homeSetsWon) return 'away';
-    return '';
-  };
-
   const handleScoreChange = (team, set, value) => {
     const scoreValue = value === '' ? '' : value.replace(/[^0-9]/g, '');
-    const otherTeam = team === 'home' ? 'away' : 'home';
-    
-    setFormData(prev => {
-      const nextData = {
-        ...prev,
-        [`${team}Set${set}`]: scoreValue
-      };
-
-      if (set === 1 || set === 2) {
-        if (scoreValue !== '') {
-          const numScore = parseInt(scoreValue, 10);
-          if (numScore < 6) {
-            nextData[`${otherTeam}Set${set}`] = '6';
-          } else if (numScore === 5) {
-            nextData[`${otherTeam}Set${set}`] = '7';
-          } else if (numScore === 7) {
-            nextData[`${otherTeam}Set${set}`] = '6';
-          }
-        }
-      }
-
-      const hWon1 = isSetWon(nextData.homeSet1, nextData.awaySet1);
-      const aWon1 = isSetWon(nextData.awaySet1, nextData.homeSet1);
-      const hWon2 = isSetWon(nextData.homeSet2, nextData.awaySet2);
-      const aWon2 = isSetWon(nextData.awaySet2, nextData.homeSet2);
-
-      if ((hWon1 && hWon2) || (aWon1 && aWon2)) {
-        nextData.homeSet3 = '';
-        nextData.awaySet3 = '';
-      }
-
-      const calcWinner = autoCalculateWinner(nextData);
-      if (calcWinner) {
-        nextData.winner = calcWinner;
-      }
-
-      return nextData;
-    });
+    setFormData(prev => ({
+      ...prev,
+      [`${team}Set${set}`]: scoreValue
+    }));
   };
 
   const generateScoreOptions = () => {
@@ -780,6 +499,7 @@ export const AddScore = () => {
   };
 
   const handleMatchSelect = async (matchId) => {
+    console.log('AddScore: Selected matchId:', matchId);
     const match = availableMatches.find(m => m.id === matchId);
     if (match) {
       const teamMatchData = await api.get('/matches/' + matchId);
@@ -788,7 +508,7 @@ export const AddScore = () => {
       
       setSelectedMatch({ ...match, is_disputed: isDisputed });
       
-      const isHome = teamMatchData?.home_team_id === userTeam?.id;
+      const isHome = teamMatchData?.home_team_id === userTeam.id;
       setFormData(prev => ({
         ...prev,
         matchId: matchId,
@@ -797,15 +517,14 @@ export const AddScore = () => {
         fullRosterPresent: isHome ? (teamMatchData?.home_full_roster || false) : (teamMatchData?.away_full_roster || false)
       }));
 
-      const [homeRoster, awayRoster, lastTimeData] = await Promise.all([
+      const [homeRoster, awayRoster] = await Promise.all([
         loadTeamRoster(match.home_team_number, match.home_team_night),
-        loadTeamRoster(match.away_team_number, match.away_team_night),
-        loadLastTimePlayers(match.home_team_id, match.away_team_id, matchId)
+        loadTeamRoster(match.away_team_number, match.away_team_night)
       ]);
 
       setHomeTeamRoster(homeRoster);
       setAwayTeamRoster(awayRoster);
-      await loadExistingScores(matchId, homeRoster, awayRoster, lastTimeData);
+      await loadExistingScores(matchId);
     }
   };
 
@@ -835,18 +554,6 @@ export const AddScore = () => {
     const set3Home = parseInteger(formData.homeSet3);
     const set3Away = parseInteger(formData.awaySet3);
 
-    const hWon1 = isSetWon(set1Home, set1Away);
-    const aWon1 = isSetWon(set1Away, set1Home);
-    const hWon2 = isSetWon(set2Home, set2Away);
-    const aWon2 = isSetWon(set2Away, set2Home);
-
-    if ((hWon1 && hWon2) || (aWon1 && aWon2)) {
-      if (!isEmptyValue(formData.homeSet3) || !isEmptyValue(formData.awaySet3)) {
-        setError('Third set tiebreak cannot be entered if a team won in straight sets');
-        return false;
-      }
-    }
-
     if (!isStandardSetValid(set1Home, set1Away) || !isStandardSetValid(set2Home, set2Away)) {
       setError('Sets 1 and 2 must be valid tennis scores (win by 2, 6-4/7-5/7-6 etc.)');
       return false;
@@ -857,11 +564,6 @@ export const AddScore = () => {
         setError('Third set must be a valid tiebreak (first to 7, win by 2) or blank');
         return false;
       }
-    }
-
-    if (!formData.winner) {
-      setError('Please select the winning team');
-      return false;
     }
 
     return true;
@@ -878,7 +580,11 @@ export const AddScore = () => {
       const normalizedHomePlayers = normalizePlayerSelections(formData.matchType, formData.homePlayers);
       const normalizedAwayPlayers = normalizePlayerSelections(formData.matchType, formData.awayPlayers);
 
-      const winner = formData.winner;
+      const winner = calculateMatchWinner();
+      if (!winner) {
+        setError('Unable to determine a winner from the provided scores. Check set results.');
+        return;
+      }
 
       const payload = buildScorePayload({
         matchId: selectedMatch.id,
@@ -905,33 +611,16 @@ export const AddScore = () => {
         
       }
 
-      // Update participation bonus and record submission status
-      const isHome = selectedMatch.home_team_number === userTeam?.number;
-      const isAdmin = userRole?.isAdmin;
-      
-      const updateData = { 
-        is_disputed: false,
-        status: isAdmin ? 'verified' : 'completed'
-      };
-
-      if (isAdmin) {
-        updateData.verified_by = user.id;
-      } else {
-        updateData.submitted_by = user.id;
-      }
-
+      // Update participation bonus and resolve dispute
+      const isHome = selectedMatch.home_team_number === userTeam.number;
+      const updateData = { is_disputed: false };
       if (isHome) updateData.home_full_roster = formData.fullRosterPresent;
-      else if (userTeam) updateData.away_full_roster = formData.fullRosterPresent;
+      else updateData.away_full_roster = formData.fullRosterPresent;
 
       await api.patch('/matches/' + selectedMatch.id + '/roster', updateData);
 
       addToast('Scores submitted successfully!', 'success');
       await loadExistingScores(selectedMatch.id);
-      
-      const currentLine = Number(formData.lineNumber);
-      if (currentLine < 4) {
-        setLineFocus(currentLine + 1);
-      }
     } catch (err) {
       setError('Error submitting scores: ' + err.message);
     } finally {
@@ -947,24 +636,12 @@ export const AddScore = () => {
     ? Math.min(100, Math.round((linesRecorded / LINES_PER_MATCH) * 100))
     : 0;
 
-  const homeWonSet1 = isSetWon(formData.homeSet1, formData.awaySet1);
-  const awayWonSet1 = isSetWon(formData.awaySet1, formData.homeSet1);
-  const homeWonSet2 = isSetWon(formData.homeSet2, formData.awaySet2);
-  const awayWonSet2 = isSetWon(formData.awaySet2, formData.homeSet2);
-  const isThirdSetDisabled = (homeWonSet1 && homeWonSet2) || (awayWonSet1 && awayWonSet2);
-
   return (
     <div className="add-score-page">
       <div className="add-score-header">
         <h1>Submit Match Scores</h1>
-        <p>Record results for 2026 Season (4 Courts of Doubles).</p>
+        <p>Record results for 2026 Season (4 Lines of Doubles).</p>
       </div>
-
-      {urlMatchId && selectedMatch && (
-        <div className="match-prefilled-banner" style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: '8px', color: 'var(--text-primary)' }}>
-          Scores for: <strong>{selectedMatch.home_team_name} vs {selectedMatch.away_team_name}</strong> on {selectedMatch.date}
-        </div>
-      )}
 
       {submitting && (
         <div className="loading-overlay">
@@ -983,7 +660,17 @@ export const AddScore = () => {
         </div>
       )}
 
-
+      <div className="score-overview">
+        <div className="overview-card card card--interactive card--overlay">
+          <div className="card-label">Current Completion</div>
+          <div className="card-value">{hasMatchSelected ? `${Math.round(matchProgress)}%` : 'Select match'}</div>
+          <div className="card-subtitle">{linesRecorded} of 4 lines saved</div>
+        </div>
+        <div className="overview-card card card--interactive card--overlay">
+          <div className="card-label">Step 2: Line Scores</div>
+          <div className="card-value">Line {activeLineNumber}</div>
+        </div>
+      </div>
 
       {selectedMatch?.is_disputed && (
         <div className="dispute-banner" style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeft: '4px solid var(--error)', borderRadius: '4px' }}>
@@ -992,97 +679,26 @@ export const AddScore = () => {
         </div>
       )}
 
-      {hasMatchSelected && (
-        <div className="score-progress-container card">
-          <div className="progress-info">
-            <span className="progress-label">Score Progress</span>
-            <span className="progress-value">{linesRecorded} of {LINES_PER_MATCH} Courts Saved</span>
-          </div>
-          <div className="progress-bar-bg">
-            <div 
-              className="progress-bar-fill" 
-              style={{ width: `${matchProgress}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
-
       <form onSubmit={handleSubmit} className="score-form" noValidate>
-        {!urlMatchId && (
-          <div className="score-section card card--interactive">
-            <h2>Step 1: Select Your Match</h2>
-            <select
-              name="matchId"
-              value={formData.matchId}
-              onChange={(e) => handleMatchSelect(e.target.value)}
-              required
-            >
-              <option value="">Choose a match from the list...</option>
-              {availableMatches.map(match => (
-                <option key={match.id} value={match.id}>
-                  {match.home_team_name} vs {match.away_team_name} - {match.date}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {hasMatchSelected && isSpeechRecognitionSupported && (
-          <div className="voice-score-input-section card">
-            <h3>🎙️ Voice Score Entry</h3>
-            <p className="helper-text" style={{ marginBottom: '1.25rem' }}>
-              Select a court and click record, or speak naturally specifying the court. For example:<br />
-              <strong>"Court 2 doubles, we won 6-4, 3-6, 10-8"</strong>
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className={`voice-recording-btn${isListening ? ' is-active' : ''}`}
-                onClick={isListening ? stopListening : startListening}
-                disabled={aiProcessing}
-              >
-                {isListening ? (
-                  <>
-                    <span className="voice-record-dot"></span> Stop Recording
-                  </>
-                ) : (
-                  <>
-                    🎙️ Record Score
-                  </>
-                )}
-              </button>
-
-              {aiProcessing && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--score-card-text)' }}>
-                  <span className="voice-spinner-small"></span>
-                  <span>AI parsing transcript...</span>
-                </div>
-              )}
-            </div>
-
-            {transcript && (
-              <div className="voice-transcript-box">
-                <span className="voice-transcript-label">Spoken Transcript</span>
-                <div>"{transcript}"</div>
-              </div>
-            )}
-
-            {aiError && (
-              <div style={{ marginTop: '0.75rem', color: '#ef4444', fontSize: '0.9rem', fontWeight: 600 }}>
-                ❌ {aiError}
-              </div>
-            )}
-
-            {recognitionError && (
-              <div style={{ marginTop: '0.75rem', color: '#ef4444', fontSize: '0.9rem', fontWeight: 600 }}>
-                ⚠️ {recognitionError}
-              </div>
-            )}
-          </div>
-        )}
+        <div className="score-section card card--interactive">
+          <h2>Step 1: Select Your Match</h2>
+          <select
+            name="matchId"
+            value={formData.matchId}
+            onChange={(e) => handleMatchSelect(e.target.value)}
+            required
+          >
+            <option value="">Choose a match from the list...</option>
+            {availableMatches.map(match => (
+              <option key={match.id} value={match.id}>
+                {match.home_team_name} vs {match.away_team_name} - {match.date}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div className="score-section card card--interactive">
-          <h2>{urlMatchId ? "Roster & Court Selector" : "Step 2: Court & Roster Status"}</h2>
+          <h2>Step 2: Line & Roster Status</h2>
           <div className="participation-bonus">
              <label className="checkbox-label">
                 <input 
@@ -1098,24 +714,21 @@ export const AddScore = () => {
           </div>
 
           <div className="line-switcher-buttons" style={{ marginTop: '1rem' }}>
-            {lineNumbers.map((line) => {
-              const isCompleted = existingScores.some(s => s.line_number === line);
-              return (
-                <button
-                  key={line}
-                  type="button"
-                  className={`line-switcher-button${activeLineNumber === line ? ' is-active' : ''}${isCompleted ? ' is-completed' : ''}`}
-                  onClick={() => setLineFocus(line)}
-                >
-                  Court {line}{isCompleted && ' ✓'}
-                </button>
-              );
-            })}
+            {lineNumbers.map((line) => (
+              <button
+                key={line}
+                type="button"
+                className={`line-switcher-button${activeLineNumber === line ? ' is-active' : ''}`}
+                onClick={() => setLineFocus(line)}
+              >
+                Line {line}
+              </button>
+            ))}
           </div>
         </div>
 
         <div className="score-section card card--interactive">
-          <h2>Court {activeLineNumber} Scores</h2>
+          <h2>Line {activeLineNumber} Scores</h2>
           <div className="form-row">
             <div className="form-group">
               <label>Match Type</label>
@@ -1134,16 +747,7 @@ export const AddScore = () => {
                 onChange={(e) => handlePlayerChange('home', 0, e.target.value)}
               >
                 <option value="">Player 1</option>
-                {homeTeamRoster.length > 0 && (
-                  <optgroup label="Roster">
-                    {homeTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
-                  </optgroup>
-                )}
-                <optgroup label="Subs / Other Players">
-                  {allPlayers
-                    .filter(p => !homeTeamRoster.some(rosterPlayer => rosterPlayer.name === p.name))
-                    .map((p, i) => <option key={`sub-${i}`} value={p.name}>{p.name}</option>)}
-                </optgroup>
+                {homeTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
               </select>
               {formData.matchType === 'doubles' && (
                 <select
@@ -1151,16 +755,7 @@ export const AddScore = () => {
                   onChange={(e) => handlePlayerChange('home', 1, e.target.value)}
                 >
                   <option value="">Player 2</option>
-                  {homeTeamRoster.length > 0 && (
-                    <optgroup label="Roster">
-                      {homeTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
-                    </optgroup>
-                  )}
-                  <optgroup label="Subs / Other Players">
-                    {allPlayers
-                      .filter(p => !homeTeamRoster.some(rosterPlayer => rosterPlayer.name === p.name))
-                      .map((p, i) => <option key={`sub-${i}`} value={p.name}>{p.name}</option>)}
-                  </optgroup>
+                  {homeTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
                 </select>
               )}
             </div>
@@ -1171,16 +766,7 @@ export const AddScore = () => {
                 onChange={(e) => handlePlayerChange('away', 0, e.target.value)}
               >
                 <option value="">Player 1</option>
-                {awayTeamRoster.length > 0 && (
-                  <optgroup label="Roster">
-                    {awayTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
-                  </optgroup>
-                )}
-                <optgroup label="Subs / Other Players">
-                  {allPlayers
-                    .filter(p => !awayTeamRoster.some(rosterPlayer => rosterPlayer.name === p.name))
-                    .map((p, i) => <option key={`sub-${i}`} value={p.name}>{p.name}</option>)}
-                </optgroup>
+                {awayTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
               </select>
               {formData.matchType === 'doubles' && (
                 <select
@@ -1188,16 +774,7 @@ export const AddScore = () => {
                   onChange={(e) => handlePlayerChange('away', 1, e.target.value)}
                 >
                   <option value="">Player 2</option>
-                  {awayTeamRoster.length > 0 && (
-                    <optgroup label="Roster">
-                      {awayTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
-                    </optgroup>
-                  )}
-                  <optgroup label="Subs / Other Players">
-                    {allPlayers
-                      .filter(p => !awayTeamRoster.some(rosterPlayer => rosterPlayer.name === p.name))
-                      .map((p, i) => <option key={`sub-${i}`} value={p.name}>{p.name}</option>)}
-                  </optgroup>
+                  {awayTeamRoster.map((p, i) => <option key={i} value={p.name}>{p.name}</option>)}
                 </select>
               )}
             </div>
@@ -1228,51 +805,17 @@ export const AddScore = () => {
                 </select>
               </div>
             </div>
-            <div className={`score-group${isThirdSetDisabled ? ' is-disabled' : ''}`}>
+            <div className="score-group">
               <label>Tiebreak</label>
               <div className="score-inputs">
-                <select 
-                  value={formData.homeSet3} 
-                  onChange={(e) => handleScoreChange('home', 3, e.target.value)}
-                  disabled={isThirdSetDisabled}
-                >
+                <select value={formData.homeSet3} onChange={(e) => handleScoreChange('home', 3, e.target.value)}>
                   <option value="">H</option>{generateTiebreakOptions()}
                 </select>
                 <span>-</span>
-                <select 
-                  value={formData.awaySet3} 
-                  onChange={(e) => handleScoreChange('away', 3, e.target.value)}
-                  disabled={isThirdSetDisabled}
-                >
+                <select value={formData.awaySet3} onChange={(e) => handleScoreChange('away', 3, e.target.value)}>
                   <option value="">A</option>{generateTiebreakOptions()}
                 </select>
               </div>
-            </div>
-          </div>
-
-          <div className="winning-team-selection" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--score-card-border)', textAlign: 'center' }}>
-            <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 'bold', fontSize: '1.05rem', color: 'var(--text-primary)' }}>Winning Team</label>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'wrap' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '1rem', color: 'var(--text-primary)' }}>
-                <input
-                  type="radio"
-                  name="winner"
-                  value="home"
-                  checked={formData.winner === 'home'}
-                  onChange={() => setFormData(prev => ({ ...prev, winner: 'home' }))}
-                />
-                Home ({selectedMatch ? selectedMatch.home_team_name : 'Home'})
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '1rem', color: 'var(--text-primary)' }}>
-                <input
-                  type="radio"
-                  name="winner"
-                  value="away"
-                  checked={formData.winner === 'away'}
-                  onChange={() => setFormData(prev => ({ ...prev, winner: 'away' }))}
-                />
-                Away ({selectedMatch ? selectedMatch.away_team_name : 'Away'})
-              </label>
             </div>
           </div>
         </div>
@@ -1284,7 +827,7 @@ export const AddScore = () => {
               name="notes"
               value={formData.notes}
               onChange={handleInputChange}
-              placeholder="Add any notes about this court (e.g. sub names, tiebreak score, disputes)..."
+              placeholder="Add any notes about this line (e.g. sub names, tiebreak score, disputes)..."
               maxLength={MAX_NOTES_LENGTH}
               aria-describedby="notes-counter"
             ></textarea>
@@ -1296,7 +839,7 @@ export const AddScore = () => {
 
         {error && <div className="error-message">{error}</div>}
         <button type="submit" disabled={submitting} className="submit-button">
-          {submitting ? 'Submitting...' : 'Save Court Results'}
+          {submitting ? 'Submitting...' : 'Save Line Results'}
         </button>
       </form>
     </div>

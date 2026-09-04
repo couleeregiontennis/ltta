@@ -37,7 +37,7 @@ export const TEST_UUIDS = {
 export const TEST_PREFIX = '[TEST]';
 
 export async function setupTestData() {
-    if (!hasServiceRole || hasServiceRole === 'dummy') {
+    if (!hasServiceRole) {
         console.warn('--- WRN: Skipping Test Data Setup: SUPABASE_SERVICE_ROLE_KEY is required to bypass RLS ---');
         return;
     }
@@ -139,7 +139,7 @@ export async function setupTestData() {
 }
 
 export async function teardownTestData() {
-    if (!hasServiceRole || hasServiceRole === 'dummy') {
+    if (!hasServiceRole) {
         console.warn('--- WRN: Skipping Test Data Teardown: SUPABASE_SERVICE_ROLE_KEY is required to bypass RLS ---');
         return;
     }

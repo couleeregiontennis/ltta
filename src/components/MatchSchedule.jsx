@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import api from '../scripts/apiClient';
 import { useAuth } from '../context/AuthProvider';
 import { useSeason } from '../hooks/useSeason';
-import { useToast } from '../context/ToastContext';
 import { LoadingSpinner } from './LoadingSpinner';
 import { EmptyState } from './EmptyState';
 import '../styles/MatchSchedule.css';
@@ -24,30 +23,9 @@ const ScheduleSkeleton = () => (
   </div>
 );
 
-const parseLocalDate = (dateInput) => {
-  if (!dateInput) return new Date(NaN);
-  if (dateInput instanceof Date) return dateInput;
-  
-  if (typeof dateInput === 'string') {
-    const dateStr = dateInput.split(/[T ]/)[0];
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10);
-      const day = parseInt(parts[2], 10);
-      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
-        return new Date(year, month - 1, day);
-      }
-    }
-  }
-  return new Date(dateInput);
-};
-
 // OPTIMIZATION: Move static helpers outside component to avoid recreation
 const formatDate = (dateString) => {
-  const date = parseLocalDate(dateString);
-  if (isNaN(date.getTime())) return dateString || 'TBD';
-  return date.toLocaleDateString('en-US', {
+  return new Date(dateString).toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -60,12 +38,6 @@ const formatTime = (timeString) => {
 };
 
 const getMatchStatus = (match) => {
-  if (match.status === 'verified') {
-    return 'verified';
-  }
-  if (match.status === 'disputed' || match.is_disputed) {
-    return 'disputed';
-  }
   if (match.status === 'rain_cancellation') {
     return 'rain-canceled';
   }
@@ -76,7 +48,7 @@ const getMatchStatus = (match) => {
     return 'canceled';
   }
 
-  const matchDate = parseLocalDate(match.date);
+  const matchDate = new Date(match.date);
   const now = new Date();
 
   if (match.status === 'completed') {
@@ -91,9 +63,7 @@ const getMatchStatus = (match) => {
 const getStatusBadge = (status) => {
   const badges = {
     'upcoming': { text: 'Upcoming', class: 'status-upcoming' },
-    'completed': { text: 'Awaiting Verification', class: 'status-pending' },
-    'verified': { text: 'Verified', class: 'status-completed' },
-    'disputed': { text: 'Disputed ⚠️', class: 'status-warning' },
+    'completed': { text: 'Completed', class: 'status-completed' },
     'pending-result': { text: 'Pending Result', class: 'status-pending' },
     'canceled': { text: 'Cancelled', class: 'status-canceled' },
     'rain-canceled': { text: 'Rained Out', class: 'status-canceled' },
@@ -105,7 +75,7 @@ const getStatusBadge = (status) => {
 const groupMatchesByDate = (matches) => {
   const grouped = {};
   matches.forEach(match => {
-    const dateKey = parseLocalDate(match.date).toDateString();
+    const dateKey = new Date(match.date).toDateString();
     if (!grouped[dateKey]) {
       grouped[dateKey] = [];
     }
@@ -116,17 +86,16 @@ const groupMatchesByDate = (matches) => {
 
 export const MatchSchedule = () => {
   const navigate = useNavigate();
-  const { user, userRole, currentPlayerData } = useAuth();
-  const { currentSeason, loading: seasonLoading } = useSeason();
-  const { addToast } = useToast();
+  const { user, userRole } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [matches, setMatches] = useState([]);
   const [teams, setTeams] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState('week');
+  const [viewMode, setViewMode] = useState('list');
   const [selectedTeam, setSelectedTeam] = useState('all');
-  const [userTeamId, setUserTeamId] = useState(null);
+
+  const { currentSeason, loading: seasonLoading } = useSeason();
 
   const fetchAllData = async () => {
     if (!currentSeason) return;
@@ -168,27 +137,6 @@ export const MatchSchedule = () => {
     }
   }, [currentSeason, seasonLoading]);
 
-  useEffect(() => {
-    const fetchUserTeam = async () => {
-      if (currentPlayerData?.id) {
-        try {
-          const { data } = await supabase
-            .from('player_to_team')
-            .select('team')
-            .eq('player', currentPlayerData.id)
-            .eq('status', 'active')
-            .maybeSingle();
-          if (data) {
-            setUserTeamId(data.team);
-          }
-        } catch (e) {
-          console.error('Error fetching user team:', e);
-        }
-      }
-    };
-    fetchUserTeam();
-  }, [currentPlayerData]);
-
   const handleToggleRainout = async (matchId, currentStatus) => {
     try {
       const newStatus = currentStatus === 'rain_cancellation' ? 'scheduled' : 'rain_cancellation';
@@ -203,27 +151,10 @@ export const MatchSchedule = () => {
     try {
       await api.post('/matches/' + matchId + '/flag');
       setMatches(prevMatches => prevMatches.map(m =>
-        m.id === matchId ? { ...m, is_disputed: true, status: 'disputed' } : m
+        m.id === matchId ? { ...m, is_disputed: true } : m
       ));
-      addToast('Score flagged as disputed', 'info');
     } catch (err) {
       console.error('Error flagging match score:', err);
-      addToast('Failed to flag score', 'error');
-    }
-  };
-
-  const handleConfirmScore = async (matchId) => {
-    try {
-      const { error } = await supabase.rpc('confirm_match_score', { match_id: matchId });
-      if (error) throw error;
-      
-      setMatches(prevMatches => prevMatches.map(m =>
-        m.id === matchId ? { ...m, status: 'verified', is_disputed: false } : m
-      ));
-      addToast('Score confirmed successfully', 'success');
-    } catch (err) {
-      console.error('Error confirming match score:', err);
-      addToast('Failed to confirm score: ' + err.message, 'error');
     }
   };
 
@@ -239,24 +170,21 @@ export const MatchSchedule = () => {
       }
     }
 
-    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1, 0, 0, 0, 0);
-    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
+    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
     if (viewMode === 'month') {
       filtered = filtered.filter(match => {
-        const matchDate = parseLocalDate(match.date);
+        const matchDate = new Date(match.date);
         return matchDate >= startOfMonth && matchDate <= endOfMonth;
       });
     } else if (viewMode === 'week') {
       const startOfWeek = new Date(currentDate);
       startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
-      startOfWeek.setHours(0, 0, 0, 0);
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
-      endOfWeek.setHours(23, 59, 59, 999);
-
       filtered = filtered.filter(match => {
-        const matchDate = parseLocalDate(match.date);
+        const matchDate = new Date(match.date);
         return matchDate >= startOfWeek && matchDate <= endOfWeek;
       });
     }
@@ -364,64 +292,17 @@ export const MatchSchedule = () => {
                           {status === 'completed' && (
                             <div className="match-score-summary" style={{ textAlign: 'center', margin: '1rem 0', padding: '0.5rem', backgroundColor: 'var(--bg-card)', borderRadius: '6px' }}>
                               <div>Points Won: {match.home_points} - {match.away_points}</div>
-                              
-                              {/* Verification Workflow */}
-                              <div className="verification-actions" style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-                                {user?.id === match.submitted_by ? (
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
-                                    <span className="pending-notice" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                                      Pending Verification
-                                    </span>
-                                    <button 
-                                      className="btn-icon-text"
-                                      onClick={(e) => { e.stopPropagation(); navigate(`/add-score?matchId=${match.id}`); }}
-                                      style={{ padding: '2px 8px', fontSize: '0.75rem', border: '1px solid var(--primary-green)', color: 'var(--primary-green)', background: 'transparent', borderRadius: '4px', cursor: 'pointer' }}
-                                    >
-                                      Edit Score
-                                    </button>
-                                  </div>
-                                ) : (userRole?.isCaptain && (match.home_team?.id === userTeamId || match.away_team?.id === userTeamId)) || userRole?.isAdmin ? (
-                                  <div style={{ display: 'flex', gap: '10px' }}>
-                                    <button
-                                      className="confirm-score-btn"
-                                      onClick={(e) => { e.stopPropagation(); handleConfirmScore(match.id); }}
-                                      style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', backgroundColor: 'var(--primary-green)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                                    >
-                                      Confirm Score
-                                    </button>
-                                    <button
-                                      className="flag-score-btn"
-                                      onClick={(e) => { e.stopPropagation(); handleFlagScore(match.id); }}
-                                      style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', backgroundColor: 'transparent', border: '1px solid var(--warning)', color: 'var(--warning)', borderRadius: '4px', cursor: 'pointer' }}
-                                    >
-                                      Dispute
-                                    </button>
-                                  </div>
-                                ) : null}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {status === 'verified' && (
-                            <div className="match-score-summary verified" style={{ textAlign: 'center', margin: '1rem 0', padding: '0.5rem', backgroundColor: 'rgba(var(--color-primary-rgb), 0.1)', borderRadius: '6px', border: '1px solid var(--primary-green)' }}>
-                              <div style={{ fontWeight: 'bold', color: 'var(--primary-green)' }}>Final Score: {match.home_points} - {match.away_points}</div>
-                              <div style={{ fontSize: '0.8rem', marginTop: '0.25rem', color: 'var(--text-secondary)' }}>✓ Verified</div>
-                            </div>
-                          )}
-
-                          {status === 'disputed' && (
-                            <div className="match-score-summary disputed" style={{ textAlign: 'center', margin: '1rem 0', padding: '0.5rem', backgroundColor: 'rgba(var(--color-warning-rgb), 0.1)', borderRadius: '6px', border: '1px solid var(--warning)' }}>
-                              <div>Reported Score: {match.home_points} - {match.away_points}</div>
-                              <div className="dispute-badge" style={{ marginTop: '0.5rem', color: 'var(--warning)', fontWeight: 'bold' }}>
-                                Score Disputed ⚠️
-                              </div>
-                              {userRole?.isAdmin && (
-                                <button 
-                                  className="admin-resolve-btn"
-                                  onClick={(e) => { e.stopPropagation(); navigate(`/add-score?matchId=${match.id}`); }}
-                                  style={{ marginTop: '0.5rem', padding: '0.25rem 0.75rem', fontSize: '0.8rem', backgroundColor: 'var(--warning)', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              {match.is_disputed ? (
+                                <div className="dispute-badge" style={{ marginTop: '0.5rem', color: 'var(--warning)', fontWeight: 'bold' }}>
+                                  Score Disputed ⚠️
+                                </div>
+                              ) : (
+                                <button
+                                  className="flag-score-btn"
+                                  onClick={(e) => { e.stopPropagation(); handleFlagScore(match.id); }}
+                                  style={{ marginTop: '0.5rem', padding: '0.25rem 0.75rem', fontSize: '0.8rem', backgroundColor: 'transparent', border: '1px solid var(--warning)', color: 'var(--warning)', borderRadius: '4px', cursor: 'pointer' }}
                                 >
-                                  Resolve (Admin)
+                                  Flag Score
                                 </button>
                               )}
                             </div>

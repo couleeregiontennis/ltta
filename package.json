@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@9.15.0",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@qdrant/js-client-rest": "^1.16.2",
@@ -29,13 +28,11 @@
     "@babel/preset-react": "^7.28.5",
     "@darkobits/nr": "^0.18.8",
     "@jest/globals": "^30.2.0",
-    "@playwright/test": "1.61.1",
+    "@playwright/test": "^1.57.0",
     "@rollup/plugin-babel": "^6.1.0",
     "@vitejs/plugin-react": "^4.2.1",
     "dotenv": "^17.3.1",
-    "identity-obj-proxy": "^3.0.0",
     "jest": "^30.2.0",
-    "jest-environment-jsdom": "^30.4.1",
     "pg": "^8.20.0",
     "vite": "^6.4.1"
   },
@@ -48,12 +45,9 @@
     "preview": "vite preview",
     "deploy": "pnpm run build && cp -r dist/* ../ && echo 'Deployed to root directory'",
     "test:e2e": "playwright test",
-    "test:e2e:fast": "playwright test --project=chromium --workers=100%",
-    "test:e2e:functional": "playwright test --project=chromium --grep-invert visual",
     "test:e2e:ui": "playwright test --ui",
     "test:clean-db": "node scripts/clean-db.js",
-    "db:staging:reset": "node scripts/reset-staging-db.js",
-    "test": "jest src"
+    "db:staging:reset": "node scripts/reset-staging-db.js"
   },
   "browserslist": {
     "production": [
