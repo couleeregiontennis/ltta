@@ -3,6 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { curatedFaqs } from './data/curatedFaqs.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -314,6 +315,20 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_audit_logs_table ON audit_logs(table_name);
   CREATE INDEX IF NOT EXISTS idx_audit_logs_changed ON audit_logs(changed_at);
+
+  -- Full Text Search virtual table for local rules assistant
+  CREATE VIRTUAL TABLE IF NOT EXISTS rules_fts USING fts5(content, source);
+
+  -- Instant rules FAQ table for zero-latency direct hits
+  CREATE TABLE IF NOT EXISTS rules_faq (
+    id TEXT PRIMARY KEY,
+    topic TEXT NOT NULL,
+    keywords TEXT NOT NULL,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    priority INTEGER DEFAULT 0
+  );
+  CREATE VIRTUAL TABLE IF NOT EXISTS rules_faq_fts USING fts5(keywords, question, answer, content=rules_faq, content_rowid=rowid);
 `);
 
 /**
@@ -350,4 +365,76 @@ export function addAuditLog(tableName, recordId, operation, oldData, newData, ch
   );
 }
 
+export function ensureRulesIndexed() {
+  try {
+    // 1. Ensure curated FAQs are seeded into rules_faq and rules_faq_fts
+    const faqCount = db.prepare('SELECT count(*) as count FROM rules_faq').get();
+    if (!faqCount || faqCount.count === 0) {
+      const insertFaq = db.prepare(`
+        INSERT INTO rules_faq (id, topic, keywords, question, answer, priority)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+      const insertFaqFts = db.prepare(`
+        INSERT INTO rules_faq_fts (rowid, keywords, question, answer)
+        VALUES (?, ?, ?, ?)
+      `);
+
+      const seedTx = db.transaction(() => {
+        for (const item of curatedFaqs) {
+          const id = genUUID();
+          const info = insertFaq.run(id, item.topic, item.keywords, item.question, item.answer, 1);
+          insertFaqFts.run(info.lastInsertRowid, item.keywords, item.question, item.answer);
+        }
+      });
+      seedTx();
+    }
+
+    // 2. Index rules into rules_fts in bite-sized snippets (<350 chars)
+    const row = db.prepare('SELECT count(*) as count FROM rules_fts').get();
+    if (row && row.count > 0) return;
+
+    const rulesPath = path.join(__dirname, '../public/rules_context.md');
+    const facPath = path.join(__dirname, '../public/friend_at_court.md');
+
+    const insert = db.prepare('INSERT INTO rules_fts (content, source) VALUES (?, ?)');
+
+    const indexFile = (filePath, sourceName) => {
+      if (!fs.existsSync(filePath)) return;
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const paragraphs = content.split(/\n\s*\n/);
+      for (const para of paragraphs) {
+        const clean = para.trim().replace(/\s+/g, ' ');
+        if (!clean || clean.length < 20) continue;
+
+        // Keep snippets small (100 to 400 chars) for weak models
+        if (clean.length <= 450) {
+          insert.run(clean, sourceName);
+        } else {
+          // Break longer paragraphs by sentences
+          const sentences = clean.match(/[^.!?]+[.!?]+(\s|$)/g) || [clean];
+          let currentChunk = '';
+          for (const s of sentences) {
+            if ((currentChunk + ' ' + s).length > 350) {
+              if (currentChunk.trim()) insert.run(currentChunk.trim(), sourceName);
+              currentChunk = s;
+            } else {
+              currentChunk = currentChunk ? currentChunk + ' ' + s : s;
+            }
+          }
+          if (currentChunk.trim()) insert.run(currentChunk.trim(), sourceName);
+        }
+      }
+    };
+
+    const tx = db.transaction(() => {
+      indexFile(rulesPath, 'rules_context.md');
+      indexFile(facPath, 'friend_at_court.md');
+    });
+    tx();
+  } catch (err) {
+    console.error('Failed to index rules into FTS:', err);
+  }
+}
+
 export { db };
+

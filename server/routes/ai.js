@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
+import { db, ensureRulesIndexed } from '../db.js';
+import { llmQueue } from '../llmQueue.js';
 
 const router = Router();
 
@@ -40,33 +42,41 @@ router.post('/parse-score', requireAuth, async (req, res) => {
 
   Transcript: "${normalizedTranscript}"`;
 
-    const response = await fetch(`${OLLAMA_URL}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: process.env.OLLAMA_MODEL || 'qwen3.5:0.8b',
-        prompt: prompt,
-        format: 'json',
-        stream: false,
-        think: false,
-        keep_alive: -1,
-      }),
+    // Process via concurrency queue to avoid CPU thrashing
+    const parsedResponse = await llmQueue.run(async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000);
+
+      try {
+        const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: process.env.OLLAMA_MODEL || 'qwen3.5:0.8b',
+            prompt: prompt,
+            format: 'json',
+            stream: false,
+            think: false,
+            keep_alive: '10m',
+            options: {
+              num_predict: 120,
+              temperature: 0.1
+            }
+          }),
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Ollama API failed: ${response.status} ${errText}`);
+        }
+
+        const data = await response.json();
+        return JSON.parse(data.response);
+      } finally {
+        clearTimeout(timeout);
+      }
     });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Ollama API failed: ${response.status} ${errText}`);
-    }
-
-    const data = await response.json();
-    
-    let parsedResponse;
-    try {
-      parsedResponse = JSON.parse(data.response);
-    } catch (parseError) {
-      console.error('Error parsing Ollama response as JSON:', parseError);
-      return res.status(500).json({ error: 'Invalid JSON response from AI', rawResponse: data.response });
-    }
 
     res.json(parsedResponse);
   } catch (error) {
@@ -78,66 +88,120 @@ router.post('/parse-score', requireAuth, async (req, res) => {
 router.post('/ask-umpire', optionalAuth, async (req, res) => {
   try {
     const { query } = req.body;
-    if (!query) {
+    if (!query || typeof query !== 'string' || !query.trim()) {
       return res.status(400).json({ error: 'Query is required' });
     }
 
-    const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
-    const QDRANT_URL = process.env.QDRANT_URL;
-    const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
+    ensureRulesIndexed();
 
-    if (!QDRANT_URL || !QDRANT_API_KEY) {
-      return res.status(500).json({ error: 'Qdrant environment variables not configured' });
+    const normalized = query.trim();
+    const stopWords = new Set([
+      'what', 'when', 'where', 'which', 'who', 'whom', 'this', 'that', 'these',
+      'those', 'the', 'and', 'with', 'from', 'for', 'about', 'does', 'did',
+      'happens', 'happen', 'can', 'could', 'should', 'would', 'is', 'are', 'was',
+      'were', 'tennis', 'rule', 'rules', 'please', 'tell', 'explain'
+    ]);
+
+    const searchTerms = normalized
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 2 && !stopWords.has(w));
+
+    // STEP 1: Fast direct FAQ Match (0ms latency, zero LLM load)
+    if (searchTerms.length > 0) {
+      try {
+        const faqMatchQuery = searchTerms.map(t => `"${t}"*`).join(' OR ');
+        const faqHits = db.prepare(`
+          SELECT question, answer, rank
+          FROM rules_faq_fts
+          WHERE rules_faq_fts MATCH ?
+          ORDER BY rank
+          LIMIT 1
+        `).all(faqMatchQuery);
+
+        if (faqHits && faqHits.length > 0 && faqHits[0].rank < -6.0) {
+          return res.json({
+            answer: faqHits[0].answer,
+            source: 'FAQ',
+            questionMatched: faqHits[0].question,
+            directHit: true
+          });
+        }
+      } catch (faqErr) {
+        console.warn('FAQ lookup skipped:', faqErr.message);
+      }
     }
 
-    // 1. Generate embedding via Ollama
-    const embedRes = await fetch(`${OLLAMA_URL}/api/embeddings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'nomic-embed-text',
-        prompt: query
-      })
+    // STEP 2: Micro-chunk Rules FTS5 Search (top 1-2 focused snippets, max 600 chars total)
+    let context = '';
+    if (searchTerms.length > 0) {
+      const matchQuery = searchTerms.map(term => `"${term}"*`).join(' OR ');
+      try {
+        const rows = db.prepare(`
+          SELECT content, source, rank
+          FROM rules_fts
+          WHERE rules_fts MATCH ?
+          ORDER BY rank
+          LIMIT 2
+        `).all(matchQuery);
+
+        if (rows && rows.length > 0) {
+          context = rows.map(r => r.content).join('\n');
+          // Bound context length strictly
+          if (context.length > 600) {
+            context = context.slice(0, 600);
+          }
+        }
+      } catch (searchErr) {
+        console.warn('FTS5 search fallback:', searchErr.message);
+      }
+    }
+
+    // STEP 3: Queue AI generation (serialized to protect CPU, tiny prompt, max 80 tokens out)
+    const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
+    const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen3.5:0.8b';
+
+    const systemPrompt = `You are an expert tennis umpire for the LTTA league.
+${context ? `Rules:\n${context}\n` : ''}
+Question: ${normalized}
+Answer concisely in 1 or 2 sentences:`;
+
+    const answer = await llmQueue.run(async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000);
+
+      try {
+        const chatRes = await fetch(`${OLLAMA_URL}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: OLLAMA_MODEL,
+            prompt: systemPrompt,
+            stream: false,
+            think: false,
+            keep_alive: '10m',
+            options: {
+              num_predict: 80,
+              temperature: 0.1
+            }
+          })
+        });
+
+        if (!chatRes.ok) {
+          const errText = await chatRes.text();
+          throw new Error(`Ollama generation failed: ${chatRes.status} ${errText}`);
+        }
+
+        const chatData = await chatRes.json();
+        return chatData.response?.trim() || "I couldn't find an answer to that question.";
+      } finally {
+        clearTimeout(timeout);
+      }
     });
-    
-    if (!embedRes.ok) throw new Error('Failed to generate embedding');
-    const embedData = await embedRes.json();
-    const embedding = embedData.embedding;
 
-    // 2. Search Qdrant for relevant rules
-    const qdrantRes = await fetch(`${QDRANT_URL}/collections/tennis_rules/points/search`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'api-key': QDRANT_API_KEY
-      },
-      body: JSON.stringify({
-        vector: embedding,
-        limit: 3,
-        with_payload: true
-      })
-    });
-    
-    if (!qdrantRes.ok) throw new Error('Failed to query Qdrant');
-    const qdrantData = await qdrantRes.json();
-    
-    const context = qdrantData.result.map(hit => hit.payload.text).join('\\n\\n');
-
-    // 3. Generate answer via Ollama chat
-    const chatRes = await fetch(`${OLLAMA_URL}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: process.env.OLLAMA_MODEL || 'gemma2:2b',
-        prompt: `You are an expert tennis umpire. Answer the following user question based strictly on the provided context rules. If the context does not contain the answer, say you don't know.\\n\\nContext:\\n${context}\\n\\nQuestion: ${query}\\n\\nAnswer:`,
-        stream: false
-      })
-    });
-
-    if (!chatRes.ok) throw new Error('Failed to generate answer from Ollama');
-    const chatData = await chatRes.json();
-
-    res.json({ answer: chatData.response, contextUsed: context });
+    res.json({ answer, contextUsed: context, directHit: false });
   } catch (error) {
     console.error('Error asking umpire:', error);
     res.status(500).json({ error: 'Failed to process question', details: error.message });
