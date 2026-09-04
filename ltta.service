@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/brett/Code/ltta-local
+WorkingDirectory=/home/brett/Code/ltta
 ExecStart=/home/linuxbrew/.linuxbrew/bin/node server/index.js
 Restart=always
 RestartSec=5
