@@ -44,10 +44,12 @@ router.post('/parse-score', requireAuth, async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: process.env.OLLAMA_MODEL || 'gemma2:2b',
+        model: process.env.OLLAMA_MODEL || 'qwen3.5:0.8b',
         prompt: prompt,
         format: 'json',
         stream: false,
+        think: false,
+        keep_alive: -1,
       }),
     });
 
