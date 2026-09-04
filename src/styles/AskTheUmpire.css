@@ -79,6 +79,23 @@
   background-color: var(--bg-primary);
 }
 
+.umpire-user-query {
+  background-color: var(--primary-green-light, rgba(46, 125, 50, 0.12));
+  border: 1px solid var(--primary-green);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.umpire-query-label {
+  font-weight: bold;
+  color: var(--primary-green);
+  margin-right: 4px;
+}
+
 .umpire-response {
   background-color: var(--bg-secondary);
   padding: 10px;

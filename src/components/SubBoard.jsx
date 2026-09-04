@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 import { useAuth } from '../context/AuthProvider';
 import { LoadingSpinner } from './LoadingSpinner';
 import '../styles/SubBoard.css';
@@ -35,26 +35,12 @@ export const SubBoard = () => {
 
     const fetchRequests = async () => {
         setLoading(true);
-        let query = supabase
-            .from('sub_request')
-            .select(`
-        *,
-        team:team_id(name),
-        location:location_id(name)
-      `)
-            .order('match_date', { ascending: true });
-
-        if (activeTab === 'my_requests') {
-            query = query.eq('captain_user_id', user.id);
-        } else {
-            query = query.eq('status', 'open');
-        }
-
-        const { data, error: fetchError } = await query;
-        if (fetchError) {
-            setError('Failed to load sub requests.');
-        } else {
+        try {
+            const data = await api.get('/sub-requests' + (activeTab === 'my_requests' ? '?captainId=' + user.id : ''));
             setRequests(data || []);
+        } catch(error) {
+            console.error('Error fetching sub requests:', error);
+            setError('Failed to load substitute requests');
         }
         setLoading(false);
     };
@@ -62,17 +48,17 @@ export const SubBoard = () => {
     const fetchFormData = async () => {
         // Fetch Teams the captain belongs to (assuming we can just fetch all teams for now if admin, or user's teams)
         // For simplicity, fetch all teams
-        const { data: teamsData } = await supabase.from('team').select('*').order('name');
+        const teamsData = await api.get('/teams');
         if (teamsData) setTeams(teamsData);
 
-        const { data: locData } = await supabase.from('location').select('*').order('name');
+        const locData = await api.get('/locations');
         if (locData) setLocations(locData);
     };
 
     const handleCreateRequest = async (e) => {
         e.preventDefault();
         setLoading(true);
-        const { error: insertError } = await supabase.from('sub_request').insert([{
+        await api.post('/sub-requests', {
             captain_user_id: user.id,
             team_id: formData.team_id,
             match_date: formData.match_date,
@@ -80,7 +66,8 @@ export const SubBoard = () => {
             location_id: formData.location_id || null,
             required_ranking: parseInt(formData.required_ranking),
             notes: formData.notes
-        }]);
+        });
+        const insertError = null;
 
         if (insertError) {
             setError('Failed to create sub request. Make sure you are a captain.');
@@ -94,31 +81,22 @@ export const SubBoard = () => {
 
     const handleAcceptRequest = async (requestId) => {
         setLoading(true);
-        const { error: updateError } = await supabase
-            .from('sub_request')
-            .update({ status: 'filled', sub_user_id: user.id })
-            .eq('id', requestId)
-            .eq('status', 'open');
-
-        if (updateError) {
-            setError('Failed to accept request. It may have already been filled.');
-        } else {
+        try {
+            await api.patch('/sub-requests/' + requestId + '/claim');
             fetchRequests();
+        } catch (updateError) {
+            setError('Failed to accept request. It may have already been filled.');
         }
         setLoading(false);
     };
 
     const handleCancelRequest = async (requestId) => {
         setLoading(true);
-        const { error: deleteError } = await supabase
-            .from('sub_request')
-            .delete()
-            .eq('id', requestId);
-
-        if (deleteError) {
-            setError('Failed to cancel request.');
-        } else {
+        try {
+            await api.patch('/sub-requests/' + requestId + '/cancel');
             fetchRequests();
+        } catch (deleteError) {
+            setError('Failed to cancel request.');
         }
         setLoading(false);
     };

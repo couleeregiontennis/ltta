@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import api, { auth } from '../scripts/apiClient';
 import { useToast } from '../context/ToastContext';
 import '../styles/PlayerProfile.css';
 
@@ -75,7 +75,8 @@ export const PlayerProfile = () => {
 
   const checkUser = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const session = await auth.getSession();
+      const user = session?.user;
       if (user) {
         setUser(user);
 
@@ -98,14 +99,11 @@ export const PlayerProfile = () => {
 
   const fetchPlayerProfile = async (userId, authUser = null) => {
     try {
-      const { data, error } = await supabase
-        .from('player')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
+      let data;
+      try {
+        data = await api.get('/players/me');
+      } catch (err) {
+        if (err.status !== 404) throw err;
       }
 
       const normalized = normalizeProfile(data, authUser || user);
@@ -129,19 +127,7 @@ export const PlayerProfile = () => {
   const fetchMatchHistory = async (userId) => {
     try {
       // Using player_to_match table to get match history
-      const { data, error } = await supabase
-        .from('player_to_match')
-        .select(`
-          *,
-          match:match(
-            *
-          )
-        `)
-        .eq('player', userId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
+      const data = await api.get('/players/me/matches');
       setMatchHistory(data || []);
     } catch (err) {
       console.error('Error fetching match history:', err);
@@ -201,21 +187,10 @@ export const PlayerProfile = () => {
       let savedData;
       if (hasExistingProfile) {
         // When updating, we identify the record by user_id
-        const { data: updatedData, error: updateError } = await supabase
-          .from('player')
-          .update(profileData)
-          .eq('user_id', user.id)
-          .select()
-          .single();
-        if (updateError) throw updateError;
+        const updatedData = await api.put('/players/me', profileData);
         savedData = updatedData;
       } else {
-        const { data: insertedData, error: insertError } = await supabase
-          .from('player')
-          .insert(profileData)
-          .select()
-          .single();
-        if (insertError) throw insertError;
+        const insertedData = await api.put('/players/me', profileData);
         savedData = insertedData;
         setHasExistingProfile(true);
       }

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../../scripts/supabaseClient';
+import api, { auth } from '../../scripts/apiClient';
 import { useAuth } from '../../context/AuthProvider';
+import { useSeason } from '../../hooks/useSeason';
 import '../../styles/ScheduleGenerator.css';
 
 export const ScheduleGenerator = () => {
   const { user, userRole, loading: authLoading } = useAuth();
+  const { currentSeason } = useSeason();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [teams, setTeams] = useState([]);
@@ -44,38 +46,28 @@ export const ScheduleGenerator = () => {
       setLoading(true);
 
       // Load available teams
-      const { data: teamData, error: teamError } = await supabase
-        .from('team')
-        .select('id, number, name, play_night')
-        .order('number');
-
-      if (teamError) throw teamError;
+      const teamData = await api.get('/teams');
       setTeams(teamData || []);
 
       // Check existing schedules
-      await checkExistingSchedules();
-
-    } catch (err) {
-      console.error('Error loading initial data:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+      if (currentSeason?.id) {
+        const matchesData = await api.get('/matches?seasonId=' + currentSeason.id);
+        const existing = {};
+        matchesData?.forEach(match => {
+          if (match.play_night) {
+            existing[match.play_night.toLowerCase()] = true;
+          }
+        });
+        setExistingSchedules(existing);
+      }
+    } catch (err) {};
   };
 
   const checkExistingSchedules = async () => {
     try {
-      // Check what schedules already exist for the current year
-      const year = new Date().getFullYear();
-
+      if (!currentSeason?.id) return;
       // Get schedules that exist in matches table
-      const { data, error } = await supabase
-        .from('team_match')
-        .select('play_night, date')
-        .gte('date', `${year}-01-01`)
-        .lt('date', `${year + 1}-01-01`);
-
-      if (error) throw error;
+      const data = await api.get('/matches?seasonId=' + currentSeason.id);
 
       const existing = {};
       data?.forEach(match => {
@@ -142,7 +134,7 @@ export const ScheduleGenerator = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          'Authorization': `Bearer ${(await auth.getSession())?.access_token}`
         },
         body: JSON.stringify({
           year: formData.year,
@@ -184,7 +176,7 @@ export const ScheduleGenerator = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          'Authorization': `Bearer ${(await auth.getSession())?.access_token}`
         },
         body: JSON.stringify({
           year: formData.year,

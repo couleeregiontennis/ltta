@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import { useState } from 'react';
+import api from '../scripts/apiClient';
 import { useAuth } from '../context/AuthProvider';
 import { useSeason } from '../hooks/useSeason';
 import { useSearchParams } from 'react-router-dom';
@@ -87,40 +87,14 @@ export const PayDues = () => {
         setError('');
 
         try {
-            // Ensure registration exists. ignoreDuplicates so an existing
-            // registration (e.g. already completed) is never overwritten.
-            const { error: upsertError } = await supabase
-                .from('registrations')
-                .upsert(
-                    {
-                        player_id: currentPlayerData.id,
-                        season_id: currentSeason.id,
-                        status: 'pending'
-                    },
-                    { onConflict: 'player_id, season_id', ignoreDuplicates: true }
-                );
-
-            if (upsertError) throw upsertError;
-
-            // The edge function verifies ownership, sources the dues amount
-            // from the season, and rejects already-paid registrations.
-            const { data, error } = await supabase.functions.invoke('stripe-checkout', {
-                body: {
-                    player_id: currentPlayerData.id,
-                    season_id: currentSeason.id
-                }
+            // Insert a pending payment record
+            await api.post('/payments', {
+                season_id: currentSeason.id,
+                player_id: currentPlayerData.id,
+                amount_paid: 60,
+                payment_method: 'online',
+                status: 'pending'
             });
-
-            if (error) {
-                // FunctionsHttpError carries the response; surface its message
-                // (e.g. "Dues for this season have already been paid.").
-                let message = 'Failed to start checkout process. Please try again.';
-                try {
-                    const body = await error?.context?.json?.();
-                    if (body?.error) message = body.error;
-                } catch { /* keep the generic message */ }
-                throw new Error(message);
-            }
 
             if (data?.url) {
                 window.location.href = data.url;

@@ -1,5 +1,5 @@
 import { useState, useEffect, memo } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 
 const formatDate = (dateStr) => {
   const date = new Date(dateStr);
@@ -42,7 +42,7 @@ const MatchResultRow = memo(({ match, teamNumber }) => {
 
 MatchResultRow.displayName = 'MatchResultRow';
 
-// OPTIMIZATION: Uses teamId (UUID) for server-side filtering when available to avoid fetching all matches
+// OPTIMIZATION: Uses teamId (UUID) for server-side filtering when available
 const MatchResultsComponent = ({ teamNumber, teamNight, teamId }) => {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,38 +52,12 @@ const MatchResultsComponent = ({ teamNumber, teamNight, teamId }) => {
     const loadMatchResults = async () => {
       try {
         setLoading(true);
-        
-        let query = supabase
-          .from('team_match')
-          .select(`
-            *,
-            home_team:home_team_id (number, name, play_night),
-            away_team:away_team_id (number, name, play_night),
-            line_results (
-              line_number,
-              match_type,
-              home_set_1,
-              away_set_1,
-              home_set_2,
-              away_set_2,
-              home_set_3,
-              away_set_3,
-              home_won
-            )
-          `)
-          .eq('status', 'completed')
-          .order('date', { ascending: false });
+        setError('');
 
-        // OPTIMIZATION: Filter server-side if teamId is available
-        if (teamId) {
-          query = query.or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`);
-        }
+        const endpoint = teamId ? `/matches?teamId=${teamId}` : '/matches';
+        const matchData = await api.get(endpoint);
 
-        const { data: matchData, error: matchError } = await query;
-
-        if (matchError) throw matchError;
-
-        let filteredMatches = matchData || [];
+        let filteredMatches = (matchData || []).filter(m => m.status === 'completed');
 
         // Fallback: Client-side filter if teamId wasn't provided (for backward compatibility)
         if (!teamId && teamNumber) {
@@ -92,6 +66,9 @@ const MatchResultsComponent = ({ teamNumber, teamNight, teamId }) => {
             match.away_team?.number === parseInt(teamNumber)
           );
         }
+
+        // Sort by date descending
+        filteredMatches.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         setMatches(filteredMatches);
       } catch (err) {
@@ -144,3 +121,4 @@ const MatchResultsComponent = ({ teamNumber, teamNight, teamId }) => {
 };
 
 export const MatchResults = memo(MatchResultsComponent);
+

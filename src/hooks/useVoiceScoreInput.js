@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '../scripts/supabaseClient'; // Assuming supabaseClient.js is in scripts
+import api from '../scripts/apiClient';
 
 export const useVoiceScoreInput = (onScoreParsed) => {
   const [isListening, setIsListening] = useState(false);
@@ -24,27 +24,7 @@ export const useVoiceScoreInput = (onScoreParsed) => {
     setAiError('');
     setAiSuccess('');
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        throw new Error('User not authenticated.');
-      }
-
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/parse-score`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ transcript: text }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `AI parsing failed with status: ${response.status}`);
-      }
-
-      const parsedData = await response.json();
+      const parsedData = await api.post('/ai/parse-score', { transcript: text });
 
       setAiSuccess('Transcript parsed successfully by AI!');
       if (onScoreParsedRef.current) {
@@ -109,11 +89,7 @@ export const useVoiceScoreInput = (onScoreParsed) => {
         parseTranscriptWithAI(currentText);
       }
     };
-
-    return () => {
-      rec.stop();
-    };
-  }, [SpeechRecognition]); // Only depend on SpeechRecognition class to avoid re-creation
+  }, [SpeechRecognition, transcript, onScoreParsed]);
 
   const startListening = () => {
     if (recognitionRef.current && !isListening) {

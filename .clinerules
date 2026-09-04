@@ -1,0 +1,61 @@
+# Kanban Agent Model Selection Rules
+
+When orchestrating or managing tasks on the Kanban board (creating, updating, or starting tasks), you must prioritize selecting and assigning the best model/agent configuration for each task based on its difficulty and type.
+
+## How to Assign Settings to Tasks
+Always use the model override flags when creating or updating tasks via the Kanban CLI:
+* `--cline-provider <id>` (e.g. `cline-pass`, `cline`)
+* `--cline-model <id>` (e.g. `cline-pass/qwen3.7-max`, `cline-pass/kimi-k2.7-code`, `z-ai/glm-5.2`, etc.)
+* `--cline-reasoning-effort <level>` (`low` | `medium` | `high` | `xhigh`)
+
+Alternatively, if editing the `board.json` directly, configure the task's `clineSettings` object:
+```json
+"clineSettings": {
+  "providerId": "cline-pass",
+  "modelId": "cline-pass/qwen3.7-max",
+  "reasoningEffort": "medium"
+}
+```
+
+## Model Selection Guidelines
+
+To ensure the best task execution, evaluate the task prompt and title using the following guidelines to select the correct model:
+
+### 1. High Difficulty & Critical Systems
+* **Task Criteria:** Multi-file changes, database schema modifications (Supabase migrations, Postgres triggers), authentication/JWT handling, complex backend logic, heavy refactoring.
+* **Best Models:**
+  * **Primary:** `cline-pass/qwen3.7-max` (Excellent deep reasoning and code synthesis) or `cline-pass/deepseek-v4-pro` (State-of-the-art MoE reasoning and coding)
+  * **Secondary:** `cline-pass/kimi-k3` (Frontier-scale 2.8T MoE) or `cline-pass/kimi-k2.7-code` (Highly optimized reasoning efficiency for codebases)
+* **CLI Syntax:**
+  ```bash
+  kanban task update --task-id <id> --cline-provider cline-pass --cline-model cline-pass/qwen3.7-max --cline-reasoning-effort high
+  ```
+
+### 2. Medium Difficulty & Feature Implementation
+* **Task Criteria:** Standard frontend components, state management (hooks, contexts), API integrations, new pages, writing tests (Playwright E2E).
+* **Best Models:**
+  * **Primary:** `z-ai/glm-5.2` (via provider `cline` - excellent long-horizon context) or `cline-pass/qwen3.7-plus` (optimized for visual verification and CLI actions)
+  * **Secondary:** `cline-pass/mimo-v2.5-pro` (Xiaomi omnimodal Pro) or `cline-pass/kimi-k2.6` (Moonshot K2 flagship)
+* **CLI Syntax:**
+  ```bash
+  kanban task update --task-id <id> --cline-provider cline-pass --cline-model cline-pass/qwen3.7-plus --cline-reasoning-effort medium
+  ```
+
+### 3. Low Difficulty, Simple Fixes & Styling
+* **Task Criteria:** CSS/styling modifications, layout alignments, static copy changes, simple bug fixes, documentation, script configuration.
+* **Best Models:**
+  * **Primary:** `cline-pass/kimi-k3` (with `low` reasoning effort) or `cline-pass/minimax-m3` (excellent multimodal speed and efficiency)
+  * **Secondary:** `cline-pass/deepseek-v4-flash` (extreme speed and throughput) or `cline-pass/mimo-v2.5` (standard Xiaomi omnimodal)
+* **CLI Syntax:**
+  ```bash
+  kanban task update --task-id <id> --cline-provider cline-pass --cline-model cline-pass/minimax-m3 --cline-reasoning-effort low
+  ```
+
+### 4. Planning Phase (Plan Mode)
+* **Task Criteria:** Analyzing files, checking system requirements, planning tasks.
+* **Best Models:**
+  * **Primary:** `cline-pass/kimi-k3` or `z-ai/glm-5.2`
+* **CLI Syntax:**
+  ```bash
+  kanban task update --task-id <id> --start-in-plan-mode true --cline-provider cline-pass --cline-model cline-pass/kimi-k3 --cline-reasoning-effort low
+  ```

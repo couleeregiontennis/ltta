@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import { auth } from '../scripts/apiClient';
 
 const AuthContext = createContext({});
 
@@ -16,198 +16,91 @@ export const AuthProvider = ({ children }) => {
   const [isReconnecting, setIsReconnecting] = useState(false);
   const mountedRef = useRef(true);
 
-  const prefetchCoreData = async (userId) => {
-    try {
-      console.log('[AuthProvider] prefetchCoreData started for:', userId);
-      
-      const isE2E = window._env_?.VITE_IS_E2E === 'true' || import.meta.env.VITE_IS_E2E === 'true';
-      if (isE2E) {
-        console.log('[AuthProvider] E2E Bypass in prefetchCoreData');
-        // We still want to try to fetch, but not block
-      }
-
-      // Fetch player and season in parallel but handle them gracefully
-      const [playerRes, seasonRes] = await Promise.allSettled([
-        supabase
-          .from('player')
-          .select('*, is_captain, is_admin')
-          .eq('user_id', userId)
-          .maybeSingle(),
-        supabase
-          .from('season')
-          .select('*')
-          .order('end_date', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      ]);
-
-      const playerData = playerRes.status === 'fulfilled' && playerRes.value ? playerRes.value.data : null;
-      const seasonData = seasonRes.status === 'fulfilled' && seasonRes.value ? seasonRes.value.data : null;
-
-      const playerError = playerRes.status === 'fulfilled' && playerRes.value ? playerRes.value.error : null;
-      const seasonError = seasonRes.status === 'fulfilled' && seasonRes.value ? seasonRes.value.error : null;
-      const playerStatus = playerRes.status === 'fulfilled' && playerRes.value ? playerRes.value.status : null;
-      const seasonStatus = seasonRes.status === 'fulfilled' && seasonRes.value ? seasonRes.value.status : null;
-
-      const isAuthError = (err, status) => {
-        if (status === 401 || status === 403) return true;
-        if (err && (err.code === 'PGRST301' || err.code === 'PGRST302' || err.message?.includes('JWT') || err.message?.includes('token'))) return true;
-        return false;
-      };
-
-      if (isAuthError(playerError, playerStatus) || isAuthError(seasonError, seasonStatus)) {
-        // The custom fetch wrapper in supabaseClient already attempted refreshSession().
-        // If we still get here, refresh failed — clear auth and reload.
-        console.warn('[AuthProvider] Auth error in prefetchCoreData after fetch-level retry. Clearing session...');
-        const supabaseUrl = window._env_?.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
-        const projectRef = supabaseUrl ? new URL(supabaseUrl).hostname.split('.')[0] : 'shlcqztfdhfwkhijwgue';
-        localStorage.removeItem(`sb-${projectRef}-auth-token`);
-        localStorage.removeItem('sb-shlcqztfdhfwkhijwgue-auth-token');
-        localStorage.removeItem('supabase.auth.token');
-        window.location.reload();
-        return;
-      }
-
-      console.log('[AuthProvider] Player response status:', playerRes.status);
-      console.log('[AuthProvider] Player data present:', !!playerData);
-
-      if (playerData) {
-        setCurrentPlayerData(playerData);
-        setUserRole({
-          isCaptain: !!playerData.is_captain,
-          isAdmin: !!playerData.is_admin
-        });
-        setHasProfile(!!playerData.first_name);
-        console.log('[AuthProvider] User roles set from prefetch:', { isCaptain: !!playerData.is_captain, isAdmin: !!playerData.is_admin });
-      } else {
-        setHasProfile(false);
-      }
-
-      if (seasonData) {
-        setCurrentSeason(seasonData);
-      }
-    } catch (err) {
-      console.error('Core data pre-fetch error:', err);
-      setHasProfile(false);
-    } finally {
-      console.log('[AuthProvider] prefetchCoreData finished');
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     const getSession = async () => {
       try {
-        console.log('[AuthProvider] getSession started');
+        const data = await auth.getSession();
 
-        console.log('[AuthProvider] Calling supabase.auth.getSession()...');
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        if (error) throw error;
+        if (!mounted) return;
 
-        console.log('[AuthProvider] Session retrieved:', initialSession ? 'Found' : 'None');
+        if (data.session?.user) {
+          setSession(data.session);
+          setUser(data.session.user);
 
-        if (mountedRef.current) {
-          setSession(initialSession);
-          setUser(initialSession?.user ?? null);
-          
-          if (initialSession?.user) {
-            console.log('[AuthProvider] User found in getSession, prefetching core data...');
-            await prefetchCoreData(initialSession.user.id);
+          if (data.player) {
+            setCurrentPlayerData(data.player);
+            setUserRole({
+              isCaptain: !!data.player.is_captain,
+              isAdmin: !!data.player.is_admin
+            });
+            setHasProfile(!!data.player.first_name);
           } else {
-            console.log('[AuthProvider] No user in getSession, finishing init');
             setHasProfile(false);
-            const { data } = await supabase.from('season').select('*').order('end_date', { ascending: false }).limit(1).maybeSingle();
-            if (mountedRef.current && data) setCurrentSeason(data);
-            setLoading(false);
+          }
+
+          if (data.season) {
+            setCurrentSeason(data.season);
+          }
+        } else {
+          setHasProfile(false);
+          if (data.season) {
+            setCurrentSeason(data.season);
           }
         }
       } catch (err) {
-        console.error('AuthProvider init error:', err);
-        if (mountedRef.current) setLoading(false);
+        // 401 is expected when not logged in
+        if (err.status !== 401) {
+          console.error('AuthProvider init error:', err);
+        }
+        // Still try to fetch season for public pages
+        try {
+          const { default: api } = await import('../scripts/apiClient');
+          const season = await api.get('/seasons/active');
+          if (mounted && season) setCurrentSeason(season);
+        } catch (seasonErr) {
+          // Season fetch failed, not critical
+        }
+        if (mounted) setHasProfile(false);
+      } finally {
+        if (mounted) setLoading(false);
       }
     };
 
     getSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mountedRef.current) return;
-      try {
-        console.log('[AuthProvider] onAuthStateChange event:', event);
-        const newUserId = session?.user?.id;
-
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (event === 'TOKEN_REFRESHED') {
-          console.log('[AuthProvider] TOKEN_REFRESHED event received');
-          if (newUserId && hasProfile === null) {
-            setTimeout(() => {
-              if (mountedRef.current) {
-                prefetchCoreData(newUserId);
-              }
-            }, 0);
-          }
-          return;
-        }
-
-        if (newUserId) {
-          setHasProfile(null);
-          // Defer prefetchCoreData out of the auth lock to prevent deadlock
-          setTimeout(() => {
-            if (mountedRef.current) {
-              console.log('[AuthProvider] deferred prefetchCoreData for:', newUserId, '(event:', event, ')');
-              prefetchCoreData(newUserId);
-            }
-          }, 0);
-        } else {
-          setUserRole({ isCaptain: false, isAdmin: false });
-          setHasProfile(false);
-          setCurrentPlayerData(null);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error('onAuthStateChange handling error:', err);
-        if (mountedRef.current) setLoading(false);
-      }
-    });
-
-    // Listen for global auth events dispatched by the custom fetch wrapper
-    const handleAuthFailed = () => {
-      console.warn('[AuthProvider] ltta:auth-failed received — clearing session and reloading');
-      const supabaseUrl = window._env_?.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
-      const match = supabaseUrl?.match(/https?:\/\/([^.]+)/);
-      const projectRef = match ? match[1] : 'shlcqztfdhfwkhijwgue';
-      localStorage.removeItem(`sb-${projectRef}-auth-token`);
-      localStorage.removeItem('sb-shlcqztfdhfwkhijwgue-auth-token');
-      localStorage.removeItem('supabase.auth.token');
-      window.location.reload();
-    };
-
-    const handleReconnecting = () => {
-      if (mountedRef.current) setIsReconnecting(true);
-    };
-    const handleReconnected = () => {
-      if (mountedRef.current) setIsReconnecting(false);
-    };
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('ltta:auth-failed', handleAuthFailed);
-      window.addEventListener('ltta:reconnecting', handleReconnecting);
-      window.addEventListener('ltta:reconnected', handleReconnected);
-    }
-
-    return () => {
-      mountedRef.current = false;
-      subscription.unsubscribe();
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('ltta:auth-failed', handleAuthFailed);
-        window.removeEventListener('ltta:reconnecting', handleReconnecting);
-        window.removeEventListener('ltta:reconnected', handleReconnected);
-      }
-    };
+    return () => { mounted = false; };
   }, []);
 
-  const signOut = useCallback(() => supabase.auth.signOut(), []);
+  const signOut = useCallback(async () => {
+    await auth.signOut();
+    setUser(null);
+    setSession(null);
+    setUserRole({ isCaptain: false, isAdmin: false });
+    setHasProfile(false);
+    setCurrentPlayerData(null);
+  }, []);
+
+  // Call this after login/signup to refresh session state
+  const refreshSession = useCallback(async () => {
+    try {
+      const data = await auth.getSession();
+      if (data.session?.user) {
+        setSession(data.session);
+        setUser(data.session.user);
+        if (data.player) {
+          setCurrentPlayerData(data.player);
+          setUserRole({
+            isCaptain: !!data.player.is_captain,
+            isAdmin: !!data.player.is_admin
+          });
+          setHasProfile(!!data.player.first_name);
+        }
+        if (data.season) setCurrentSeason(data.season);
+      }
+    } catch (err) {
+      console.error('Session refresh error:', err);
+    }
+  }, []);
 
   const value = useMemo(() => ({
     session,
@@ -219,7 +112,8 @@ export const AuthProvider = ({ children }) => {
     currentSeason,
     isReconnecting,
     signOut,
-  }), [session, user, loading, userRole, hasProfile, currentPlayerData, currentSeason, isReconnecting, signOut]);
+    refreshSession,
+  }), [session, user, loading, userRole, hasProfile, currentPlayerData, currentSeason, signOut, refreshSession]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

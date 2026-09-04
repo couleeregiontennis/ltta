@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../scripts/supabaseClient';
+import api from '../scripts/apiClient';
 import { useAuth } from '../context/AuthProvider';
 
 export const useSeason = () => {
@@ -20,23 +20,14 @@ export const useSeason = () => {
         const fetchSeason = async () => {
             try {
                 setLoading(true);
-                // Logic: Fetch the most recent season by end_date
-                const { data, error } = await supabase
-                    .from('season')
-                    .select('*')
-                    .order('end_date', { ascending: false })
-                    .limit(1)
-                    .single();
-
-                if (error) {
-                    if (error.code !== 'PGRST116') throw error;
-                    setCurrentSeason(null);
-                } else {
-                    setCurrentSeason(data);
-                }
+                const data = await api.get('/seasons/active');
+                setCurrentSeason(data);
             } catch (err) {
-                console.error('useSeason Error:', err);
-                setError(err.message);
+                if (err.status !== 404) {
+                    console.error('useSeason Error:', err);
+                    setError(err.message);
+                }
+                setCurrentSeason(null);
             } finally {
                 setLoading(false);
             }
