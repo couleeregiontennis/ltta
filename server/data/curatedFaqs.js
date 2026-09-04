@@ -2,7 +2,13 @@
 // These match directly via keyword/FTS before querying Ollama.
 
 export const curatedFaqs = [
-  // LTTA League Rules
+  // LTTA League Rules & Governance
+  {
+    topic: 'coordinator',
+    keywords: 'coordinator league coordinator director lead in charge who runs brett meddaugh leadership',
+    question: 'Who is the LTTA League Coordinator?',
+    answer: 'Brett Meddaugh serves as the LTTA League Coordinator for the 2025 season, elected by team captains and representatives with organizational oversight from CRTA.'
+  },
   {
     topic: 'extreme_heat',
     keywords: 'heat rule hot weather extreme temperature warm 95 104 degrees feels like cancel',
@@ -41,7 +47,7 @@ export const curatedFaqs = [
   },
   {
     topic: 'balls_policy',
-    keywords: 'balls tennis balls 5:30 7:00 new recycle leave who brings',
+    keywords: 'balls tennis balls 5:30 7:00 new recycle leave',
     question: 'What is the ball policy between early and late sessions?',
     answer: '5:30 PM matches leave their balls for the 7:00 PM matches. Winners of the 7:00 PM session may keep the balls or place them in the recycle box. LTTA provides replacements for broken or lost balls.'
   },
@@ -53,7 +59,7 @@ export const curatedFaqs = [
   },
   {
     topic: 'substitutes',
-    keywords: 'sub substitute sub list non sanctioned rating fee roster alternate',
+    keywords: 'sub substitute sub list non sanctioned rating roster alternate subbing',
     question: 'How do substitutes work in LTTA?',
     answer: 'Players secure substitutes using the league sub list or a comparable player from the opposite night. When adding a substitute not on the list, ensure their tennis history fits the position and notify the coordinator prior to the match. Playing an unsanctioned sub results in only 1 point awarded (opponents get 10).'
   },

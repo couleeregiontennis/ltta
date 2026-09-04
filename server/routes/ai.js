@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { db, ensureRulesIndexed } from '../db.js';
 import { llmQueue } from '../llmQueue.js';
+import { curatedFaqs } from '../data/curatedFaqs.js';
 
 const router = Router();
 
@@ -108,30 +109,46 @@ router.post('/ask-umpire', optionalAuth, async (req, res) => {
       .split(/\s+/)
       .filter(w => w.length > 2 && !stopWords.has(w));
 
-    // STEP 1: Fast direct FAQ Match (0ms latency, zero LLM load)
-    if (searchTerms.length > 0) {
-      try {
-        const faqMatchQuery = searchTerms.map(t => `"${t}"*`).join(' OR ');
-        const faqHits = db.prepare(`
-          SELECT question, answer, rank
-          FROM rules_faq_fts
-          WHERE rules_faq_fts MATCH ?
-          ORDER BY rank
-          LIMIT 1
-        `).all(faqMatchQuery);
+    // STEP 1: Direct FAQ Intent Matching (0ms latency, zero LLM load, prevents keyword bleed)
+    const rawTokens = new Set(
+      normalized
+        .toLowerCase()
+        .replace(/[^a-z0-9 ]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 2)
+    );
 
-        // Friendly threshold: any clear match (rank < -3.0) gives an immediate authoritative answer
-        if (faqHits && faqHits.length > 0 && faqHits[0].rank < -3.0) {
-          return res.json({
-            answer: faqHits[0].answer,
-            source: 'FAQ',
-            questionMatched: faqHits[0].question,
-            directHit: true
-          });
-        }
-      } catch (faqErr) {
-        console.warn('FAQ lookup skipped:', faqErr.message);
+    let bestFaq = null;
+    let maxOverlap = 0;
+
+    for (const faq of curatedFaqs) {
+      const targetTokens = new Set(
+        (faq.keywords + ' ' + faq.question)
+          .toLowerCase()
+          .replace(/[^a-z0-9 ]/g, ' ')
+          .split(/\s+/)
+          .filter(w => w.length > 2)
+      );
+
+      let matches = 0;
+      for (const token of searchTerms) {
+        if (targetTokens.has(token)) matches++;
       }
+
+      const score = matches / Math.max(1, searchTerms.length);
+      if (score > maxOverlap && score >= 0.5) {
+        maxOverlap = score;
+        bestFaq = faq;
+      }
+    }
+
+    if (bestFaq) {
+      return res.json({
+        answer: bestFaq.answer,
+        source: 'FAQ',
+        questionMatched: bestFaq.question,
+        directHit: true
+      });
     }
 
     // STEP 2: Micro-chunk Rules FTS5 Search
@@ -145,14 +162,14 @@ router.post('/ask-umpire', optionalAuth, async (req, res) => {
           FROM rules_fts
           WHERE rules_fts MATCH ?
           ORDER BY CAST(priority AS INTEGER) DESC, rank ASC
-          LIMIT 2
+          LIMIT 3
         `).all(matchQuery);
 
         if (rows && rows.length > 0) {
           context = rows.map(r => r.content).join('\n');
           // Bound context length strictly
-          if (context.length > 600) {
-            context = context.slice(0, 600);
+          if (context.length > 700) {
+            context = context.slice(0, 700);
           }
         }
       } catch (searchErr) {
