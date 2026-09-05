@@ -30,6 +30,7 @@
     "@jest/globals": "^30.2.0",
     "@playwright/test": "^1.57.0",
     "@rollup/plugin-babel": "^6.1.0",
+    "@supabase/supabase-js": "^2.115.0",
     "@vitejs/plugin-react": "^4.2.1",
     "dotenv": "^17.3.1",
     "jest": "^30.2.0",
@@ -60,5 +61,6 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  }
+  },
+  "packageManager": "pnpm@10.30.3"
 }
