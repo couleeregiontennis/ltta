@@ -25,6 +25,7 @@ import suggestionsRouter from './routes/suggestions.js';
 import subRequestsRouter from './routes/subRequests.js';
 import paymentsRouter from './routes/payments.js';
 import locationsRouter, { courtsRouter } from './routes/locations.js';
+import clientErrorsRouter from './routes/clientErrors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,6 +75,7 @@ app.use('/api/sub-requests', subRequestsRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/locations', locationsRouter);
 app.use('/api/courts', courtsRouter);
+app.use('/api/client-errors', clientErrorsRouter);
 
 // SPA Fallback: Any GET or HEAD request that doesn't match an API route serves index.html
 app.use((req, res, next) => {
