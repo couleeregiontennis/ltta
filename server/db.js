@@ -4,6 +4,9 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { curatedFaqs } from './data/curatedFaqs.js';
+import { childLogger } from './lib/logger.js';
+
+const log = childLogger('db');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -457,7 +460,7 @@ export function ensureRulesIndexed() {
     });
     tx();
   } catch (err) {
-    console.error('Failed to index rules into FTS:', err);
+    log.error({ err }, 'Failed to index rules into FTS');
   }
 }
 

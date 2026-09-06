@@ -3,7 +3,9 @@ import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { db, ensureRulesIndexed, genUUID } from '../db.js';
 import { llmQueue } from '../llmQueue.js';
 import { curatedFaqs } from '../data/curatedFaqs.js';
+import { childLogger } from '../lib/logger.js';
 
+const log = childLogger('routes/ai');
 const router = Router();
 
 router.post('/parse-score', requireAuth, async (req, res) => {
@@ -81,7 +83,7 @@ router.post('/parse-score', requireAuth, async (req, res) => {
 
     res.json(parsedResponse);
   } catch (error) {
-    console.error('Error processing transcript:', error);
+    log.error({ err: error }, 'Error processing transcript');
     res.status(500).json({ error: 'Failed to process transcript', details: error.message });
   }
 });
@@ -281,7 +283,7 @@ Answer:`;
     logQuery(false, true, answer);
     res.json({ answer, contextUsed: context, directHit: false });
   } catch (error) {
-    console.error('Error asking umpire:', error);
+    log.error({ err: error }, 'Error asking umpire');
     res.status(500).json({ error: 'Failed to process question', details: error.message });
   }
 });

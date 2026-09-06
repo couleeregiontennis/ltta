@@ -12,6 +12,8 @@
     "csv-parse": "^5.6.0",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0",
@@ -30,6 +32,7 @@
     "@jest/globals": "^30.2.0",
     "@playwright/test": "^1.57.0",
     "@rollup/plugin-babel": "^6.1.0",
+    "@supabase/supabase-js": "^2.115.0",
     "@vitejs/plugin-react": "^4.2.1",
     "dotenv": "^17.3.1",
     "jest": "^30.2.0",
@@ -45,6 +48,7 @@
     "preview": "vite preview",
     "deploy": "pnpm run build && cp -r dist/* ../ && echo 'Deployed to root directory'",
     "test:e2e": "playwright test",
+    "test:unit": "node --test \"tests/unit/**/*.test.mjs\"",
     "test:e2e:ui": "playwright test --ui",
     "test:clean-db": "node scripts/clean-db.js",
     "db:staging:reset": "node scripts/reset-staging-db.js"
@@ -60,5 +64,6 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  }
+  },
+  "packageManager": "pnpm@10.30.3"
 }

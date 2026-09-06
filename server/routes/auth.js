@@ -3,7 +3,9 @@ import bcrypt from 'bcrypt';
 import crypto from 'node:crypto';
 import { db, genUUID } from '../db.js';
 import { generateToken, requireAuth, optionalAuth } from '../middleware/auth.js';
+import { childLogger } from '../lib/logger.js';
 
+const log = childLogger('routes/auth');
 const router = Router();
 
 // 1. POST /api/auth/signup - Create a new user account
@@ -41,7 +43,7 @@ router.post('/signup', async (req, res) => {
     res.cookie('token', token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
     res.status(201).json({ user });
   } catch (error) {
-    console.error('Signup error:', error);
+    log.error({ err: error }, 'Signup error');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -72,7 +74,7 @@ router.post('/login', async (req, res) => {
     res.cookie('token', token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
     res.json({ user, player });
   } catch (error) {
-    console.error('Login error:', error);
+    log.error({ err: error }, 'Login error');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -96,7 +98,7 @@ router.get('/session', optionalAuth, (req, res) => {
       season: season || null
     });
   } catch (error) {
-    console.error('Session error:', error);
+    log.error({ err: error }, 'Session error');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -122,7 +124,7 @@ router.put('/update-password', requireAuth, async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Update password error:', error);
+    log.error({ err: error }, 'Update password error');
     res.status(500).json({ error: 'Internal server error' });
   }
 });

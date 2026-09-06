@@ -41,3 +41,6 @@ DEEPSEEK.md
 server/*.db
 server/*.db-wal
 server/*.db-shm
+
+# Error store runtime state
+server/data/error-store.json

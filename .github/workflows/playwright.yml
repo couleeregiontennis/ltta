@@ -28,37 +28,42 @@ jobs:
       VITE_SUPABASE_ANON_KEY: fake-anon-key
     steps:
     - uses: actions/checkout@v4
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
-        cache: 'npm'
+        cache: 'pnpm'
 
     - name: Install dependencies
-      run: npm ci
+      run: pnpm install --frozen-lockfile
 
     - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
+      run: pnpm exec playwright install --with-deps
 
     - name: Run Functional Tests (Exclude Visual)
-      run: npx playwright test --grep-invert visual
+      run: pnpm exec playwright test --grep-invert visual
 
     - name: Run Visual Tests
       if: ${{ !inputs.update_snapshots }}
       id: visual-tests
-      run: npx playwright test --grep visual
+      run: pnpm exec playwright test --grep visual
       continue-on-error: true
 
     - name: Update Snapshots (if visual failed)
       if: ${{ !inputs.update_snapshots && steps.visual-tests.outcome == 'failure' }}
       id: auto-update
-      run: npx playwright test --grep visual --update-snapshots
+      run: pnpm exec playwright test --grep visual --update-snapshots
 
     - name: Manual Update Snapshots
       if: ${{ inputs.update_snapshots }}
-      run: npx playwright test --update-snapshots
+      run: pnpm exec playwright test --update-snapshots
 
     - name: Fix Dubious Ownership
-      run: git config --global --add safe.directory /__w/ltta/ltta
+      if: always()
+      run: git config --global --add safe.directory '*'
 
     - name: Commit updated snapshots
       if: always()
@@ -84,13 +89,16 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
+          cache: 'pnpm'
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Build
-        run: npm run build
+        run: pnpm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
