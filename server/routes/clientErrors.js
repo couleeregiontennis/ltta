@@ -21,12 +21,12 @@ function rateLimit(req, res, next) {
 }
 
 router.post('/', rateLimit, (req, res) => {
-  const { message, stack, url, requestId } = req.body || {};
+  const { message, stack, url, requestId, type } = req.body || {};
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'message is required' });
   }
   const report = {
-    type: 'ClientError',
+    type: typeof type === 'string' && type.trim() ? type.trim().slice(0, 100) : 'ClientError',
     message: String(message).slice(0, 2000),
     stack: String(stack || '').slice(0, 16000),
     source: 'client',

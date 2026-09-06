@@ -92,6 +92,21 @@ describe('createErrorStore', () => {
     assert.equal(store.get(result.fingerprint).count, 1);
   });
 
+  test('async trigger failure refunds the daily slot', async () => {
+    let attempts = 0;
+    const store = createErrorStore({
+      now: () => new Date('2026-09-06T10:00:00Z'),
+      onTrigger: async () => { attempts += 1; if (attempts <= 12) throw new Error('down'); return { name: 's', url: 'u' }; },
+    });
+    for (let i = 0; i < 12; i++) {
+      store.record({ ...report(), message: `refund case ${i}`, stack: `E\n at f${i}` });
+    }
+    await new Promise((r) => setTimeout(r, 0));
+    // all 12 attempts failed and each refunded its slot → a 13th unique error still triggers
+    const r = store.record({ ...report(), message: 'after outages', stack: 'E\n at after' });
+    assert.equal(r.triggered, true, 'refunded slots must keep the pipeline alive');
+  });
+
   test('persists and reloads records from filePath', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'estore-'));
     const file = path.join(dir, 'store.json');

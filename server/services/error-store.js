@@ -96,7 +96,12 @@ export function createErrorStore({
         if (result && typeof result.then === 'function') {
           result
             .then((session) => { rec.session = session; persist(); })
-            .catch((err) => { log.error({ err: err.message, fingerprint: fp }, 'Jules trigger failed'); });
+            .catch((err) => {
+              sessionsTodayCount = Math.max(0, sessionsTodayCount - 1);
+              rec.session = null;
+              persist();
+              log.error({ err: err.message, fingerprint: fp }, 'Jules trigger failed');
+            });
         } else if (result) {
           rec.session = result;
         }
