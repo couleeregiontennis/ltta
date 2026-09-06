@@ -37,7 +37,11 @@ app.use(
   pinoHttp({
     logger,
     genReqId: (req, res) => {
-      const id = req.headers['x-request-id'] || crypto.randomUUID();
+      const incoming = req.headers['x-request-id'];
+      const id =
+        typeof incoming === 'string' && /^[\w-]{1,64}$/.test(incoming)
+          ? incoming
+          : crypto.randomUUID();
       res.setHeader('x-request-id', id);
       return id;
     },

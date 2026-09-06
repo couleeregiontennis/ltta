@@ -48,7 +48,7 @@
     "preview": "vite preview",
     "deploy": "pnpm run build && cp -r dist/* ../ && echo 'Deployed to root directory'",
     "test:e2e": "playwright test",
-    "test:unit": "node --test tests/unit/",
+    "test:unit": "node --test \"tests/unit/**/*.test.mjs\"",
     "test:e2e:ui": "playwright test --ui",
     "test:clean-db": "node scripts/clean-db.js",
     "db:staging:reset": "node scripts/reset-staging-db.js"
