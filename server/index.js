@@ -1,7 +1,13 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import pinoHttp from 'pino-http';
+
+import { logger } from './lib/logger.js';
+import { requestContext } from './middleware/requestContext.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
 // Import DB
 import { db } from './db.js';
@@ -27,6 +33,22 @@ const app = express();
 const PORT = process.env.PORT || 3010;
 
 // Setup Express
+app.use(
+  pinoHttp({
+    logger,
+    genReqId: (req, res) => {
+      const id = req.headers['x-request-id'] || crypto.randomUUID();
+      res.setHeader('x-request-id', id);
+      return id;
+    },
+    autoLogging: {
+      ignore: (req) => req.url.startsWith('/api/client-errors'),
+    },
+    customLogLevel: (req, res, err) =>
+      err || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info',
+  })
+);
+app.use(requestContext);
 app.use(express.json());
 app.use(cookieParser());
 
@@ -58,12 +80,9 @@ app.use((req, res, next) => {
 });
 
 // Global Error Handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });
-});
+app.use(errorHandler);
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+  logger.info(`Server listening on port ${PORT}`);
 });
