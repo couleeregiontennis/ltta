@@ -15,7 +15,7 @@ export function createErrorReporter({
   const jules = createJulesClient();
   const store = createErrorStore({
     filePath: storePath,
-    onTrigger: onTrigger || (async (report) => jules.createFixSession(report)),
+    onTrigger: enabled ? onTrigger || (async (report) => jules.createFixSession(report)) : null,
   });
 
   return {
