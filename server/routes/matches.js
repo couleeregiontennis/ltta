@@ -24,10 +24,23 @@ router.get('/', (req, res) => {
 
     const matches = db.prepare(query).all(...params);
 
-    const stmt = db.prepare('SELECT home_won FROM line_results WHERE match_id = ?');
+    const lineResultsByMatchId = new Map();
+    if (matches.length > 0) {
+      const matchIds = matches.map(m => m.id);
+      const placeholders = matchIds.map(() => '?').join(',');
+      const lineResultsRows = db.prepare(`SELECT match_id, home_won FROM line_results WHERE match_id IN (${placeholders})`).all(...matchIds);
+      for (const row of lineResultsRows) {
+        let list = lineResultsByMatchId.get(row.match_id);
+        if (!list) {
+          list = [];
+          lineResultsByMatchId.set(row.match_id, list);
+        }
+        list.push({ home_won: row.home_won });
+      }
+    }
     
     const formattedMatches = matches.map(match => {
-      const lineResults = stmt.all(match.id);
+      const lineResults = lineResultsByMatchId.get(match.id) || [];
       return {
         id: match.id,
         date: match.date,
