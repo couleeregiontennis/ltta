@@ -57,19 +57,47 @@ router.put('/players/:id', requireAuth, loadPlayer, requireAdmin, (req, res) => 
       return res.status(404).json({ error: 'Player not found' });
     }
 
-    // Build the update query dynamically
-    const fields = Object.keys(body);
+    // Safelist of updateable fields in player table
+    const ALLOWED_FIELDS = [
+      'first_name',
+      'last_name',
+      'email',
+      'phone',
+      'ranking',
+      'is_captain',
+      'is_active',
+      'is_admin',
+      'notes',
+      'day_availability',
+      'emergency_contact',
+      'emergency_phone'
+    ];
+
+    // Filter provided keys against the safelist
+    const fields = Object.keys(body).filter(f => ALLOWED_FIELDS.includes(f));
     if (fields.length === 0) {
-      return res.status(400).json({ error: 'No fields to update' });
+      return res.status(400).json({ error: 'No valid fields to update' });
     }
     
     const setClause = fields.map(f => `${f} = ?`).join(', ');
-    const values = fields.map(f => body[f]);
+    const values = fields.map(f => {
+      const val = body[f];
+      if (f === 'day_availability' && typeof val === 'object' && val !== null) {
+        return JSON.stringify(val);
+      }
+      return val;
+    });
     
     db.prepare(`UPDATE player SET ${setClause} WHERE id = ?`).run(...values, playerId);
     
+    // Build update dictionary with only modified allowed fields for audit logging
+    const updatedFields = {};
+    for (const f of fields) {
+      updatedFields[f] = body[f];
+    }
+
     // Add audit log
-    addAuditLog('player', playerId, 'UPDATE', req.user.id, prevPlayer, { ...prevPlayer, ...body });
+    addAuditLog('player', playerId, 'UPDATE', prevPlayer, { ...prevPlayer, ...updatedFields }, req.user.id);
     
     res.json({ message: 'Player updated successfully' });
   } catch (err) {
@@ -100,7 +128,7 @@ router.put('/players/:id/role', requireAuth, loadPlayer, requireAdmin, (req, res
     
     db.prepare(`UPDATE player SET ${setClause} WHERE id = ?`).run(...values, playerId);
     
-    addAuditLog('player', playerId, 'UPDATE', req.user.id, prevPlayer, { ...prevPlayer, ...updates });
+    addAuditLog('player', playerId, 'UPDATE', prevPlayer, { ...prevPlayer, ...updates }, req.user.id);
 
     res.json({ message: 'Player role updated successfully' });
   } catch (err) {
