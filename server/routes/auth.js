@@ -15,6 +15,9 @@ router.post('/signup', async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+    }
 
     // Check if user already exists
     const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
