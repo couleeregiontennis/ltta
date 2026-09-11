@@ -4,7 +4,10 @@ import { mockSupabaseAuth, disableNavigatorLocks } from '../utils/auth-mock';
 test.describe('Captain Dashboard Actions @live', () => {
     test.beforeEach(async ({ page }) => {
         await disableNavigatorLocks(page);
-        await mockSupabaseAuth(page, { is_captain: true });
+        await mockSupabaseAuth(page, {
+            id: 'd290f1ee-6c54-4b01-90e6-d701748f0301',
+            is_captain: true
+        });
     });
 
     test('can load dashboard and view team info', async ({ page }) => {
