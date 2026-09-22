@@ -320,9 +320,8 @@
 }
 
 .standings-table tbody tr.leader td {
-  background: rgba(var(--color-primary-rgb), 0.08);
+  background: rgba(var(--color-primary-rgb), 0.1);
   font-weight: 700;
-  border-left: 4px solid var(--primary);
 }
 
 .standings-table tbody tr.top-three td:first-child {
@@ -409,7 +408,8 @@
 }
 
 .standings-mobile-card.leader {
-  border-left: 4px solid var(--standings-accent);
+  border-color: var(--primary-green);
+  box-shadow: 0 0 0 1px var(--primary-green);
 }
 
 .card-rank {

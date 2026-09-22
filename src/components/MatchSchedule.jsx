@@ -234,9 +234,8 @@ export const MatchSchedule = () => {
     <div className="match-schedule">
       <div className="schedule-header">
         <h1>Match Schedule</h1>
-        <p>Plan lineups, track results, and stay informed on weekly match activity.</p>
-        <div className="policy-banner" style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: 'var(--bg-card-hover)', borderLeft: '4px solid var(--error)', borderRadius: '4px' }}>
-          <strong>2026 Weather Policy:</strong> Rain/Heat cancellations go off 'Feels Like' temperature. 95°F = optional; 104°F = automatic.
+        <div className="policy-banner" style={{ marginTop: '1rem', padding: '0.75rem 1.25rem', backgroundColor: 'var(--error-bg)', border: '1px solid rgba(220, 38, 38, 0.25)', borderRadius: 'var(--radius-lg)', color: 'var(--text-primary)', fontSize: 'var(--font-size-sm)' }}>
+          <strong style={{ color: 'var(--error)' }}>2026 Weather Policy:</strong> Rain/Heat cancellations go off 'Feels Like' temperature. 95°F = optional; 104°F = automatic.
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 .sub-board-page {
-    padding: 2rem;
-    background-color: var(--background);
+    padding: var(--space-xl) var(--space-md);
+    background-color: var(--bg-primary);
     min-height: calc(100vh - 60px);
 }
 
@@ -10,58 +10,65 @@
 }
 
 .sub-board-header {
-    margin-bottom: 2rem;
+    margin-bottom: var(--space-xl);
     text-align: center;
 }
 
 .sub-board-header h1 {
-    color: var(--primary);
+    color: var(--text-primary);
+    font-size: var(--font-size-3xl);
+    font-weight: 800;
     margin-bottom: 0.5rem;
 }
 
 .sub-board-tabs {
     display: flex;
     justify-content: center;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    border-bottom: 2px solid var(--border);
-    padding-bottom: 0.5rem;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-xl);
+    border-bottom: 1px solid var(--border-primary);
+    padding-bottom: var(--space-xs);
 }
 
 .tab-button {
     background: none;
     border: none;
-    font-size: 1.1rem;
+    font-size: var(--font-size-sm);
     font-weight: 600;
-    color: var(--text-light);
+    color: var(--text-secondary);
     cursor: pointer;
-    padding: 0.5rem 1rem;
-    transition: all 0.2s;
+    padding: 0.625rem 1.25rem;
+    min-height: 44px;
+    transition: all var(--transition-fast);
     position: relative;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
 .tab-button.active {
-    color: var(--primary);
+    color: var(--primary-green);
 }
 
 .tab-button.active::after {
     content: '';
     position: absolute;
-    bottom: -0.6rem;
+    bottom: -1px;
     left: 0;
     width: 100%;
     height: 3px;
-    background-color: var(--primary);
-    border-radius: 2px;
+    background-color: var(--primary-green);
+    border-radius: 2px 2px 0 0;
 }
 
 .captain-actions {
-    margin-bottom: 2rem;
+    margin-bottom: var(--space-xl);
 }
 
 .sub-request-form {
-    padding: 1.5rem;
-    background-color: var(--surface);
+    padding: var(--space-xl);
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
 }
 
 .form-row {
@@ -81,21 +88,32 @@
 
 .requests-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.25rem;
 }
 
 .request-card {
     display: flex;
     flex-direction: column;
-    padding: 1.5rem;
-    background-color: var(--surface);
-    border-left: 4px solid var(--primary);
+    padding: 1.25rem;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xs);
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.request-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary-green);
+    box-shadow: var(--shadow-md);
 }
 
 .request-card.filled {
-    border-left-color: var(--success);
-    opacity: 0.8;
+    opacity: 0.85;
+    background-color: var(--bg-tertiary);
 }
 
 .request-card-header {
