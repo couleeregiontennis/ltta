@@ -388,7 +388,7 @@ body[data-theme="dark"] h3,
 body[data-theme="dark"] h4,
 body[data-theme="dark"] h5,
 body[data-theme="dark"] h6 {
-    color: var(--text-inverse);
+    color: var(--text-primary);
 }
 
 body[data-theme="dark"] .schedule-table,
